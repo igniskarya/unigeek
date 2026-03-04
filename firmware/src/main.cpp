@@ -4,6 +4,7 @@
 #include "core/Device.h"
 #include "core/ScreenManager.h"
 #include "core/ConfigManager.h"
+#include "core/RtcManager.h"
 
 #include "screens/MainMenuScreen.h"
 
@@ -15,6 +16,9 @@ void _checkStorageFallback() {
 void setup() {
   Serial.begin(115200);
   Uni.begin();
+#ifdef DEVICE_HAS_RTC
+  RtcManager::syncSystemFromRtc();
+#endif
   _checkStorageFallback();
   Config.load(Uni.Storage);
   Uni.applyNavMode();

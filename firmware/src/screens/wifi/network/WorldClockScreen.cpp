@@ -4,6 +4,7 @@
 
 #include "WorldClockScreen.h"
 #include "screens/wifi/network/NetworkMenuScreen.h"
+#include "core/RtcManager.h"
 
 void WorldClockScreen::_back() {
   Screen.setScreen(new NetworkMenuScreen());
@@ -55,6 +56,18 @@ void WorldClockScreen::onRender() {
     lcd.setTextSize(1);
     lcd.drawString("Waiting for NTP...", cx, cy);
     return;
+  }
+
+  if (!_synced) {
+    _synced = true;
+    time_t now;
+    time(&now);
+    struct timeval tv = { .tv_sec = now, .tv_usec = 0 };
+    settimeofday(&tv, nullptr);
+#ifdef DEVICE_HAS_RTC
+    RtcManager::syncRtcFromSystem();
+#endif
+    if (Uni.Speaker) Uni.Speaker->playNotification();
   }
 
   // apply offset

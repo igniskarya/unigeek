@@ -59,6 +59,11 @@ static const uint8_t SCL = GROVE_SCL;
 // ─── Speaker (buzzer, LEDC PWM) ───────────────────────────
 #define SPK_PIN  2
 
+// ─── RTC (PCF8563) ────────────────────────────────────────
+#define DEVICE_HAS_RTC
+#define RTC_I2C_ADDR  0x51
+#define RTC_REG_BASE  0x02  // PCF8563: seconds register at 0x02
+
 // ─── Firmware Feature Flags ───────────────────────────────
 #define DEVICE_HAS_SOUND          // buzzer attached — enables audio paths and sound settings
                                   // NOTE: no DEVICE_HAS_VOLUME_CONTROL — piezo buzzer has no real volume control

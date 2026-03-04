@@ -41,7 +41,10 @@ static const uint8_t SCL = GROVE_SCL;
 #define ENCODER_BTN   7
 
 // ─── RTC (PCF85063A) ──────────────────────────────────────
-#define RTC_INT  1
+#define RTC_INT       1
+#define DEVICE_HAS_RTC
+#define RTC_I2C_ADDR  0x51
+#define RTC_REG_BASE  0x04  // PCF85063A: seconds register at 0x04
 
 // ─── NFC (ST25R3916) ──────────────────────────────────────
 #define NFC_CS   39
