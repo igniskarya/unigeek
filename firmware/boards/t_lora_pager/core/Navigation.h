@@ -22,8 +22,16 @@ public:
   void update() override;
 
 private:
-  RotaryEncoder* _encoder = nullptr;
-  IKeyboard*     _kb      = nullptr;
-  int            _lastPos = 0;
-  int            _posDiff = 0;
+  static constexpr unsigned long BTN_DEBOUNCE_MS = 150;
+  static constexpr int           SCROLL_THRESH   = 2;
+
+  RotaryEncoder* _encoder        = nullptr;
+  IKeyboard*     _kb             = nullptr;
+  int            _lastPos        = 0;
+  int            _posDiff        = 0;
+
+  // Button debounce
+  bool          _btnRaw          = false;
+  bool          _btnStable       = false;
+  unsigned long _btnChangedAt    = 0;
 };

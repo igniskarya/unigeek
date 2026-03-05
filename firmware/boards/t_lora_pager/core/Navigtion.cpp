@@ -35,10 +35,27 @@ void NavigationImpl::update() {
     _lastPos  = newPos;
   }
 
-  bool btn = (digitalRead(ROTARY_C) == LOW);
+  // ── Button debounce ────────────────────────────────────────────────────────
+  bool rawBtn = (digitalRead(ROTARY_C) == LOW);
+  unsigned long now = millis();
+  if (rawBtn != _btnRaw) {
+    _btnRaw       = rawBtn;
+    _btnChangedAt = now;
+  }
+  if (now - _btnChangedAt >= BTN_DEBOUNCE_MS) {
+    _btnStable = _btnRaw;
+  }
 
-  if (btn)               updateState(DIR_PRESS);
-  else if (_posDiff < 0) { updateState(DIR_UP);   _posDiff++; }
-  else if (_posDiff > 0) { updateState(DIR_DOWN);  _posDiff--; }
-  else                     updateState(DIR_NONE);
+  // ── Direction ──────────────────────────────────────────────────────────────
+  if (_btnStable) {
+    updateState(DIR_PRESS);
+  } else if (_posDiff <= -SCROLL_THRESH) {
+    updateState(DIR_UP);
+    _posDiff = 0;
+  } else if (_posDiff >= SCROLL_THRESH) {
+    updateState(DIR_DOWN);
+    _posDiff = 0;
+  } else {
+    updateState(DIR_NONE);
+  }
 }
