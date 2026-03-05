@@ -11,13 +11,20 @@ public:
     if (!title) return;
 
     auto& lcd = Uni.Lcd;
-    int titleWidth = (strlen(title) + 3) * 6;
-    lcd.fillRect(StatusBar::WIDTH + titleWidth, 10, lcd.width() - StatusBar::WIDTH - titleWidth - 6, 3, Config.getThemeColor());
-    lcd.setTextSize(1);
-    lcd.setTextDatum(TL_DATUM);
-    lcd.setTextColor(TFT_WHITE);
-    lcd.drawString("# ", StatusBar::WIDTH, 8);
-    lcd.drawString(title, StatusBar::WIDTH + 10, 8);
+    const uint16_t w = lcd.width() - StatusBar::WIDTH;
+
+    char buf[64];
+    snprintf(buf, sizeof(buf), "# %s ", title);
+
+    TFT_eSprite sp(&lcd);
+    sp.createSprite(w, HEIGHT);
+    sp.fillSprite(TFT_BLACK);
+    sp.fillRect(0, 10, w - 6, 3, Config.getThemeColor());
+    sp.setTextDatum(TL_DATUM);
+    sp.setTextColor(TFT_WHITE, TFT_BLACK);
+    sp.drawString(buf, 0, 8);
+    sp.pushSprite(StatusBar::WIDTH, 0);
+    sp.deleteSprite();
   }
 
   static constexpr uint8_t HEIGHT = 20;

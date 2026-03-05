@@ -198,6 +198,9 @@ All hardware differences are isolated in board-specific folders.
       - Template::renderStatus()               →  ShowStatusAction::show()
       - Template::renderQRCode()               →  ShowQRCodeAction::show()
       - onEnter(entry) / entry.label           →  onItemSelected(index) / switch(index)
+      - DIR_* constants are INavigation::Direction enum values (INavigation::DIR_BACK, etc.)
+        Include core/Device.h in the .cpp — it pulls in INavigation.h
+        Never use bare DIR_BACK — always qualify as INavigation::DIR_BACK
       - Always read both .h and .cpp from puteros before migrating
 
 ### RtcManager
@@ -275,6 +278,12 @@ All hardware differences are isolated in board-specific folders.
     };
 
 ### Back Navigation
+
+    onBack() is ONLY available on ListScreen — BaseScreen has no onBack() virtual method.
+    - ListScreen subclasses: override onBack() — called automatically when DIR_BACK is received
+    - BaseScreen subclasses: handle DIR_BACK manually in onUpdate():
+        if (Uni.Nav->wasPressed() && Uni.Nav->readDirection() == INavigation::DIR_BACK) { ... }
+      Never declare onBack() override on a BaseScreen subclass — it will not compile.
 
     - DIR_BACK is emitted by navigation and consumed by ListScreen → calls onBack()
         - Keyboard boards (Cardputer, ADV, T-Lora): \b key consumed by NavigationImpl → DIR_BACK
@@ -399,6 +408,9 @@ All hardware differences are isolated in board-specific folders.
 - Use new for screen allocation — ScreenManager handles deletion
 - pins_arduino.h is auto-included, never include it explicitly
 - Always call deleteSprite() after createSprite() + pushSprite()
+- Body sprites ALWAYS use bodyW() × bodyH() pushed at (bodyX(), bodyY())
+  bodyW/bodyH already exclude the 4px screen padding — never subtract extra padding inside a sprite
+  Only draw directly on lcd (not sprite) when explicitly told to ignore body boundaries
 - Screen .h files: declarations and data members only
   Trivial one-liners (title(), hasBackItem()) may stay inline in .h
   All onInit(), onUpdate(), onItemSelected(), onBack(), and private helper bodies go in .cpp
