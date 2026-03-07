@@ -1,7 +1,7 @@
-#ifdef DEVICE_HAS_USB_HID
-
-#include <USB.h>
 #include "USBKeyboardUtil.h"
+
+#ifdef DEVICE_HAS_USB_HID
+#include <USB.h>
 
 USBKeyboardUtil::USBKeyboardUtil()
 {

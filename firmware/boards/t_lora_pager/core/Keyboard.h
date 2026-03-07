@@ -101,7 +101,7 @@ public:
 
     // ── special keys ──────────────────────────────────────
     if (k == KB_KEY_FN) {
-      if (pressed) _fnPressed = !_fnPressed;
+      _fnPressed = pressed;
       return;
     }
 

@@ -3,12 +3,11 @@
 #include "core/ScreenManager.h"
 #include "screens/keyboard/KeyboardMenuScreen.h"
 #include "ui/actions/ShowStatusAction.h"
+#ifdef DEVICE_HAS_USB_HID
+#include "utils/keyboard/USBKeyboardUtil.h"  // must come before BLEKeyboardUtil — TinyUSB hid.h enum must be processed before NimBLE HIDTypes.h macro
+#endif
 #include "utils/keyboard/BLEKeyboardUtil.h"
 #include "utils/keyboard/DuckScriptUtil.h"
-
-#ifdef DEVICE_HAS_USB_HID
-#include "utils/keyboard/USBKeyboardUtil.h"
-#endif
 
 // ── Constructor / Destructor ────────────────────────────────────────────────
 
