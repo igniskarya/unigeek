@@ -76,9 +76,14 @@ void WifiBeaconSpamScreen::onUpdate()
     }
   }
 
-  _broadcastNext();
-  _drawSpamming();
-  delay(10);
+  for (int i = 0; i < 40; i++) _broadcastNext();
+
+  uint32_t now = millis();
+  if (now - _lastDrawMs >= 2000) {
+    _spinIdx = (_spinIdx + 1) % 4;
+    _drawSpamming();
+    _lastDrawMs = now;
+  }
 }
 
 void WifiBeaconSpamScreen::onBack()
@@ -132,15 +137,11 @@ void WifiBeaconSpamScreen::_broadcastNext()
     _ssidIdx++;
     if (_ssidIdx >= _ssidCount) {
       _ssidIdx = 0;
-      _rounds++;
-      _spinIdx = (_spinIdx + 1) % 4;
     }
   } else {
     channel = (uint8_t)(random(1, 14));
     _makeRandomSsid();
     ssid = _randomSsid;
-    _rounds++;
-    _spinIdx = (_spinIdx + 1) % 4;
   }
 
   _attacker->beaconSpam(ssid, channel);
@@ -151,31 +152,13 @@ void WifiBeaconSpamScreen::_drawSpamming()
   TFT_eSprite sp(&Uni.Lcd);
   sp.createSprite(bodyW(), bodyH());
   sp.fillSprite(TFT_BLACK);
-
   sp.setTextDatum(MC_DATUM);
   sp.setTextColor(TFT_WHITE, TFT_BLACK);
-
-  String top;
-  if (_mode == MODE_DICTIONARY) {
-    top = String("[") + _spinner[_spinIdx] + "] Spamming " + _ssidCount + " SSIDs...";
-  } else {
-    top = String("[") + _spinner[_spinIdx] + "] Random spam...";
-  }
-  sp.drawString(top.c_str(), bodyW() / 2, bodyH() / 2 - 8);
-
-  sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
-  String sub;
-  if (_mode == MODE_DICTIONARY) {
-    int ch = (int)((_ssidIdx / (float)_ssidCount * 13) + 1);
-    sub = String("Round ") + _rounds + "  Ch " + ch;
-  } else {
-    sub = String("Sent: ") + _rounds + "  SSID: " + _randomSsid;
-  }
-  sp.drawString(sub.c_str(), bodyW() / 2, bodyH() / 2 + 8);
-
+  String label = String("[") + _spinner[_spinIdx] + "] Spamming..";
+  sp.drawString(label.c_str(), bodyW() / 2, bodyH() / 2);
   sp.setTextDatum(BC_DATUM);
+  sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
   sp.drawString("BACK / ENTER: Stop", bodyW() / 2, bodyH());
-
   sp.pushSprite(bodyX(), bodyY());
   sp.deleteSprite();
 }

@@ -30,6 +30,8 @@ private:
   int  _rounds   = 0;
   char _randomSsid[33] = {};
 
+  uint32_t _lastDrawMs = 0;
+
   String _modeSub;
 
   ListItem _menuItems[2];
