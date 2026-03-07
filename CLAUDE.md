@@ -37,9 +37,19 @@ All hardware differences are isolated in board-specific folders.
     DEVICE_HAS_SOUND          defined for boards with a speaker — enables Uni.Speaker and audio paths
     DEVICE_HAS_VOLUME_CONTROL defined for boards with real volume control (I2S amp) — shows Volume in Settings
                               NOT defined for buzzer boards (M5StickC Plus) where setVolume() is a no-op
+    DEVICE_HAS_USB_HID        defined for ESP32-S3 boards (T-Lora Pager, Cardputer, Cardputer ADV)
+                              enables USBKeyboardUtil and USB mode in KeyboardMenuScreen
+                              NOT defined for M5StickC Plus (original ESP32, no USB OTG)
     APP_MENU_POWER_OFF        defined for T-Lora Pager and M5StickC Plus 1.1, adds Power Off in main menu
     DEVICE_HAS_NAV_MODE_SWITCH defined for M5StickC Plus 1.1 — enables nav mode setting (Default vs Encoder)
                               hold 3s resets to default nav (handled in Device::boardHook())
+
+    All app feature flags are defined in pins_arduino.h — NEVER in config.ini or platformio.ini
+    Device identity flags (DEVICE_*) are defined in boards/_devices/*.json extra_flags — not in pins_arduino.h or config.ini
+      DEVICE_M5STICK_C_PLUS   — M5StickC Plus 1.1 (ESP32)
+      DEVICE_T_LORA_PAGER     — LilyGO T-Lora Pager (ESP32-S3)
+      DEVICE_M5_CARDPUTER     — M5Stack Cardputer (ESP32-S3)
+      DEVICE_M5_CARDPUTER_ADV — M5Stack Cardputer ADV (ESP32-S3)
 
 ---
 
@@ -108,6 +118,11 @@ All hardware differences are isolated in board-specific folders.
     │   │   │   ├── UtilityMenuScreen.cpp
     │   │   │   ├── QRCodeScreen.h      prompt text via InputTextAction → ShowQRCodeAction loop
     │   │   │   └── QRCodeScreen.cpp
+    │   │   ├── keyboard/
+    │   │   │   ├── KeyboardMenuScreen.h    mode toggle (USB/BLE, gated DEVICE_HAS_USB_HID) + Start
+    │   │   │   ├── KeyboardMenuScreen.cpp
+    │   │   │   ├── KeyboardScreen.h        menu + file browser + relay + ducky script runner
+    │   │   │   └── KeyboardScreen.cpp
     │   │   └── wifi/
     │   │       ├── WifiMenuScreen.h
     │   │       ├── WifiMenuScreen.cpp
@@ -116,6 +131,12 @@ All hardware differences are isolated in board-specific folders.
     │   │           ├── NetworkMenuScreen.cpp
     │   │           ├── WorldClockScreen.h
     │   │           └── WorldClockScreen.cpp
+    │   ├── utils/
+    │   │   └── keyboard/
+    │   │       ├── HIDKeyboardUtil.h/cpp   base class: KeyReport, ASCII map, press/release/write
+    │   │       ├── BLEKeyboardUtil.h/cpp   NimBLE HID server (all boards)
+    │   │       ├── USBKeyboardUtil.h/cpp   USB HID (gated DEVICE_HAS_USB_HID, ESP32-S3 only)
+    │   │       └── DuckScriptUtil.h/cpp    DuckyScript command runner
     │   ├── ui/
     │   │   ├── templates/
     │   │   │   ├── BaseScreen.h        header + StatusBar
@@ -186,6 +207,43 @@ All hardware differences are isolated in board-specific folders.
 
     QR code data capacity: auto-scales version — handles any length up to version 40.
     Pixel size is computed to fit the body area with 14px reserved for the label.
+
+### HID Keyboard (screens/keyboard/ + utils/keyboard/)
+
+    KeyboardMenuScreen  — mode selection; USB/BLE toggle only on DEVICE_HAS_USB_HID boards
+    KeyboardScreen      — main screen with states:
+      STATE_MENU          list: Keyboard (DEVICE_HAS_KEYBOARD only), Ducky Script, Reset Pair (BLE only)
+      STATE_KEYBOARD      relay mode: forward keyboard chars to HID; override onUpdate() + onRender()
+      STATE_SELECT_FILE   file browser for ducky scripts (SD required); uses setItems() to show files
+      STATE_RUNNING_SCRIPT executing a .ds file; renders output lines green/red per command
+
+    HIDKeyboardUtil     — base class: KeyReport struct, ASCII→HID map, press/release/write/releaseAll
+    BLEKeyboardUtil     — NimBLE HID server; lifecycle: begin() starts advertising, deinit in destructor
+    USBKeyboardUtil     — USBHID on ESP32-S3; gated with #ifdef DEVICE_HAS_USB_HID; USB.begin() once
+    DuckScriptUtil      — processes STRING/STRINGLN/DELAY/GUI/CTRL/ALT/SHIFT/ENTER/REM commands
+
+    Board matrix:
+      M5StickC Plus 1.1  — BLE only, no relay (no physical keyboard), Ducky Script only
+      T-Lora Pager       — BLE + USB, relay via Uni.Keyboard->getKey(), Ducky Script
+      M5 Cardputer       — BLE + USB, relay via Uni.Keyboard->getKey(), Ducky Script
+      M5 Cardputer ADV   — BLE + USB, relay via Uni.Keyboard->getKey(), Ducky Script
+
+    KeyboardScreen::onUpdate() pattern (override calls parent for list states):
+      if (STATE_KEYBOARD)        → _handleKeyboardRelay() — never calls ListScreen::onUpdate()
+      else if (STATE_RUNNING_SCRIPT) → wait for DIR_BACK/PRESS then _goMenu()
+      else                       → ListScreen::onUpdate()   — list navigation works normally
+
+    KeyboardScreen::onRender() pattern:
+      if (STATE_KEYBOARD)        → _renderConnected()        — custom sprite
+      else if (STATE_RUNNING_SCRIPT) → _renderScript()       — custom sprite
+      else                       → ListScreen::onRender()    — list draws normally
+
+    Ducky script path: /unigeek/keyboard/duckyscript  (SD only — checks Uni.StorageSD != nullptr)
+    File content read via Uni.Storage->readFile() → split by '\n' → DuckScriptUtil::runCommand(line)
+
+    BLEKeyboardUtil conflict with BLEAnalyzerScreen / BLESpamScreen:
+      Both call NimBLEDevice::deinit(true) in their destructors.
+      Never run BLE keyboard and BLE scan/spam at the same time — user must navigate away first.
 
 ### Migration from puteros
 
