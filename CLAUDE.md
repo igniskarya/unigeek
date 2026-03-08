@@ -629,9 +629,10 @@ All hardware differences are isolated in board-specific folders.
 ## Partitions
 
 M5StickC Plus:
-nvs      24KB
-app0     3.6MB   OTA
-spiffs   384KB   LittleFS
+nvs      16KB
+app0     3.06MB  OTA
+spiffs   760KB   LittleFS
+coredump 64KB
 
 T-Lora Pager:
 nvs       24KB
