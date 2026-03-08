@@ -1,0 +1,84 @@
+#pragma once
+
+#include <SD.h>
+#include "ui/templates/ListScreen.h"
+
+class WifiEapolBruteForceScreen : public ListScreen {
+public:
+  const char* title() override { return "EAPOL Brute Force"; }
+  bool inhibitPowerOff() override { return _state == STATE_CRACKING; }
+
+  ~WifiEapolBruteForceScreen();
+
+  void onInit() override;
+  void onUpdate() override;
+  void onRender() override;
+  void onBack() override;
+  void onItemSelected(uint8_t index) override;
+
+private:
+  // ── WPA2 handshake (extracted from PCAP) ─────────────────────────────────
+  struct Handshake {
+    bool     valid      = false;
+    char     ssid[33]   = {};
+    uint8_t  ssid_len   = 0;
+    uint8_t  ap[6]      = {};
+    uint8_t  sta[6]     = {};
+    uint8_t  anonce[32]   = {};
+    uint8_t  snonce[32]   = {};
+    uint8_t  mic[16]      = {};
+    uint8_t  eapol[300]   = {};   // M2 body with MIC zeroed
+    uint16_t eapol_len    = 0;
+    uint8_t  prf_data[76] = {};   // sorted MACs + sorted nonces for PTK derivation
+  };
+
+  // ── Shared state between crack task and main loop ─────────────────────────
+  struct CrackCtx {
+    Handshake hs;
+    char      wordlistPath[64] = {};
+    volatile bool     stop      = false;
+    volatile bool     done      = false;
+    volatile bool     found     = false;
+    char              foundPass[64] = {};
+    char              curPass[64]   = {};   // updated each password, for display
+    volatile uint32_t tested     = 0;
+    volatile uint32_t bytesDone  = 0;
+    volatile uint32_t fileSize   = 0;
+    volatile float    speed      = 0.0f;
+  };
+
+  static CrackCtx     _ctx;
+  static TaskHandle_t _taskHandle;
+  static void _crackTask(void* param);
+
+  // ── State machine ─────────────────────────────────────────────────────────
+  enum State { STATE_MENU, STATE_SELECT_PCAP, STATE_SELECT_WORDLIST, STATE_CRACKING, STATE_DONE };
+  State _state = STATE_MENU;
+
+  // ── File browser ──────────────────────────────────────────────────────────
+  static constexpr int MAX_FILES = 16;
+  static const char*   PCAP_DIR;
+  static const char*   PASS_DIR;
+
+  char     _fileLabels[MAX_FILES][48] = {};
+  char     _filePaths[MAX_FILES][64]  = {};
+  ListItem _fileItems[MAX_FILES]      = {};
+  int      _fileCount = 0;
+
+  char _selectedPcap[64]     = {};
+  char _selectedWordlist[64] = {};
+
+  // ── Main menu ─────────────────────────────────────────────────────────────
+  ListItem _menuItems[3]  = {};
+  String   _pcapSub;
+  String   _wordlistSub;
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  void _showMenu();
+  bool _listFiles(const char* dir, const char* ext);
+  bool _parsePcap(const char* path);
+  void _startCrack();
+  void _stopCrack();
+  void _renderCracking();
+  void _renderDone();
+};
