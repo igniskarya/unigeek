@@ -30,12 +30,6 @@ public:
     bool btnDown = (digitalRead(DW_BTN) == BTN_ACT);
     uint32_t now = millis();
 
-    if (btnUp && btnDown) {
-      _waitingForDoubleClick = false;
-      updateState(DIR_PRESS);
-      return;
-    }
-
     if (btnUp) {
       _waitingForDoubleClick = false;
       updateState(DIR_UP);
