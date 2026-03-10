@@ -83,10 +83,10 @@ public:
     if (c == "Red")    return TFT_RED;
     if (c == "Green")  return TFT_DARKGREEN;
     if (c == "Cyan")   return TFT_DARKCYAN;
-    if (c == "Purple") return 0x780F;
-    if (c == "Brown")  return 0x9A60;
+    if (c == "Purple") return TFT_PURPLE;
+    if (c == "Brown")  return TFT_BROWN;
     if (c == "Orange") return TFT_ORANGE;
-    if (c == "Violet") return 0x9100;
+    if (c == "Violet") return TFT_VIOLET;
     return TFT_NAVY;
   }
 

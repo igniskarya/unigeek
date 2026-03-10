@@ -155,6 +155,7 @@ void SettingScreen::onItemSelected(uint8_t index) {
         {"Brown",  "Brown"},
         {"Orange", "Orange"},
         {"Violet", "Violet"},
+        {"Navy", "Navy"},
       };
       String      cur    = Config.get(APP_CONFIG_PRIMARY_COLOR, APP_CONFIG_PRIMARY_COLOR_DEFAULT);
       const char* result = InputSelectAction::popup("Primary Color", opts, 8, cur.c_str());
