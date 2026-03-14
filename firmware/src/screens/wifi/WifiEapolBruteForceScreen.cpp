@@ -12,19 +12,36 @@
 // ── Built-in test wordlist (55 common passwords, all >= 8 chars) ──────────
 
 static const char* const kTestPasswords[] = {
+  // Numeric sequences
   "12345678",  "123456789", "1234567890", "11111111",  "00000000",
-  "password",  "password1", "passw0rd",   "pass1234",  "iloveyou",
-  "sunshine",  "princess",  "football",   "baseball",  "superman",
-  "welcome1",  "letmein1",  "trustno1",   "admin123",  "hello123",
-  "qwerty123", "qwertyui",  "asdfghjk",   "zxcvbnm1",  "starwars",
-  "monkey123", "dragon123", "chocolate",  "internet",  "wireless",
-  "wifi1234",  "router12",  "netgear1",   "linksys1",  "network1",
-  "connect1",  "computer",  "michael1",   "jessica1",  "abc12345",
-  "test1234",  "87654321",  "11223344",   "12344321",  "99999999",
-  "88888888",  "55555555",  "12121212",   "homewifi",  "mywifi123",
-  "1234asdf",  "asdf1234",  "1234qwer",   "qwer1234",  "qwerasdf"
+  "87654321",  "11223344",  "12344321",   "99999999",  "88888888",
+  "55555555",  "12121212",  "13131313",   "10101010",  "98765432",
+  "12341234",  "11112222",  "22222222",   "33333333",  "44444444",
+  "66666666",  "77777777",  "01234567",   "20202020",  "19191919",
+  // Password/admin patterns
+  "password",  "password1", "passw0rd",   "pass1234",  "password12",
+  "password123","admin123", "admin1234",  "admin2020",  "root1234",
+  "master12",  "login123",  "access14",   "letmein1",  "trustno1",
+  "welcome1",  "changeme",  "default1",   "guest1234", "user1234",
+  "test1234",  "temp1234",  "pass12345",  "p@ssw0rd",  "p@ss1234",
+  // Keyboard patterns
+  "qwerty123", "qwertyui",  "qwerty12",   "qwer1234",  "qwerasdf",
+  "asdfghjk",  "asdf1234",  "zxcvbnm1",   "1234asdf",  "1234qwer",
+  "1q2w3e4r",  "zaq12wsx",  "1qaz2wsx",   "qazwsx123", "!q2w3e4r",
+  // WiFi/router defaults
+  "wifi1234",  "wifi12345", "wlan1234",   "router12",  "netgear1",
+  "linksys1",  "dlink1234", "tplink12",   "huawei12",  "modem123",
+  "internet",  "wireless",  "network1",   "connect1",  "homewifi",
+  "mywifi123", "wifiwifi",  "setup1234",  "broadband", "fiber123",
+  // IT/tech defaults
+  "abc12345",  "abcd1234",  "1234abcd",   "aa123456",  "a1234567",
+  "a1b2c3d4",  "aaa11111",  "xyz12345",   "system12",  "server12",
+  "cisco123",  "ubnt1234",  "mikrotik",   "radius12",  "monitor1",
+  // PIN-style numeric
+  "14141414",  "12345679",  "11111112",   "01020304",  "02468024",
+  "13572468",  "10203040",  "11235813",   "31415926",  "27182818",
 };
-static constexpr int kTestPasswordCount = 55;
+static constexpr int kTestPasswordCount = 125;
 
 // ── Statics ───────────────────────────────────────────────────────────────
 
@@ -245,7 +262,7 @@ bool WifiEapolBruteForceScreen::_listFiles(const char* dir, const char* ext) {
   if (ext == nullptr && _fileCount < MAX_FILES) {
     snprintf(_fileLabels[_fileCount], sizeof(_fileLabels[0]), "Test Wordlist");
     snprintf(_filePaths[_fileCount],  sizeof(_filePaths[0]),  "__test__");
-    _fileItems[_fileCount] = {_fileLabels[_fileCount], "55 entries"};
+    _fileItems[_fileCount] = {_fileLabels[_fileCount], "125 entries"};
     _fileCount++;
   }
 
