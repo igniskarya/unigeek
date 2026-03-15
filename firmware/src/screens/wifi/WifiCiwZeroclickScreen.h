@@ -39,9 +39,9 @@ private:
   uint32_t _lastDrawMs = 0;
 
   std::vector<Payload> _active;
-  TrackedDevice _devices[10];
+  TrackedDevice _devices[30];
   int _deviceCount = 0;
-  Alert _alerts[10];
+  Alert _alerts[30];
   int _alertCount = 0;
   int _alertHead = 0;
 
@@ -54,8 +54,8 @@ private:
   ListItem _menuItems[6];
 
   ScrollListView _scrollView;
-  ScrollListView::Row _scrollRows[10];
-  String _scrollLabels[10];
+  ScrollListView::Row _scrollRows[30];
+  String _scrollLabels[30];
 
   void _refreshMenu();
   void _loadPayloads();

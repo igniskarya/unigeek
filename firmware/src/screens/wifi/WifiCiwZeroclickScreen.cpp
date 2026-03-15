@@ -320,7 +320,7 @@ void WifiCiwZeroclickScreen::_showAlerts()
   }
 
   for (int i = 0; i < _alertCount; i++) {
-    int idx = (_alertHead - _alertCount + i + 10) % 10;
+    int idx = (_alertHead - _alertCount + i + 30) % 30;
     char mac[20];
     snprintf(mac, sizeof(mac), "%02X:%02X:%02X:%02X:%02X:%02X",
       _alerts[idx].mac[0], _alerts[idx].mac[1], _alerts[idx].mac[2],
@@ -440,7 +440,7 @@ void WifiCiwZeroclickScreen::_onWifiEvent(WiFiEvent_t event, WiFiEventInfo_t inf
   if (!self || self->_state != STATE_BROADCASTING) return;
 
   if (event == ARDUINO_EVENT_WIFI_AP_STACONNECTED) {
-    if (self->_deviceCount < 10) {
+    if (self->_deviceCount < 30) {
       auto& d = self->_devices[self->_deviceCount];
       memcpy(d.mac, info.wifi_ap_staconnected.mac, 6);
       d.connectTime = millis();
@@ -454,7 +454,7 @@ void WifiCiwZeroclickScreen::_onWifiEvent(WiFiEvent_t event, WiFiEventInfo_t inf
         unsigned long duration = millis() - self->_devices[i].connectTime;
 
         // Fast disconnect = possible crash → alert
-        if (duration < 10000 && self->_alertCount < 10) {
+        if (duration < 10000 && self->_alertCount < 30) {
           int idx = self->_alertHead;
           memcpy(self->_alerts[idx].mac, m, 6);
           if (self->_devices[i].payloadIdx < (int)self->_active.size()) {
@@ -463,8 +463,8 @@ void WifiCiwZeroclickScreen::_onWifiEvent(WiFiEvent_t event, WiFiEventInfo_t inf
             self->_alerts[idx].ssid[32] = '\0';
           }
           self->_alerts[idx].durationMs = duration;
-          self->_alertHead = (self->_alertHead + 1) % 10;
-          if (self->_alertCount < 10) self->_alertCount++;
+          self->_alertHead = (self->_alertHead + 1) % 30;
+          if (self->_alertCount < 30) self->_alertCount++;
           if (Uni.Speaker) Uni.Speaker->playNotification();
         }
 
