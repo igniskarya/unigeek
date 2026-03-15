@@ -56,10 +56,10 @@ public:
   // WAV not supported on buzzer — stub
   void playWav(const uint8_t* data, size_t size) override { (void)data; (void)size; }
 
-  void playNotification() override { playRandomTone(0, 200); }
+  void playNotification() override { if (_taskHandle) return; playRandomTone(0, 200); }
 
   void playWin() override {
-    _stopTask();
+    if (_taskHandle) return;
     _seq[0] = {523, 120, 50};
     _seq[1] = {659, 120, 50};
     _seq[2] = {784, 200, 0};
@@ -68,7 +68,7 @@ public:
   }
 
   void playLose() override {
-    _stopTask();
+    if (_taskHandle) return;
     _seq[0] = {392, 120, 50};
     _seq[1] = {330, 120, 50};
     _seq[2] = {262, 200, 0};
@@ -77,7 +77,7 @@ public:
   }
 
   void playCorrectAnswer() override {
-    _stopTask();
+    if (_taskHandle) return;
     _seq[0] = {523, 180, 100};
     _seq[1] = {784, 120, 0};
     _seqLen = 2;
@@ -85,7 +85,7 @@ public:
   }
 
   void playWrongAnswer() override {
-    _stopTask();
+    if (_taskHandle) return;
     _seq[0] = {1109, 150, 100};
     _seq[1] = {1109, 150, 0};
     _seqLen = 2;

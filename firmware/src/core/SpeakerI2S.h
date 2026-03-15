@@ -104,12 +104,12 @@ public:
     xTaskCreate(_wavTask, "spkwav", 4096, this, 2, &_taskHandle);
   }
 
-  void playNotification() override { playWav(NOTIFICATION_SOUND, sizeof(NOTIFICATION_SOUND)); }
-  void playWin()          override { playWav(WIN_SOUND,          sizeof(WIN_SOUND));          }
-  void playLose()         override { playWav(LOSE_SOUND,         sizeof(LOSE_SOUND));         }
+  void playNotification() override { if (_taskHandle) return; playWav(NOTIFICATION_SOUND, sizeof(NOTIFICATION_SOUND)); }
+  void playWin()          override { if (_taskHandle) return; playWav(WIN_SOUND,          sizeof(WIN_SOUND));          }
+  void playLose()         override { if (_taskHandle) return; playWav(LOSE_SOUND,         sizeof(LOSE_SOUND));         }
 
   void playCorrectAnswer() override {
-    _stopTask();
+    if (_taskHandle) return;
     _seq[0] = {523,  180, 100};
     _seq[1] = {784,  120, 0  };
     _seqLen = 2;
@@ -117,7 +117,7 @@ public:
   }
 
   void playWrongAnswer() override {
-    _stopTask();
+    if (_taskHandle) return;
     _seq[0] = {1109, 150, 100};
     _seq[1] = {1109, 150, 0  };
     _seqLen = 2;

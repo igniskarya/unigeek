@@ -110,7 +110,7 @@ void WifiDeauthDetectorScreen::onUpdate()
   }
 
   if (gotNew) {
-    if (Uni.Speaker && !Uni.Speaker->isPlaying()) Uni.Speaker->playNotification();
+    if (Uni.Speaker) Uni.Speaker->playNotification();
   }
 
   if (millis() - _lastUpdate >= 1000) {
