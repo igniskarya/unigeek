@@ -15,6 +15,7 @@
 #include "WifiEapolCaptureScreen.h"
 #include "WifiCiwZeroclickScreen.h"
 #include "WifiEapolBruteForceScreen.h"
+#include "WifiEvilTwinScreen.h"
 
 void WifiMenuScreen::onInit() {
   setItems(_items);
@@ -30,9 +31,10 @@ void WifiMenuScreen::onItemSelected(uint8_t index) {
     case 5: Screen.setScreen(new WifiDeauthDetectorScreen()); break;
     case 6: Screen.setScreen(new WifiBeaconSpamScreen());       break;
     case 7: Screen.setScreen(new WifiCiwZeroclickScreen());    break;
-    case 8: Screen.setScreen(new WifiESPNowChatScreen());      break;
-    case 9: Screen.setScreen(new WifiEapolCaptureScreen());    break;
-    case 10: Screen.setScreen(new WifiEapolBruteForceScreen()); break;
+    case 8: Screen.setScreen(new WifiEvilTwinScreen());        break;
+    case 9: Screen.setScreen(new WifiESPNowChatScreen());      break;
+    case 10: Screen.setScreen(new WifiEapolCaptureScreen());    break;
+    case 11: Screen.setScreen(new WifiEapolBruteForceScreen()); break;
   }
 }
 
