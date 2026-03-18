@@ -3,7 +3,7 @@
 #include <WiFiUdp.h>
 #include <ESPAsyncWebServer.h>
 
-class RogueDnsServer {
+class DnsSpoofServer {
 public:
   static constexpr int MAX_RECORDS = 20;
   static constexpr const char* CONFIG_PATH = "/unigeek/wifi/portals/dns_config";
@@ -18,7 +18,7 @@ public:
 
   bool begin(IPAddress apIP);
   void end();
-  void update();  // call each frame to process DHCP + DNS packets
+  void update();  // call each frame to process DNS packets
 
   void setVisitCallback(VisitCallback cb) { _visitCb = cb; }
   void setPostCallback(PostCallback cb)  { _postCb = cb; }
@@ -40,20 +40,6 @@ private:
   DnsRecord _records[MAX_RECORDS];
   uint8_t   _recordCount = 0;
   bool _loadConfig();
-
-  // DHCP server (port 67)
-  WiFiUDP _dhcpUdp;
-  void _processDhcp();
-  void _handleDhcpPacket(uint8_t* buf, int len);
-  uint8_t _getDhcpMsgType(uint8_t* buf, int len);
-  void _buildDhcpResponse(uint8_t* buf, int& len, uint8_t msgType, uint8_t ipSuffix);
-  uint8_t _allocateIp(uint8_t* mac);
-
-  static constexpr int DHCP_POOL_SIZE = 20;
-  uint8_t _poolStart = 101;
-  bool    _poolUsed[DHCP_POOL_SIZE] = {};
-  struct DhcpClient { uint8_t mac[6]; uint8_t suffix; };
-  DhcpClient _clients[DHCP_POOL_SIZE] = {};
 
   // DNS server (port 53)
   WiFiUDP _dnsUdp;

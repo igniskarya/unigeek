@@ -109,9 +109,9 @@ void WifiAPScreen::onItemSelected(uint8_t index)
       render();
       break;
     }
-    case 3: { // Rogue DNS toggle
+    case 3: { // DNS Spoof toggle
       if (!_rogueEnabled) {
-        if (!Uni.Storage || !Uni.Storage->exists(RogueDnsServer::CONFIG_PATH)) {
+        if (!Uni.Storage || !Uni.Storage->exists(DnsSpoofServer::CONFIG_PATH)) {
           ShowStatusAction::show("dns_config not found", 1500);
           render();
           break;
@@ -204,7 +204,7 @@ void WifiAPScreen::_showMenu()
   _menuItems[0] = {"SSID",            _ssidSub.c_str()};
   _menuItems[1] = {"Password",        _passwordSub.c_str()};
   _menuItems[2] = {"Hidden",          _hidden ? "Yes" : "No"};
-  _menuItems[3] = {"Rogue DNS",       _rogueEnabled ? "Yes" : "No"};
+  _menuItems[3] = {"DNS Spoof",       _rogueEnabled ? "Yes" : "No"};
   _menuItems[4] = {"Captive Portal",  _captiveSub.c_str()};
   _menuItems[5] = {"File Manager",    _fileManagerEnabled ? "Yes" : "No"};
   _menuItems[6] = {"Start"};
@@ -224,7 +224,7 @@ void WifiAPScreen::_startAP()
   );
   WiFi.softAP(ssid.c_str(), pwd.c_str(), 1, _hidden);
 
-  // Start Rogue DNS if enabled (also needed for captive portal)
+  // Start DNS Spoof if enabled (also needed for captive portal)
   if (_rogueEnabled || _captiveEnabled) {
     _rogueServer.setVisitCallback(_onVisit);
     _rogueServer.setPostCallback(_onPost);
@@ -276,7 +276,7 @@ void WifiAPScreen::_showLog()
   _addLog(apLabel);
 
   if (_rogueEnabled) {
-    _addLog("[*] Rogue DNS started");
+    _addLog("[*] DNS Spoof started");
     for (int i = 0; i < _rogueServer.recordCount(); i++) {
       char buf[60];
       const char* path = _rogueServer.records()[i].path;

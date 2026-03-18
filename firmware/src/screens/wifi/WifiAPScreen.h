@@ -1,7 +1,7 @@
 #pragma once
 
 #include "ui/templates/ListScreen.h"
-#include "utils/RogueDnsServer.h"
+#include "utils/DnsSpoofServer.h"
 #include "utils/WebFileManager.h"
 
 class WifiAPScreen : public ListScreen {
@@ -33,7 +33,7 @@ private:
 
   ListItem _menuItems[7];
 
-  RogueDnsServer _rogueServer;
+  DnsSpoofServer _rogueServer;
   WebFileManager _fileManager;
 
   // Log view
