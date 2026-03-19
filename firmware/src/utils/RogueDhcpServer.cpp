@@ -16,7 +16,6 @@ bool RogueDhcpServer::begin()
   if (apNetif) esp_netif_dhcps_stop(apNetif);
 
   if (!_udp.begin(67)) {
-    Serial.println("[RogueDHCP] UDP port 67 bind failed");
     if (apNetif) esp_netif_dhcps_start(apNetif);
     return false;
   }
@@ -25,7 +24,6 @@ bool RogueDhcpServer::begin()
   memset(_clients, 0, sizeof(_clients));
   _clientCount = 0;
   _running = true;
-  Serial.printf("[RogueDHCP] Started on %s\n", _localIP.toString().c_str());
   return true;
 }
 
@@ -62,9 +60,6 @@ void RogueDhcpServer::_handlePacket(uint8_t* buf, int len)
   uint8_t msgType = _getMsgType(buf, len);
   uint8_t mac[6];
   memcpy(mac, &buf[28], 6);
-
-  Serial.printf("[RogueDHCP] Recv type=%d MAC=%02X:%02X:%02X:%02X:%02X:%02X\n",
-    msgType, mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 
   uint8_t ipSuffix = 0;
 

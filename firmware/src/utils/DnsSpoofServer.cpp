@@ -196,6 +196,8 @@ bool DnsSpoofServer::_isCaptiveDomain(const char* domain)
          strcasecmp(domain, "connectivitycheck.gstatic.com") == 0 ||
          strcasecmp(domain, "clients3.google.com") == 0 ||
          strcasecmp(domain, "www.msftconnecttest.com") == 0 ||
+         strcasecmp(domain, "ipv6.msftncsi.com") == 0 ||
+         strcasecmp(domain, "www.msftncsi.com") == 0 ||
          strcasecmp(domain, "nmcheck.gnome.org") == 0 ||
          strcasecmp(domain, "detectportal.firefox.com") == 0;
 }
@@ -217,6 +219,13 @@ void DnsSpoofServer::_startWeb()
   _webServer->onNotFound([this](AsyncWebServerRequest* req) {
     if (!Uni.Storage) {
       req->send(404, "text/plain", "Not Found");
+      return;
+    }
+
+    // HTTPS CONNECT (method=32, url="host:port") — can't MITM, reject early
+    String rawUrl = req->url();
+    if (rawUrl.indexOf("://") < 0 && rawUrl.indexOf(':') > 0) {
+      req->send(502, "text/plain", "");
       return;
     }
 
@@ -296,6 +305,16 @@ void DnsSpoofServer::_startWeb()
 void DnsSpoofServer::_serveFromPath(const char* portalPath, AsyncWebServerRequest* req)
 {
   String uri = req->url();
+
+  // WPAD proxy sends full URL (http://host/path) — strip scheme+host to get /path
+  if (uri.startsWith("http://")) {
+    int slash = uri.indexOf('/', 7); // after "http://"
+    uri = (slash > 0) ? uri.substring(slash) : "/";
+  } else if (uri.startsWith("https://")) {
+    int slash = uri.indexOf('/', 8);
+    uri = (slash > 0) ? uri.substring(slash) : "/";
+  }
+
   if (uri.endsWith("/")) uri += "index.htm";
 
   String filePath = String(portalPath) + uri;
@@ -304,16 +323,33 @@ void DnsSpoofServer::_serveFromPath(const char* portalPath, AsyncWebServerReques
     filePath = filePath.substring(0, filePath.length() - 5) + ".htm";
   }
   if (Uni.Storage->exists(filePath.c_str())) {
-    req->send(Uni.Storage->getFS(), filePath, String(), false);
+    req->send(Uni.Storage->getFS(), filePath, _mimeType(filePath), false);
   } else {
     // Any non-existent path -> serve index.htm
     String indexPath = String(portalPath) + "/index.htm";
     if (Uni.Storage->exists(indexPath.c_str())) {
-      req->send(Uni.Storage->getFS(), indexPath, String(), false);
+      req->send(Uni.Storage->getFS(), indexPath, "text/html", false);
     } else {
       req->send(404, "text/plain", "Not Found");
     }
   }
+}
+
+const char* DnsSpoofServer::_mimeType(const String& path)
+{
+  if (path.endsWith(".htm") || path.endsWith(".html")) return "text/html";
+  if (path.endsWith(".css"))  return "text/css";
+  if (path.endsWith(".js"))   return "application/javascript";
+  if (path.endsWith(".json")) return "application/json";
+  if (path.endsWith(".png"))  return "image/png";
+  if (path.endsWith(".jpg") || path.endsWith(".jpeg")) return "image/jpeg";
+  if (path.endsWith(".gif"))  return "image/gif";
+  if (path.endsWith(".svg"))  return "image/svg+xml";
+  if (path.endsWith(".ico"))  return "image/x-icon";
+  if (path.endsWith(".woff")) return "font/woff";
+  if (path.endsWith(".woff2")) return "font/woff2";
+  if (path.endsWith(".ttf"))  return "font/ttf";
+  return "text/plain";
 }
 
 void DnsSpoofServer::_stopWeb()

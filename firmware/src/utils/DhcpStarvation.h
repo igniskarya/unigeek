@@ -43,14 +43,16 @@ private:
   // Non-blocking state machine
   enum Phase { IDLE, WAIT_OFFER, WAIT_ACK };
   Phase _phase = IDLE;
-  uint8_t _curMac[6] = {};
+  uint8_t _realMac[6] = {};   // ESP32's real MAC (used in chaddr so responses reach us)
+  uint8_t _curMac[6] = {};    // Random MAC (used in option 61 to spoof client identity)
+  uint32_t _curXid = 0;
   unsigned long _phaseStart = 0;
   int _consecutiveTimeouts = 0;
   static constexpr unsigned long TIMEOUT_MS = 3000;
 
   void _generateRandomMAC(uint8_t* mac);
-  void _sendDiscover(uint8_t* mac);
-  void _sendRequest(uint8_t* mac, IPAddress offeredIP, IPAddress serverIP);
+  void _sendDiscover();
+  void _sendRequest(IPAddress offeredIP, IPAddress serverIP);
   uint8_t _parseMsgType(uint8_t* buf, int len);
   uint32_t _calcTotalIPs(IPAddress subnet);
 

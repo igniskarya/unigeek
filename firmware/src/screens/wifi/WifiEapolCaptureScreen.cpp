@@ -95,7 +95,6 @@ void WifiEapolCaptureScreen::_pushLog(const char* msg, uint16_t color) {
   _log[idx].color = color;
   _logHead = (idx + 1) % LOG_SIZE;
   if (_logCount < LOG_SIZE) _logCount++;
-  Serial.println(msg);
 }
 
 // ── Lifecycle ─────────────────────────────────────────────────────────────

@@ -58,4 +58,5 @@ private:
   void _startWeb();
   void _stopWeb();
   void _serveFromPath(const char* portalPath, AsyncWebServerRequest* req);
+  static const char* _mimeType(const String& path);
 };
