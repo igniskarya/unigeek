@@ -10,6 +10,7 @@
 #include "screens/wifi/network/PortScannerScreen.h"
 #include "screens/wifi/network/WebFileManagerScreen.h"
 #include "screens/wifi/network/DownloadScreen.h"
+#include "screens/wifi/network/NetworkMitmScreen.h"
 #include "ui/actions/ShowStatusAction.h"
 #include "ui/actions/ShowQRCodeAction.h"
 #include <WiFi.h>
@@ -60,6 +61,7 @@ void NetworkMenuScreen::onItemSelected(uint8_t index) {
       case 4: Screen.setScreen(new PortScannerScreen()); break;
       case 5: Screen.setScreen(new WebFileManagerScreen()); break;
       case 6: Screen.setScreen(new DownloadScreen()); break;
+      case 7: Screen.setScreen(new NetworkMitmScreen()); break;
     }
   } else if (_state == STATE_INFORMATION) {
     _showMenu();

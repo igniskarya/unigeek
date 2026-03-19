@@ -24,6 +24,8 @@ public:
   void setPostCallback(PostCallback cb)  { _postCb = cb; }
   void setCaptivePortalPath(const char* path) { strncpy(_captivePath, path, sizeof(_captivePath) - 1); }
   void setFileManagerEnabled(bool en) { _fileManagerEnabled = en; }
+  void setUpstreamDns(IPAddress dns) { _upstreamDns = dns; }
+  void setCaptiveIntercept(bool en) { _captiveIntercept = en; }
 
   const DnsRecord* records() const { return _records; }
   uint8_t recordCount() const { return _recordCount; }
@@ -35,6 +37,8 @@ private:
   PostCallback  _postCb  = nullptr;
   char _captivePath[128] = {};
   bool _fileManagerEnabled = false;
+  bool _captiveIntercept = false;
+  IPAddress _upstreamDns;
 
   // Config
   DnsRecord _records[MAX_RECORDS];
@@ -44,8 +48,10 @@ private:
   // DNS server (port 53)
   WiFiUDP _dnsUdp;
   void _processDns();
+  void _forwardDns(uint8_t* buf, int len);
   bool _matchDomain(const char* query, const char* config);
   const char* _findPath(const char* domain);
+  bool _isCaptiveDomain(const char* domain);
 
   // Web server (port 80)
   AsyncWebServer* _webServer = nullptr;
