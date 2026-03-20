@@ -6,6 +6,7 @@
 #include "ui/actions/InputTextAction.h"
 #include "ui/actions/ShowStatusAction.h"
 #include "ui/actions/ShowQRCodeAction.h"
+#include "ui/components/QRCodeRenderer.h"
 #include "ui/actions/InputSelectOption.h"
 #include <WiFi.h>
 
@@ -49,14 +50,49 @@ void WifiAPScreen::onUpdate()
     _lastDraw = millis();
   }
 
-  if (_state != STATE_LOG) {
+  if (_state == STATE_MENU) {
     ListScreen::onUpdate();
+  } else if (_state == STATE_QR) {
+    // Keep services running, wait for dismiss
+#ifdef DEVICE_HAS_KEYBOARD
+    if (Uni.Keyboard && Uni.Keyboard->available()) {
+      Uni.Keyboard->getKey();
+      QRCodeRenderer::clear();
+      _state = STATE_LOG;
+      _drawLog();
+      return;
+    }
+#endif
+    if (Uni.Nav->wasPressed()) {
+      auto dir = Uni.Nav->readDirection();
+      if (dir == INavigation::DIR_UP || dir == INavigation::DIR_DOWN) {
+        _qrInverted = !_qrInverted;
+        _showWifiQR();
+      } else {
+        QRCodeRenderer::clear();
+        _state = STATE_LOG;
+        _drawLog();
+      }
+    }
   } else {
-    // Handle back in log view
+    // STATE_LOG
     if (Uni.Nav->wasPressed()) {
       auto dir = Uni.Nav->readDirection();
       if (dir == INavigation::DIR_BACK || dir == INavigation::DIR_PRESS) {
         _stopAP();
+      } else if (dir == INavigation::DIR_DOWN) {
+        unsigned long now = millis();
+        if (now - _firstPress > 2000) {
+          _pressCount = 0;
+        }
+        if (_pressCount == 0) _firstPress = now;
+        _pressCount++;
+        if (_pressCount >= 3) {
+          _pressCount = 0;
+          _showWifiQR();
+        }
+      } else {
+        _pressCount = 0;
       }
     }
   }
@@ -261,8 +297,27 @@ void WifiAPScreen::_stopAP()
   _rogueEnabled = false;
   _captiveEnabled = false;
   _fileManagerEnabled = false;
+  _logCount    = 0;
+  _lastDraw    = 0;
+  _pressCount  = 0;
+  _firstPress  = 0;
+  _qrInverted  = false;
   ShowStatusAction::show("AP Stopped", 1500);
   _showMenu();
+}
+
+void WifiAPScreen::_showWifiQR()
+{
+  _state = STATE_QR;
+  String ssid = Config.get(APP_CONFIG_WIFI_AP_SSID, APP_CONFIG_WIFI_AP_SSID_DEFAULT);
+  String pwd  = Config.get(APP_CONFIG_WIFI_AP_PASSWORD, APP_CONFIG_WIFI_AP_PASSWORD_DEFAULT);
+  String content = "WIFI:T:";
+  if (pwd.isEmpty()) {
+    content += "nopass;S:" + ssid + ";;";
+  } else {
+    content += "WPA;S:" + ssid + ";P:" + pwd + ";;";
+  }
+  QRCodeRenderer::draw(ssid.c_str(), content.c_str(), _qrInverted);
 }
 
 void WifiAPScreen::_showLog()
@@ -300,8 +355,11 @@ void WifiAPScreen::_showLog()
   }
 
   _addLog("");
+  _addLog("DOWN 3x (2s) for WiFi QR");
   _addLog("Waiting for clients...");
 
+  _pressCount = 0;
+  _firstPress = 0;
   _drawLog();
 }
 

@@ -17,7 +17,7 @@ public:
   void logVisit(const char* msg);
 
 private:
-  enum State { STATE_MENU, STATE_LOG };
+  enum State { STATE_MENU, STATE_LOG, STATE_QR };
   State _state  = STATE_MENU;
   bool  _hidden = false;
   bool  _rogueEnabled = false;
@@ -41,11 +41,15 @@ private:
   char _logLines[MAX_LOG][60];
   int  _logCount = 0;
   unsigned long _lastDraw = 0;
+  int  _pressCount = 0;
+  unsigned long _firstPress = 0;
+  bool _qrInverted = false;
 
   void _showMenu();
   void _showLog();
   void _startAP();
   void _stopAP();
+  void _showWifiQR();
   void _addLog(const char* msg);
   void _drawLog();
 };
