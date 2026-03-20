@@ -408,8 +408,15 @@ void WifiEvilTwinScreen::_stopAttack()
   WiFi.softAPdisconnect(true);
   WiFi.mode(WIFI_OFF);
 
+  _logCount    = 0;
+  _pwdCount    = 0;
+  _lastDeauth  = 0;
+  _lastDraw    = 0;
+  _pendingPwd  = "";
+  _pwdResult   = 0;
   _portalHtml  = "";
   _successHtml = "";
+  _portalBasePath = "";
 }
 
 // ── Credential Capture ──────────────────────────────────────────────────────

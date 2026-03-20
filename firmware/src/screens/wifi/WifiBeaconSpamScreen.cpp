@@ -122,7 +122,11 @@ void WifiBeaconSpamScreen::_stop()
     delete _attacker;
     _attacker = nullptr;
   }
-  _state = STATE_MENU;
+  _state      = STATE_MENU;
+  _ssidIdx    = 0;
+  _spinIdx    = 0;
+  _rounds     = 0;
+  _lastDrawMs = 0;
   _refreshMenu();
 }
 

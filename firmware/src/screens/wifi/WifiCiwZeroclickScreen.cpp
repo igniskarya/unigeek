@@ -281,6 +281,12 @@ void WifiCiwZeroclickScreen::_stopBroadcast()
   WiFi.mode(WIFI_OFF);
   _active.clear();
   _active.shrink_to_fit();
+  _currentIdx   = 0;
+  _lastRotation = 0;
+  _lastDrawMs   = 0;
+  _deviceCount  = 0;
+  _alertCount   = 0;
+  _alertHead    = 0;
   _state = STATE_MENU;
 }
 

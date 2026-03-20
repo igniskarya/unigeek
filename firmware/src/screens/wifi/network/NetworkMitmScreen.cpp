@@ -279,6 +279,8 @@ void NetworkMitmScreen::_stop()
   _dnsEnabled = false;
   _fmEnabled = false;
   _starvEnabled = false;
+  _logCount = 0;
+  _lastDraw = 0;
 
   ShowStatusAction::show("Stopped", 1000);
 }

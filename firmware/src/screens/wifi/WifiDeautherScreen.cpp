@@ -181,6 +181,9 @@ void WifiDeautherScreen::_stopDeauth()
     delete _attacker;
     _attacker = nullptr;
   }
+  _spinIdx     = 0;
+  _allChanHop  = 0;
+  _allCount    = 0;
   _drawStatus("Deauth stopped.");
   delay(1000);
   _showMain();
