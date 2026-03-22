@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ui/templates/ListScreen.h"
+#include "ui/components/LogView.h"
 #include "utils/cctv/CctvScanUtil.h"
 #include "utils/cctv/CctvStreamUtil.h"
 
@@ -38,9 +39,7 @@ private:
   ListItem _configItems[3];
 
   // Scanning log
-  static constexpr int MAX_LOG = 30;
-  char _logLines[MAX_LOG][60];
-  int  _logCount = 0;
+  LogView _log;
 
   // Found cameras
   static constexpr uint8_t MAX_FOUND = 32;
@@ -70,7 +69,6 @@ private:
   void _scanSingleIP();
   void _scanFileIP();
   void _scanHost(const char* ip);
-  void _addLog(const char* msg);
   void _drawLog();
   void _showCameraList();
   void _showCameraMenu(uint8_t camIdx);

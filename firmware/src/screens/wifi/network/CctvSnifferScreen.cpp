@@ -208,7 +208,7 @@ void CctvSnifferScreen::_startScan()
   }
 
   _state = STATE_SCANNING;
-  _logCount = 0;
+  _log.clear();
   _cameraCount = 0;
   memset(_cameras, 0, sizeof(_cameras));
   setItems(nullptr, 0);
@@ -222,23 +222,23 @@ void CctvSnifferScreen::_startScan()
   if (_cameraCount > 0) {
     char buf[40];
     snprintf(buf, sizeof(buf), "[+] Found %d camera(s)", _cameraCount);
-    _addLog(buf);
-    _addLog("BACK/Press for results");
+    _log.addLine(buf);
+    _log.addLine("BACK/Press for results");
   } else {
-    _addLog("[!] No cameras found");
-    _addLog("BACK/Press to return");
+    _log.addLine("[!] No cameras found");
+    _log.addLine("BACK/Press to return");
   }
   _drawLog();
 }
 
 void CctvSnifferScreen::_scanLAN()
 {
-  _addLog("[*] ARP scanning LAN...");
+  _log.addLine("[*] ARP scanning LAN...");
   _drawLog();
 
   IPAddress localIP = WiFi.localIP();
   if (localIP[0] == 0) {
-    _addLog("[!] Not connected");
+    _log.addLine("[!] Not connected");
     return;
   }
 
@@ -249,7 +249,7 @@ void CctvSnifferScreen::_scanLAN()
       break;
     }
   }
-  if (!nif) { _addLog("[!] ARP unavailable"); return; }
+  if (!nif) { _log.addLine("[!] ARP unavailable"); return; }
 
   char baseIp[16];
   snprintf(baseIp, sizeof(baseIp), "%d.%d.%d.", localIP[0], localIP[1], localIP[2]);
@@ -266,7 +266,7 @@ void CctvSnifferScreen::_scanLAN()
   }
 
   delay(300);
-  _addLog("[*] Scanning camera ports...");
+  _log.addLine("[*] Scanning camera ports...");
   _drawLog();
 
   // Phase 2: collect ARP responses + scan camera ports
@@ -285,7 +285,7 @@ void CctvSnifferScreen::_scanLAN()
       hostCount++;
       char buf[40];
       snprintf(buf, sizeof(buf), "[*] Host: %s", ipStr);
-      _addLog(buf);
+      _log.addLine(buf);
       _drawLog();
       _scanHost(ipStr);
     }
@@ -295,14 +295,14 @@ void CctvSnifferScreen::_scanLAN()
 
   char buf[40];
   snprintf(buf, sizeof(buf), "[*] %d host(s) on network", hostCount);
-  _addLog(buf);
+  _log.addLine(buf);
 }
 
 void CctvSnifferScreen::_scanSingleIP()
 {
   char buf[40];
   snprintf(buf, sizeof(buf), "[*] Scanning %s...", _targetIp.c_str());
-  _addLog(buf);
+  _log.addLine(buf);
   _drawLog();
   _scanHost(_targetIp.c_str());
 }
@@ -310,7 +310,7 @@ void CctvSnifferScreen::_scanSingleIP()
 void CctvSnifferScreen::_scanFileIP()
 {
   if (!Uni.Storage || !Uni.Storage->exists(_targetFile.c_str())) {
-    _addLog("[!] File not found");
+    _log.addLine("[!] File not found");
     return;
   }
 
@@ -334,14 +334,14 @@ void CctvSnifferScreen::_scanFileIP()
     ipCount++;
     char buf[40];
     snprintf(buf, sizeof(buf), "[*] Scanning %s...", line.c_str());
-    _addLog(buf);
+    _log.addLine(buf);
     _drawLog();
     _scanHost(line.c_str());
   }
 
   char buf[40];
   snprintf(buf, sizeof(buf), "[*] %d IP(s) from file", ipCount);
-  _addLog(buf);
+  _log.addLine(buf);
 }
 
 void CctvSnifferScreen::_scanHost(const char* ip)
@@ -353,7 +353,7 @@ void CctvSnifferScreen::_scanHost(const char* ip)
 
   char buf[60];
   snprintf(buf, sizeof(buf), "    %d port(s) open", found);
-  _addLog(buf);
+  _log.addLine(buf);
 
   for (uint8_t i = 0; i < found && _cameraCount < MAX_FOUND; i++) {
     bool detected = false;
@@ -372,7 +372,7 @@ void CctvSnifferScreen::_scanHost(const char* ip)
 
       snprintf(buf, sizeof(buf), "    [+] %s:%d (%s)",
                ip, tempCams[i].port, tempCams[i].brand);
-      _addLog(buf);
+      _log.addLine(buf);
       _drawLog();
     }
   }
@@ -416,40 +416,9 @@ void CctvSnifferScreen::_showCameraMenu(uint8_t camIdx)
 
 // ── Log ─────────────────────────────────────────────────────────────────────
 
-void CctvSnifferScreen::_addLog(const char* msg)
-{
-  if (_logCount < MAX_LOG) {
-    strncpy(_logLines[_logCount], msg, 59);
-    _logLines[_logCount][59] = '\0';
-    _logCount++;
-  } else {
-    for (int i = 0; i < MAX_LOG - 1; i++) {
-      memcpy(_logLines[i], _logLines[i + 1], 60);
-    }
-    strncpy(_logLines[MAX_LOG - 1], msg, 59);
-    _logLines[MAX_LOG - 1][59] = '\0';
-  }
-}
-
 void CctvSnifferScreen::_drawLog()
 {
-  TFT_eSprite sp(&Uni.Lcd);
-  sp.createSprite(bodyW(), bodyH());
-  sp.fillSprite(TFT_BLACK);
-
-  int lineH = 10;
-  int maxVisible = bodyH() / lineH;
-  int startIdx = _logCount > maxVisible ? _logCount - maxVisible : 0;
-
-  sp.setTextDatum(TL_DATUM);
-  sp.setTextColor(TFT_WHITE, TFT_BLACK);
-  for (int i = startIdx; i < _logCount; i++) {
-    int y = (i - startIdx) * lineH;
-    sp.drawString(_logLines[i], 2, y, 1);
-  }
-
-  sp.pushSprite(bodyX(), bodyY());
-  sp.deleteSprite();
+  _log.draw(Uni.Lcd, bodyX(), bodyY(), bodyW(), bodyH());
 }
 
 // ── Streaming ───────────────────────────────────────────────────────────────
@@ -462,18 +431,18 @@ void CctvSnifferScreen::_startStream()
   const char* pass = _password.length() ? _password.c_str() : nullptr;
 
   char streamUrl[128];
-  _addLog("[*] Finding stream...");
+  _log.addLine("[*] Finding stream...");
   _drawLog();
 
   if (!CctvScanUtil::findStream(ip, port, user, pass, streamUrl, sizeof(streamUrl))) {
     snprintf(streamUrl, sizeof(streamUrl), "http://%s:%u/mjpg/video.mjpg", ip, port);
-    _addLog("[!] Trying default path");
+    _log.addLine("[!] Trying default path");
     _drawLog();
   }
 
   char buf[60];
   snprintf(buf, sizeof(buf), "[*] Connecting %s:%u", ip, port);
-  _addLog(buf);
+  _log.addLine(buf);
   _drawLog();
 
   if (!_stream.begin(streamUrl, user, pass)) {

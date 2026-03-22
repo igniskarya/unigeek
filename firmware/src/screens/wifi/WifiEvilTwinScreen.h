@@ -2,10 +2,8 @@
 
 #include <esp_wifi.h>
 #include "ui/templates/ListScreen.h"
-
-class DNSServer;
-class AsyncWebServer;
-class AsyncWebServerRequest;
+#include "ui/components/LogView.h"
+#include "utils/CaptivePortalServer.h"
 
 class WifiEvilTwinScreen : public ListScreen
 {
@@ -40,11 +38,10 @@ private:
   Target _target;
   bool   _deauth       = false;
   bool   _checkPwd     = false;
-  String _portalFolder;  // empty = default
 
   class WifiAttackUtil* _attacker = nullptr;
-  DNSServer*      _dns    = nullptr;
-  AsyncWebServer* _server = nullptr;
+  CaptivePortalServer _portal;
+  LogView _log;
 
   // Menu items
   ListItem _menuItems[5];
@@ -60,36 +57,20 @@ private:
   char     _scanValues[MAX_SCAN][18];
   int      _scanCount = 0;
 
-  // Portal selection
-  static constexpr int MAX_PORTALS = 10;
-  ListItem _portalItems[MAX_PORTALS];
-  String   _portalNames[MAX_PORTALS];
-  int      _portalCount = 0;
-
   // Running state
-  static constexpr int MAX_LOG = 20;
-  char     _logLines[MAX_LOG][60];
-  int      _logCount    = 0;
   int      _pwdCount    = 0;
   unsigned long _lastDeauth = 0;
   unsigned long _lastDraw   = 0;
-  String   _pendingPwd;    // queued password to check in onUpdate()
-  int8_t   _pwdResult = 0; // 0=pending, 1=correct, -1=wrong
-
-  // Portal HTML
-  String _portalHtml;
-  String _successHtml;
-  String _portalBasePath;  // e.g. "/unigeek/wifi/portals/google"
+  String   _pendingPwd;
+  int8_t   _pwdResult = 0;
 
   void _showMenu();
   void _selectWifi();
-  void _selectPortal();
   void _startAttack();
   void _stopAttack();
-  void _addLog(const char* msg);
   void _drawLog();
-  void _loadPortalHtml();
-  void _saveCaptured(const String& data);
   bool _tryPassword(const String& password);
 
+  static void _onVisit(void* ctx);
+  static void _onPost(const String& data, void* ctx);
 };

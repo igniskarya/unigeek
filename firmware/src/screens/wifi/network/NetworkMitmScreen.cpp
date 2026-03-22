@@ -140,7 +140,7 @@ void NetworkMitmScreen::onUpdate()
       if (Uni.Speaker) Uni.Speaker->playWin();
       snprintf(buf, sizeof(buf), "[+] Pool exhausted! ACK:%lu NAK:%lu",
                (unsigned long)s.ack, (unsigned long)s.nak);
-      _addLog(buf);
+      _log.addLine(buf);
 
       // Chain: deauth burst if enabled, then rogue DHCP
       if (_deauthBurst) {
@@ -153,7 +153,7 @@ void NetworkMitmScreen::onUpdate()
       _starv.stop();
 
       if (Uni.Speaker) Uni.Speaker->playLose();
-      _addLog("[!] Starvation failed (stuck)");
+      _log.addLine("[!] Starvation failed (stuck)");
 
       // Still start Rogue DHCP if enabled
       _startRogueDhcp();
@@ -202,7 +202,7 @@ void NetworkMitmScreen::_start()
   }
 
   _state         = STATE_RUNNING;
-  _logCount      = 0;
+  _log.clear();
   _lastDraw      = 0;
   _starvRunning  = false;
   _deauthRunning = false;
@@ -220,7 +220,7 @@ void NetworkMitmScreen::_start()
   IPAddress localIP = WiFi.localIP();
   char ipBuf[40];
   snprintf(ipBuf, sizeof(ipBuf), "[*] IP: %s", localIP.toString().c_str());
-  _addLog(ipBuf);
+  _log.addLine(ipBuf);
 
   // 1. Start Rogue DHCP (deferred if starvation is also enabled)
   if (_rogueEnabled && !_starvEnabled) {
@@ -235,7 +235,7 @@ void NetworkMitmScreen::_start()
     _dnsSpoof.setPostCallback(_onDnsPost);
     _dnsSpoof.setFileManagerEnabled(_fmEnabled);
     if (_dnsSpoof.begin(localIP)) {
-      _addLog("[+] DNS Spoof active");
+      _log.addLine("[+] DNS Spoof active");
       for (int i = 0; i < _dnsSpoof.recordCount(); i++) {
         char buf[60];
         const char* path = _dnsSpoof.records()[i].path;
@@ -243,10 +243,10 @@ void NetworkMitmScreen::_start()
         const char* name = lastSlash ? lastSlash + 1 : path;
         snprintf(buf, sizeof(buf), "    %s > %s",
                  _dnsSpoof.records()[i].domain, name);
-        _addLog(buf);
+        _log.addLine(buf);
       }
     } else {
-      _addLog("[!] DNS Spoof failed");
+      _log.addLine("[!] DNS Spoof failed");
       _dnsEnabled = false;
     }
   }
@@ -255,33 +255,33 @@ void NetworkMitmScreen::_start()
   if (_fmEnabled) {
     if (_fileManager.begin()) {
       if (_dnsEnabled) {
-        _addLog("[+] File Manager: unigeek.local");
+        _log.addLine("[+] File Manager: unigeek.local");
       } else {
-        _addLog("[+] File Manager on :8080");
+        _log.addLine("[+] File Manager on :8080");
       }
     } else {
-      _addLog("[!] File Manager failed");
+      _log.addLine("[!] File Manager failed");
       _fmEnabled = false;
     }
   }
 
   // 4. Start DHCP Starvation (last, interruptible)
   if (_starvEnabled) {
-    _addLog("[*] DHCP Starvation...");
+    _log.addLine("[*] DHCP Starvation...");
     _drawLog();
     if (_starv.begin()) {
       _starvRunning = true;
       char ipBuf2[40];
       snprintf(ipBuf2, sizeof(ipBuf2), "[+] Reconnected: %s",
                WiFi.localIP().toString().c_str());
-      _addLog(ipBuf2);
+      _log.addLine(ipBuf2);
     } else {
-      _addLog("[!] Starvation failed");
+      _log.addLine("[!] Starvation failed");
       _starvEnabled = false;
     }
   }
 
-  _addLog("BACK/Press to stop");
+  _log.addLine("BACK/Press to stop");
   _drawLog();
 }
 
@@ -293,10 +293,10 @@ void NetworkMitmScreen::_startRogueDhcp()
 
   _rogueDhcp.setClientCallback(_onDhcpClient);
   if (_rogueDhcp.begin()) {
-    _addLog("[+] Rogue DHCP active");
-    _addLog("    Gateway + DNS = us");
+    _log.addLine("[+] Rogue DHCP active");
+    _log.addLine("    Gateway + DNS = us");
   } else {
-    _addLog("[!] Rogue DHCP failed");
+    _log.addLine("[!] Rogue DHCP failed");
     _rogueEnabled = false;
   }
 }
@@ -305,7 +305,7 @@ void NetworkMitmScreen::_startRogueDhcp()
 
 void NetworkMitmScreen::_startDeauthBurst()
 {
-  _addLog("[*] Deauth burst (10s)...");
+  _log.addLine("[*] Deauth burst (10s)...");
   _drawLog();
 
   // Disconnect from network first
@@ -325,12 +325,12 @@ void NetworkMitmScreen::_stopDeauthBurst()
     delete _attacker;
     _attacker = nullptr;
   }
-  _addLog("[+] Deauth burst done");
+  _log.addLine("[+] Deauth burst done");
 }
 
 void NetworkMitmScreen::_reconnectStaticIP()
 {
-  _addLog("[*] Reconnecting (static IP)...");
+  _log.addLine("[*] Reconnecting (static IP)...");
   _drawLog();
 
   WiFi.mode(WIFI_STA);
@@ -345,9 +345,9 @@ void NetworkMitmScreen::_reconnectStaticIP()
   if (WiFi.status() == WL_CONNECTED) {
     char buf[60];
     snprintf(buf, sizeof(buf), "[+] Reconnected: %s", WiFi.localIP().toString().c_str());
-    _addLog(buf);
+    _log.addLine(buf);
   } else {
-    _addLog("[!] Reconnect failed");
+    _log.addLine("[!] Reconnect failed");
   }
 }
 
@@ -379,7 +379,7 @@ void NetworkMitmScreen::_stop()
   _starvEnabled   = false;
   _deauthBurst    = false;
   _deauthRunning  = false;
-  _logCount       = 0;
+  _log.clear();
   _lastDraw       = 0;
 
   ShowStatusAction::show("Stopped", 1000);
@@ -392,7 +392,7 @@ void NetworkMitmScreen::_onDnsVisit(const char* clientIP, const char* domain)
   if (!_instance) return;
   char buf[60];
   snprintf(buf, sizeof(buf), "[>] %s %s", clientIP, domain);
-  _instance->_addLog(buf);
+  _instance->_log.addLine(buf);
 }
 
 void NetworkMitmScreen::_onDnsPost(const char* clientIP, const char* domain, const char* data)
@@ -400,7 +400,7 @@ void NetworkMitmScreen::_onDnsPost(const char* clientIP, const char* domain, con
   if (!_instance) return;
   char buf[60];
   snprintf(buf, sizeof(buf), "[+] POST %s", domain);
-  _instance->_addLog(buf);
+  _instance->_log.addLine(buf);
   if (Uni.Speaker) Uni.Speaker->playNotification();
 }
 
@@ -409,71 +409,35 @@ void NetworkMitmScreen::_onDhcpClient(const char* mac, const char* ip)
   if (!_instance) return;
   char buf[60];
   snprintf(buf, sizeof(buf), "[+] DHCP %s", ip);
-  _instance->_addLog(buf);
+  _instance->_log.addLine(buf);
   if (Uni.Speaker) Uni.Speaker->playNotification();
 }
 
 // ── Log ─────────────────────────────────────────────────────────────────────
 
-void NetworkMitmScreen::_addLog(const char* msg)
-{
-  if (_logCount < MAX_LOG) {
-    strncpy(_logLines[_logCount], msg, 59);
-    _logLines[_logCount][59] = '\0';
-    _logCount++;
-  } else {
-    for (int i = 0; i < MAX_LOG - 1; i++) {
-      memcpy(_logLines[i], _logLines[i + 1], 60);
-    }
-    strncpy(_logLines[MAX_LOG - 1], msg, 59);
-    _logLines[MAX_LOG - 1][59] = '\0';
-  }
-}
-
 void NetworkMitmScreen::_drawLog()
 {
-  TFT_eSprite sp(&Uni.Lcd);
-  sp.createSprite(bodyW(), bodyH());
-  sp.fillSprite(TFT_BLACK);
-
-  int lineH = 10;
-  int statusH = 14;
-  int logAreaH = bodyH() - statusH;
-  int maxVisible = logAreaH / lineH;
-  int startIdx = _logCount > maxVisible ? _logCount - maxVisible : 0;
-
-  sp.setTextDatum(TL_DATUM);
-  sp.setTextColor(TFT_WHITE, TFT_BLACK);
-  for (int i = startIdx; i < _logCount; i++) {
-    int y = (i - startIdx) * lineH;
-    sp.drawString(_logLines[i], 2, y, 1);
-  }
-
-  // Status bar
-  int sepY = bodyH() - statusH;
-  sp.drawFastHLine(0, sepY, bodyW(), TFT_DARKGREY);
-
-  int barY = sepY + 2;
-  sp.setTextColor(TFT_GREEN, TFT_BLACK);
-  sp.setTextDatum(TL_DATUM);
-
-  char label[40];
-  if (_deauthRunning) {
-    int remaining = 10 - (int)((millis() - _deauthStart) / 1000);
-    if (remaining < 0) remaining = 0;
-    snprintf(label, sizeof(label), "Deauth: %ds left", remaining);
-  } else if (_starvRunning) {
-    const auto& s = _starv.stats();
-    snprintf(label, sizeof(label), "A:%lu N:%lu T:%lu CT:%d/20",
-             (unsigned long)s.ack, (unsigned long)s.nak,
-             (unsigned long)s.timeout, _starv.consecutiveTimeouts());
-  } else if (_rogueEnabled) {
-    snprintf(label, sizeof(label), "DHCP: %d clients", _rogueDhcp.clientCount());
-  } else {
-    snprintf(label, sizeof(label), "Running");
-  }
-  sp.drawString(label, 2, barY, 1);
-
-  sp.pushSprite(bodyX(), bodyY());
-  sp.deleteSprite();
+  auto* self = this;
+  _log.draw(Uni.Lcd, bodyX(), bodyY(), bodyW(), bodyH(),
+    [](TFT_eSprite& sp, int barY, int w, void* ud) {
+      auto* s = static_cast<NetworkMitmScreen*>(ud);
+      sp.setTextColor(TFT_GREEN, TFT_BLACK);
+      sp.setTextDatum(TL_DATUM);
+      char label[40];
+      if (s->_deauthRunning) {
+        int remaining = 10 - (int)((millis() - s->_deauthStart) / 1000);
+        if (remaining < 0) remaining = 0;
+        snprintf(label, sizeof(label), "Deauth: %ds left", remaining);
+      } else if (s->_starvRunning) {
+        const auto& st = s->_starv.stats();
+        snprintf(label, sizeof(label), "A:%lu N:%lu T:%lu CT:%d/20",
+                 (unsigned long)st.ack, (unsigned long)st.nak,
+                 (unsigned long)st.timeout, s->_starv.consecutiveTimeouts());
+      } else if (s->_rogueEnabled) {
+        snprintf(label, sizeof(label), "DHCP: %d clients", s->_rogueDhcp.clientCount());
+      } else {
+        snprintf(label, sizeof(label), "Running");
+      }
+      sp.drawString(label, 2, barY, 1);
+    }, self);
 }

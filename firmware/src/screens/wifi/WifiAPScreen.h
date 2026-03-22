@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ui/templates/ListScreen.h"
+#include "ui/components/LogView.h"
 #include "utils/DnsSpoofServer.h"
 #include "utils/WebFileManager.h"
 
@@ -37,9 +38,7 @@ private:
   WebFileManager _fileManager;
 
   // Log view
-  static constexpr int MAX_LOG = 30;
-  char _logLines[MAX_LOG][60];
-  int  _logCount = 0;
+  LogView _log;
   unsigned long _lastDraw = 0;
   int  _pressCount = 0;
   unsigned long _firstPress = 0;
@@ -50,6 +49,5 @@ private:
   void _startAP();
   void _stopAP();
   void _showWifiQR();
-  void _addLog(const char* msg);
   void _drawLog();
 };

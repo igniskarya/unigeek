@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ui/templates/ListScreen.h"
+#include "ui/components/LogView.h"
 #include "utils/DhcpStarvation.h"
 #include "utils/RogueDhcpServer.h"
 #include "utils/DnsSpoofServer.h"
@@ -59,9 +60,7 @@ private:
   IPAddress _savedSubnet;
 
   // Log
-  static constexpr int MAX_LOG = 30;
-  char _logLines[MAX_LOG][60];
-  int  _logCount = 0;
+  LogView _log;
   unsigned long _lastDraw = 0;
 
   void _showMenu();
@@ -71,7 +70,6 @@ private:
   void _startDeauthBurst();
   void _stopDeauthBurst();
   void _reconnectStaticIP();
-  void _addLog(const char* msg);
   void _drawLog();
 
   static NetworkMitmScreen* _instance;

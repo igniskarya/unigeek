@@ -305,7 +305,7 @@ void WifiAPScreen::_stopAP()
   _dnsSpoofEnabled = false;
   _captiveEnabled = false;
   _fileManagerEnabled = false;
-  _logCount    = 0;
+  _log.clear();
   _lastDraw    = 0;
   _pressCount  = 0;
   _firstPress  = 0;
@@ -331,15 +331,15 @@ void WifiAPScreen::_showWifiQR()
 void WifiAPScreen::_showLog()
 {
   _state = STATE_LOG;
-  _logCount = 0;
+  _log.clear();
 
   String ssid = Config.get(APP_CONFIG_WIFI_AP_SSID, APP_CONFIG_WIFI_AP_SSID_DEFAULT);
   char apLabel[60];
   snprintf(apLabel, sizeof(apLabel), "[*] AP: %s", ssid.c_str());
-  _addLog(apLabel);
+  _log.addLine(apLabel);
 
   if (_dnsSpoofEnabled) {
-    _addLog("[*] DNS Spoof started");
+    _log.addLine("[*] DNS Spoof started");
     for (int i = 0; i < _dnsSpoofServer.recordCount(); i++) {
       char buf[60];
       const char* path = _dnsSpoofServer.records()[i].path;
@@ -347,7 +347,7 @@ void WifiAPScreen::_showLog()
       const char* pathName = lastSlash ? lastSlash + 1 : path;
       snprintf(buf, sizeof(buf), "  %s > %s",
                _dnsSpoofServer.records()[i].domain, pathName);
-      _addLog(buf);
+      _log.addLine(buf);
     }
   }
 
@@ -355,22 +355,22 @@ void WifiAPScreen::_showLog()
     char capBuf[60];
     const char* lastSlash = strrchr(_captivePath.c_str(), '/');
     snprintf(capBuf, sizeof(capBuf), "[*] Captive: %s", lastSlash ? lastSlash + 1 : _captivePath.c_str());
-    _addLog(capBuf);
+    _log.addLine(capBuf);
   }
 
   if (_fileManagerEnabled) {
     if (_dnsSpoofEnabled) {
-      _addLog("[*] File Manager: unigeek.local");
+      _log.addLine("[*] File Manager: unigeek.local");
     } else {
       char fmBuf[60];
       snprintf(fmBuf, sizeof(fmBuf), "[*] File Manager: %s", WiFi.softAPIP().toString().c_str());
-      _addLog(fmBuf);
+      _log.addLine(fmBuf);
     }
   }
 
-  _addLog("");
-  _addLog("DOWN 3x (2s) for WiFi QR");
-  _addLog("Waiting for clients...");
+  _log.addLine("");
+  _log.addLine("DOWN 3x (2s) for WiFi QR");
+  _log.addLine("Waiting for clients...");
 
   _pressCount = 0;
   _firstPress = 0;
@@ -381,62 +381,25 @@ void WifiAPScreen::_showLog()
 
 void WifiAPScreen::logVisit(const char* msg)
 {
-  _addLog(msg);
-}
-
-void WifiAPScreen::_addLog(const char* msg)
-{
-  if (_logCount < MAX_LOG) {
-    strncpy(_logLines[_logCount], msg, 59);
-    _logLines[_logCount][59] = '\0';
-    _logCount++;
-  } else {
-    for (int i = 0; i < MAX_LOG - 1; i++) {
-      memcpy(_logLines[i], _logLines[i + 1], 60);
-    }
-    strncpy(_logLines[MAX_LOG - 1], msg, 59);
-    _logLines[MAX_LOG - 1][59] = '\0';
-  }
+  _log.addLine(msg);
 }
 
 void WifiAPScreen::_drawLog()
 {
-  TFT_eSprite sp(&Uni.Lcd);
-  sp.createSprite(bodyW(), bodyH());
-  sp.fillSprite(TFT_BLACK);
-
-  int lineH    = 10;
-  int statusH  = 14;
-  int logAreaH = bodyH() - statusH;
-  int maxVisible = logAreaH / lineH;
-  int startIdx   = _logCount > maxVisible ? _logCount - maxVisible : 0;
-
-  sp.setTextDatum(TL_DATUM);
-  sp.setTextColor(TFT_WHITE, TFT_BLACK);
-  for (int i = startIdx; i < _logCount; i++) {
-    int y = (i - startIdx) * lineH;
-    sp.drawString(_logLines[i], 2, y, 1);
-  }
-
-  // Status bar
-  int sepY = bodyH() - statusH;
-  sp.drawFastHLine(0, sepY, bodyW(), TFT_DARKGREY);
-
-  int barY = sepY + 2;
-  sp.setTextColor(TFT_GREEN, TFT_BLACK);
-  sp.setTextDatum(TL_DATUM);
-
-  char label[30];
-  if (_dnsSpoofEnabled) {
-    snprintf(label, sizeof(label), "DNS: %d", _dnsSpoofServer.recordCount());
-  } else {
-    snprintf(label, sizeof(label), "AP");
-  }
-  sp.drawString(label, 2, barY, 1);
-
-  sp.setTextDatum(TR_DATUM);
-  sp.drawString(WiFi.softAPIP().toString(), bodyW() - 2, barY, 1);
-
-  sp.pushSprite(bodyX(), bodyY());
-  sp.deleteSprite();
+  auto* self = this;
+  _log.draw(Uni.Lcd, bodyX(), bodyY(), bodyW(), bodyH(),
+    [](TFT_eSprite& sp, int barY, int w, void* ud) {
+      auto* s = static_cast<WifiAPScreen*>(ud);
+      sp.setTextColor(TFT_GREEN, TFT_BLACK);
+      sp.setTextDatum(TL_DATUM);
+      char label[30];
+      if (s->_dnsSpoofEnabled) {
+        snprintf(label, sizeof(label), "DNS: %d", s->_dnsSpoofServer.recordCount());
+      } else {
+        snprintf(label, sizeof(label), "AP");
+      }
+      sp.drawString(label, 2, barY, 1);
+      sp.setTextDatum(TR_DATUM);
+      sp.drawString(WiFi.softAPIP().toString(), w - 2, barY, 1);
+    }, self);
 }
