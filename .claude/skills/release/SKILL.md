@@ -1,7 +1,7 @@
 ---
 name: release
 description: Create a versioned release with tag, notes, and announcement file
-user_invocable: true
+user-invocable: true
 ---
 
 # Release Skill
