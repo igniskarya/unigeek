@@ -92,6 +92,12 @@ All hardware differences are isolated in board-specific folders.
     ├── unigeek/qrcode/                 sample QR code content files
     ├── unigeek/utility/passwords/      sample password wordlists (8+ chars for WiFi)
     └── unigeek/wifi/portals/           Evil Twin captive portal templates (google, facebook, wifi)
+    release-notes/                      version announcement notes (e.g. 1.2.0.md) — one file per release
+
+### Releases
+
+    Binary downloads: https://github.com/lshaf/unigeek/releases
+    SD card content: copy sdcard/ to SD root, or use built-in Download menu in firmware
 
 ---
 
