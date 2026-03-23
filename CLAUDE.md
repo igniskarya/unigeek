@@ -3,7 +3,7 @@
 
 ## Project Overview
 
-ESP32 multi-device firmware supporting M5StickC Plus 1.1, T-Lora Pager, M5 Cardputer, and M5 Cardputer ADV.
+ESP32 multi-device firmware supporting M5StickC Plus 1.1, M5StickC Plus 2, T-Lora Pager, T-Display 16MB, DIY Smoochie, M5 Cardputer, and M5 Cardputer ADV.
 Built with PlatformIO + Arduino framework + TFT_eSPI.
 All hardware differences are isolated in board-specific folders.
 
@@ -14,11 +14,17 @@ All hardware differences are isolated in board-specific folders.
 ### PlatformIO Commands
 
     pio run -e m5stickcplus_11
+    pio run -e m5stickcplus_2
     pio run -e t_lora_pager
+    pio run -e t_display_16mb
+    pio run -e diy_smoochie
     pio run -e m5_cardputer
     pio run -e m5_cardputer_adv
     pio run -e m5stickcplus_11 -t upload
+    pio run -e m5stickcplus_2 -t upload
     pio run -e t_lora_pager -t upload
+    pio run -e t_display_16mb -t upload
+    pio run -e diy_smoochie -t upload
     pio run -e m5_cardputer -t upload
     pio run -e m5_cardputer_adv -t upload
     pio device monitor
@@ -33,7 +39,10 @@ All hardware differences are isolated in board-specific folders.
 ### Board Environments
 
     m5stickcplus_11   M5StickC Plus 1.1, no keyboard, AXP192 power, LittleFS only
+    m5stickcplus_2    M5StickC Plus 2, no keyboard, ADC battery + GPIO power hold, JoystickNavigation (optional JoyC hat), LittleFS only
     t_lora_pager      LilyGO T-Lora Pager, TCA8418 keyboard, BQ25896/BQ27220 power, SD + LittleFS
+    t_display_16mb    LilyGO T-Display 16MB, 2 buttons (double-click=select), no keyboard, 16MB flash, LittleFS only
+    diy_smoochie      DIY Smoochie, no keyboard, 16MB flash, LittleFS only
     m5_cardputer      M5Stack Cardputer, 74HC138 GPIO matrix keyboard, ADC battery, SD + LittleFS
     m5_cardputer_adv  M5Stack Cardputer ADV, TCA8418 keyboard via Wire1, ADC battery, SD + LittleFS
 
@@ -43,15 +52,17 @@ All hardware differences are isolated in board-specific folders.
     DEVICE_HAS_SOUND          defined for boards with a speaker — enables Uni.Speaker and audio paths
     DEVICE_HAS_VOLUME_CONTROL defined for boards with real volume control (I2S amp) — shows Volume in Settings
     DEVICE_HAS_USB_HID        defined for ESP32-S3 boards (T-Lora Pager, Cardputer, Cardputer ADV)
-    APP_MENU_POWER_OFF        defined for T-Lora Pager and M5StickC Plus 1.1, adds Power Off in main menu
-    DEVICE_HAS_NAV_MODE_SWITCH defined for M5StickC Plus 1.1 — enables nav mode setting (Default vs Encoder)
+    APP_MENU_POWER_OFF        defined for T-Lora Pager, M5StickC Plus 1.1 and 2, adds Power Off in main menu
+    DEVICE_HAS_NAV_MODE_SWITCH defined for M5StickC Plus 1.1 and 2 — enables nav mode setting (Default vs Encoder/Joystick)
 
     All app feature flags are defined in pins_arduino.h — NEVER in config.ini or platformio.ini
     Device identity flags (DEVICE_*) are defined in boards/_devices/*.json extra_flags — not in pins_arduino.h or config.ini
       DEVICE_M5STICK_C_PLUS   — M5StickC Plus 1.1 (ESP32)
       DEVICE_T_LORA_PAGER     — LilyGO T-Lora Pager (ESP32-S3)
+      DEVICE_M5STICK_C_PLUS2  — M5StickC Plus 2 (ESP32)
       DEVICE_M5_CARDPUTER     — M5Stack Cardputer (ESP32-S3)
       DEVICE_M5_CARDPUTER_ADV — M5Stack Cardputer ADV (ESP32-S3)
+      DEVICE_DIY_SMOOCHIE     — DIY Smoochie (ESP32-S3)
 
 ---
 
@@ -61,7 +72,10 @@ All hardware differences are isolated in board-specific folders.
     ├── boards/
     │   ├── _devices/               custom board JSON definitions
     │   ├── m5stickplus_11/         Device.cpp, Display.h, Navigation.h, EncoderNavigation.h, Power.h, pins_arduino.h
+    │   ├── m5stickcplus_2/         Device.cpp, Display.h, Navigation.h, EncoderNavigation.h, JoystickNavigation.h, Power.h, Speaker.h, pins_arduino.h
     │   ├── t_lora_pager/           Device.cpp, Display.h, Navigation.h/cpp, Keyboard.h/cpp, Power.h, pins_arduino.h
+    │   ├── t_display_16mb/         Device.cpp, Display.h, Navigation.h, Power.h, pins_arduino.h
+    │   ├── diy_smoochie/           Device.cpp, Display.h, Navigation.h, Power.h, pins_arduino.h
     │   ├── m5_cardputer/           Device.cpp, Display.h, Navigation.h, Keyboard.h, Power.h, pins_arduino.h
     │   └── m5_cardputer_adv/       Device.cpp, Display.h, Navigation.h, Keyboard.h, Power.h, pins_arduino.h
     ├── src/
@@ -70,7 +84,7 @@ All hardware differences are isolated in board-specific folders.
     │   ├── utils/                  WifiAttackUtil, FastWpaCrack, keyboard/ (HID/BLE/USB/DuckScript utils)
     │   ├── ui/
     │   │   ├── templates/          BaseScreen.h, ListScreen.h
-    │   │   ├── components/         ScrollListView.h
+    │   │   ├── components/         ScrollListView.h, LogView.h
     │   │   └── actions/            InputTextAction.h, InputNumberAction.h, InputSelectAction.h, ShowStatusAction.h, ShowQRCodeAction.h, ShowProgressAction.h
     │   └── main.cpp
     sdcard/                         sample SD card data — copy contents to SD root
@@ -253,6 +267,27 @@ All hardware differences are isolated in board-specific folders.
 
     Store rows[] as a class member so values persist between renders.
 
+### LogView
+
+    LogView log;
+    log.addLine("Scanning 192.168.1.1...");   // auto-scrolls when full (30 lines max)
+    log.draw(bodyX(), bodyY(), bodyW(), bodyH());
+    log.draw(bodyX(), bodyY(), bodyW(), bodyH(), statusCallback, userData);  // with status bar
+    log.clear();
+    log.count();
+
+    Reusable scrolling log buffer with TFT_eSprite rendering.
+    Optional StatusBarCallback draws a custom status bar at the bottom.
+    Use for scanning/progress screens instead of raw _logLines[] arrays.
+
+### IScreen Power Inhibit
+
+    bool inhibitPowerSave() override { return true; }   // keep display always on (no screen-off, no power-off)
+    bool inhibitPowerOff()  override { return true; }   // allow screen-off but block auto power-off
+
+    Override in screen .h files. Use for active operations (scanning, streaming, attacks)
+    that should not be interrupted by power management timers.
+
 ### Config System
 
     Config.load(Uni.Storage)              load from /unigeek/config (call in setup() after storage init)
@@ -337,6 +372,8 @@ All hardware differences are isolated in board-specific folders.
     adafruit/Adafruit TCA8418@^1.0.0      T-Lora Pager + m5_cardputer_adv
     mathertel/RotaryEncoder@^1.5.3        T-Lora Pager only
     lewisxhe/XPowersLib@^0.2.0            T-Lora Pager only
+    m5stack/M5Hat-Mini-EncoderC            M5StickC Plus 2 (rotary encoder hat)
+    m5stack/M5Hat-Mini-JoyC                M5StickC Plus 2 (joystick hat)
     ESP32 LEDC (built-in)                 used for PWM speaker tone on Cardputer boards
 
 ---
@@ -374,6 +411,10 @@ All hardware differences are isolated in board-specific folders.
 - ListScreen DIR_BACK with empty list: check DIR_BACK first, before _effectiveCount() == 0 guard
   onRender() must always push the sprite even when empty — clears lingering overlays
 - sdcard/manifest.txt must be updated when files are added or removed from sdcard/
+- M5StickC Plus 2 JoystickNavigation: uses M5HatMiniJoyC on Grove I2C (SDA=32/SCL=33, addr=0x54)
+  Falls back to button-only nav if JoyC hat not detected on begin()
+  Joystick axis repeat: 400ms initial delay, 150ms repeat interval, deadzone ±50 from center
+- M5StickC Plus 2 power: GPIO 4 PWR_HOLD_PIN must stay HIGH to keep device powered
 
 ---
 

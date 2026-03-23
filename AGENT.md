@@ -3,8 +3,8 @@
 
 ## What This Project Is
 
-Multi-device ESP32 firmware. Four target boards share one codebase:
-M5StickC Plus 1.1, T-Lora Pager, M5 Cardputer, M5 Cardputer ADV.
+Multi-device ESP32 firmware. Seven target boards share one codebase:
+M5StickC Plus 1.1, M5StickC Plus 2, T-Lora Pager, T-Display 16MB, DIY Smoochie, M5 Cardputer, M5 Cardputer ADV.
 All hardware differences are isolated. Do not break this isolation.
 
 ---
@@ -106,6 +106,27 @@ sdcard/ directory contains sample SD card data (portals, duckyscript, passwords,
 
 ---
 
+## LogView Component
+
+    LogView log;
+    log.addLine("message");                                          // scrolls when full (30 lines)
+    log.draw(bodyX(), bodyY(), bodyW(), bodyH());                    // simple log
+    log.draw(bodyX(), bodyY(), bodyW(), bodyH(), statusCb, data);    // with status bar callback
+    log.clear();
+
+Use LogView for scanning/progress screens. Do not roll raw _logLines[] arrays.
+
+---
+
+## IScreen Power Inhibit
+
+    bool inhibitPowerSave() override { return _active; }   // keep display on
+    bool inhibitPowerOff()  override { return _active; }   // block auto power-off
+
+Override in screen .h. Use for scans, streams, attacks that should not be interrupted.
+
+---
+
 ## Common Mistakes to Avoid
 
 - Do NOT put IRAM_ATTR functions inline in .h files — put in .cpp
@@ -131,6 +152,8 @@ sdcard/ directory contains sample SD card data (portals, duckyscript, passwords,
   always handle both DIR_BACK and DIR_PRESS as "back/stop"
 - Do NOT check DIR_BACK after early-return guard in ListScreen onUpdate() — check DIR_BACK first
 - Do NOT skip sprite push in ListScreen onRender() when empty — always push to clear overlays
+- Do NOT roll custom log line arrays — use LogView component from ui/components/LogView.h
+- Do NOT forget inhibitPowerSave()/inhibitPowerOff() on screens with active long-running operations
 
 ---
 

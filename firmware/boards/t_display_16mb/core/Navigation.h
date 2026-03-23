@@ -1,82 +1,72 @@
+//
+// T-Display 16MB — 2 buttons: BTN_UP (GPIO 0) and BTN_B (GPIO 35).
+// BTN_UP = UP, BTN_B single-click = DOWN, BTN_B double-click = PRESS.
+//
+
 #pragma once
 
 #include "core/INavigation.h"
-#include "pins_arduino.h"
-#include <Arduino.h>
 
 class NavigationImpl : public INavigation
 {
-private:
-  uint32_t _lastDownPressTime = 0;
-  bool _downBtnWasPressed = false;
-  bool _waitingForDoubleClick = false;
-
-  // Used to trigger a synthetic click when timeout expires
-  bool _syntheticDownTriggered = false;
-  Direction _heldDirection = DIR_NONE;
-
-  // Timeout for double click in ms
-  const uint32_t DOUBLE_CLICK_TIMEOUT = 250;
-
 public:
   void begin() override {
-    pinMode(UP_BTN, INPUT_PULLUP);
-    pinMode(DW_BTN, INPUT_PULLUP);
+    pinMode(BTN_UP, INPUT_PULLUP);
+    pinMode(BTN_B,  INPUT_PULLUP);
   }
 
   void update() override
   {
-    bool btnUp = (digitalRead(UP_BTN) == BTN_ACT);
-    bool btnDown = (digitalRead(DW_BTN) == BTN_ACT);
+    bool btnUp   = (digitalRead(BTN_UP) == LOW);
+    bool btnDown = (digitalRead(BTN_B)  == LOW);
     uint32_t now = millis();
 
     if (btnUp) {
-      _waitingForDoubleClick = false;
+      _waitDblClick = false;
       updateState(DIR_UP);
       return;
     }
 
-    // Handle synthetic click generation when button is already released
-    // We send DIR_DOWN for one cycle, and then on the next cycle we send DIR_NONE to finish the click.
-    if (_syntheticDownTriggered) {
-      _syntheticDownTriggered = false;
+    // Synthetic single-click: emit DIR_DOWN for one cycle then DIR_NONE
+    if (_syntheticDown) {
+      _syntheticDown = false;
       updateState(DIR_NONE);
       return;
     }
 
-    if (btnDown && !_downBtnWasPressed) {
-      _downBtnWasPressed = true;
+    if (btnDown && !_btnBWasDown) {
+      _btnBWasDown = true;
 
-      if (_waitingForDoubleClick && (now - _lastDownPressTime) <= DOUBLE_CLICK_TIMEOUT) {
-        _waitingForDoubleClick = false;
-        _heldDirection = DIR_PRESS;
+      if (_waitDblClick && (now - _lastDownTime) <= DBL_CLICK_MS) {
+        _waitDblClick = false;
+        _heldDir = DIR_PRESS;
         updateState(DIR_PRESS);
       } else {
-        _waitingForDoubleClick = true;
-        _lastDownPressTime = now;
-        _heldDirection = DIR_NONE;
+        _waitDblClick = true;
+        _lastDownTime = now;
+        _heldDir = DIR_NONE;
         updateState(DIR_NONE);
       }
     } else if (btnDown) {
-      if (_waitingForDoubleClick) {
-          if ((now - _lastDownPressTime) > DOUBLE_CLICK_TIMEOUT) {
-              _waitingForDoubleClick = false;
-              _heldDirection = DIR_DOWN;
-              updateState(DIR_DOWN);
-          } else {
-              updateState(DIR_NONE);
-          }
+      if (_waitDblClick) {
+        if ((now - _lastDownTime) > DBL_CLICK_MS) {
+          _waitDblClick = false;
+          _heldDir = DIR_DOWN;
+          updateState(DIR_DOWN);
+        } else {
+          updateState(DIR_NONE);
+        }
       } else {
-          updateState(_heldDirection);
+        updateState(_heldDir);
       }
     } else {
-      _downBtnWasPressed = false;
-      _heldDirection = DIR_NONE;
+      _btnBWasDown = false;
+      _heldDir = DIR_NONE;
 
-      if (_waitingForDoubleClick) {
-        if ((now - _lastDownPressTime) > DOUBLE_CLICK_TIMEOUT) {
-          _waitingForDoubleClick = false;
-          _syntheticDownTriggered = true;
+      if (_waitDblClick) {
+        if ((now - _lastDownTime) > DBL_CLICK_MS) {
+          _waitDblClick = false;
+          _syntheticDown = true;
           updateState(DIR_DOWN);
           return;
         } else {
@@ -87,4 +77,13 @@ public:
       }
     }
   }
+
+private:
+  static constexpr uint32_t DBL_CLICK_MS = 250;
+
+  uint32_t  _lastDownTime   = 0;
+  bool      _btnBWasDown    = false;
+  bool      _waitDblClick   = false;
+  bool      _syntheticDown  = false;
+  Direction _heldDir        = DIR_NONE;
 };
