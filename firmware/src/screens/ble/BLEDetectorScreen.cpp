@@ -42,6 +42,11 @@ static const NimBLEUUID kFlipperWhite("00003082-0000-1000-8000-00805f9b34fb");
 static const NimBLEUUID kFlipperBlack("00003081-0000-1000-8000-00805f9b34fb");
 static const NimBLEUUID kFlipperTrans("00003083-0000-1000-8000-00805f9b34fb");
 
+// ── BitChat service UUIDs ──────────────────────────────────────────────────
+
+static const NimBLEUUID kBitChatMain("f47b5e2d-4a9e-4c5a-9b3f-8e1d2c3a4b5c");
+static const NimBLEUUID kBitChatTest("f47b5e2d-4a9e-4c5a-9b3f-8e1d2c3a4b5a");
+
 // ── Scan callbacks ──────────────────────────────────────────────────────────
 
 class BLEDetectorScreen::ScanCallbacks : public NimBLEAdvertisedDeviceCallbacks {
@@ -154,6 +159,12 @@ void BLEDetectorScreen::_onDevice(NimBLEAdvertisedDevice* dev)
   if (dev->isAdvertisingService(kFlipperWhite))      devType = "Flipper White";
   else if (dev->isAdvertisingService(kFlipperBlack)) devType = "Flipper Black";
   else if (dev->isAdvertisingService(kFlipperTrans)) devType = "Flipper Trans";
+
+  // Check for BitChat
+  if (!devType) {
+    if (dev->isAdvertisingService(kBitChatMain))      devType = "BitChat";
+    else if (dev->isAdvertisingService(kBitChatTest)) devType = "BitChat Test";
+  }
 
   // Check manufacturer data against spam patterns + AirTag
   if (dev->getManufacturerDataCount() > 0) {
@@ -293,14 +304,15 @@ void BLEDetectorScreen::_draw()
   // Header: counts by type
   if (row >= _scrollOffset && row < _scrollOffset + visibleRows) {
     sp.setTextColor(TFT_CYAN, TFT_BLACK);
-    char hdr[48];
-    int flp = 0, skim = 0, atag = 0;
+    char hdr[64];
+    int flp = 0, skim = 0, atag = 0, bchat = 0;
     for (int i = 0; i < _deviceCount; i++) {
       if (strncmp(_devices[i].type, "Flipper", 7) == 0) flp++;
       else if (strcmp(_devices[i].type, "Skimmer") == 0) skim++;
       else if (strcmp(_devices[i].type, "AirTag") == 0) atag++;
+      else if (strncmp(_devices[i].type, "BitChat", 7) == 0) bchat++;
     }
-    snprintf(hdr, sizeof(hdr), "F:%d S:%d A:%d", flp, skim, atag);
+    snprintf(hdr, sizeof(hdr), "F:%d S:%d A:%d B:%d", flp, skim, atag, bchat);
     sp.drawString(hdr, 2, y);
     y += 14;
   }
@@ -321,6 +333,8 @@ void BLEDetectorScreen::_draw()
       dotColor = TFT_RED;
     else if (strcmp(d.type, "AirTag") == 0)
       dotColor = TFT_BLUE;
+    else if (strncmp(d.type, "BitChat", 7) == 0)
+      dotColor = TFT_MAGENTA;
     sp.fillCircle(4, y + 6, 3, dotColor);
 
     // Name or type (truncated)

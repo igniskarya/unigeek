@@ -47,7 +47,7 @@ Multi-tool firmware for ESP32-based handheld devices. Built with PlatformIO + Ar
 ### Bluetooth
 - **BLE Analyzer** — Scan nearby BLE devices, display RSSI, name, address, and advertisement data
 - **BLE Spam** — Spam BLE advertisement packets
-- **BLE Detector** — Passive BLE scanner that detects Flipper Zero devices, credit card skimmers, Apple AirTags/FindMy trackers, and BLE spam attacks ([details](knowledge/ble-detector.md))
+- **BLE Detector** — Passive BLE scanner that detects Flipper Zero devices, credit card skimmers, Apple AirTags/FindMy trackers, BitChat app users, and BLE spam attacks ([details](knowledge/ble-detector.md))
 
 ### Keyboard (HID)
 - **BLE Keyboard** — Act as a wireless Bluetooth HID keyboard (all devices)
