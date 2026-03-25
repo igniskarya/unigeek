@@ -1,0 +1,500 @@
+#include "MFRC522Screen.h"
+#include "core/Device.h"
+#include "core/ScreenManager.h"
+#include "core/PinConfigManager.h"
+#include "screens/module/ModuleMenuScreen.h"
+#include "ui/actions/ShowStatusAction.h"
+#include "ui/actions/ShowProgressAction.h"
+
+static constexpr uint8_t I2C_ADDRESS = 0x28;
+
+const char* MFRC522Screen::title() {
+  switch (_state) {
+    case STATE_MAIN_MENU:     return "RC522";
+    case STATE_SCAN_UID:      return "Scan UID";
+    case STATE_AUTHENTICATE:  return "Authenticate";
+    case STATE_MIFARE_CLASSIC: return "MIFARE Classic";
+    case STATE_SHOW_KEY:      return "Discovered Keys";
+    case STATE_MEMORY_READER: return "Memory Reader";
+  }
+  return "M5 RFID 2";
+}
+
+void MFRC522Screen::onInit() {
+  _initModule();
+}
+
+void MFRC522Screen::onUpdate() {
+  if (_state == STATE_SCAN_UID) {
+    if (Uni.Nav->wasPressed()) {
+      auto dir = Uni.Nav->readDirection();
+      if (dir == INavigation::DIR_PRESS) {
+        _callScanUid();
+      } else if (dir == INavigation::DIR_BACK) {
+        _goMainMenu();
+      }
+    }
+    return;
+  }
+
+  if (_state == STATE_SHOW_KEY || _state == STATE_MEMORY_READER) {
+    if (Uni.Nav->wasPressed()) {
+      auto dir = Uni.Nav->readDirection();
+      if (dir == INavigation::DIR_BACK) {
+        _goMifareClassic();
+      } else {
+        _scrollView.onNav(dir);
+      }
+    }
+    return;
+  }
+
+  ListScreen::onUpdate();
+}
+
+void MFRC522Screen::onRender() {
+  if (_state == STATE_SCAN_UID) return;
+  if (_state == STATE_SHOW_KEY || _state == STATE_MEMORY_READER) {
+    _scrollView.render(bodyX(), bodyY(), bodyW(), bodyH());
+    return;
+  }
+  ListScreen::onRender();
+}
+
+void MFRC522Screen::onItemSelected(uint8_t index) {
+  if (_state == STATE_MAIN_MENU) {
+    switch (index) {
+      case 0: _callScanUid();       break;
+      case 1: _callAuthenticate();   break;
+    }
+  } else if (_state == STATE_MIFARE_CLASSIC) {
+    switch (index) {
+      case 0: _goShowDiscoveredKeys(); break;
+      case 1: _callMemoryReader();     break;
+    }
+  }
+}
+
+void MFRC522Screen::_cleanup() {
+  if (_module) {
+    _module->PICC_HaltA();
+    _module->PCD_StopCrypto1();
+    delete _module;
+    _module = nullptr;
+  }
+  if (_moduleReady && Uni.ExI2C) {
+    Uni.ExI2C->end();
+    _moduleReady = false;
+  }
+}
+
+void MFRC522Screen::onBack() {
+  if (_state == STATE_MAIN_MENU) {
+    _cleanup();
+    Screen.setScreen(new ModuleMenuScreen());
+  } else if (_state == STATE_MIFARE_CLASSIC) {
+    _currentCard = {};
+    _mf1AuthKeys.fill({});
+    _goMainMenu();
+  } else if (_state == STATE_SHOW_KEY || _state == STATE_MEMORY_READER) {
+    _goMifareClassic();
+  }
+}
+
+void MFRC522Screen::_initModule() {
+  if (!Uni.ExI2C) {
+    ShowStatusAction::show("No external I2C bus!");
+    Screen.setScreen(new ModuleMenuScreen());
+    return;
+  }
+
+  int sda = PinConfig.getInt(PIN_CONFIG_EXT_SDA, PIN_CONFIG_EXT_SDA_DEFAULT);
+  int scl = PinConfig.getInt(PIN_CONFIG_EXT_SCL, PIN_CONFIG_EXT_SCL_DEFAULT);
+
+  ShowProgressAction::show("Initializing I2C...", 10);
+  Uni.ExI2C->begin(sda, scl);
+  Uni.ExI2C->setTimeOut(50);
+  delay(100);
+
+  ShowProgressAction::show("Scanning for RC522...", 40);
+
+  bool found = false;
+  for (int attempt = 0; attempt < 3; attempt++) {
+    Uni.ExI2C->beginTransmission(I2C_ADDRESS);
+    if (Uni.ExI2C->endTransmission() == 0) {
+      found = true;
+      break;
+    }
+    delay(100);
+  }
+
+  if (!found) {
+    Uni.ExI2C->end();
+    ShowStatusAction::show("Module not found!");
+    Screen.setScreen(new ModuleMenuScreen());
+    return;
+  }
+
+  ShowProgressAction::show("Starting RC522...", 70);
+  if (_module) delete _module;
+  _module = new MFRC522_I2C(I2C_ADDRESS, (byte)-1, Uni.ExI2C);
+  _module->PCD_Init();
+  _moduleReady = true;
+  delay(200);
+
+  _goMainMenu();
+}
+
+void MFRC522Screen::_goMainMenu() {
+  _state = STATE_MAIN_MENU;
+  setItems(_mainItems);
+  render();
+}
+
+void MFRC522Screen::_goMifareClassic() {
+  _state = STATE_MIFARE_CLASSIC;
+  setItems(_mfItems);
+  render();
+}
+
+void MFRC522Screen::_goShowDiscoveredKeys() {
+  _state = STATE_SHOW_KEY;
+  _rowCount = 0;
+
+  auto piccType = static_cast<MFRC522_I2C::PICC_Type>(_module->PICC_GetType(_currentCard.sak));
+  auto piccName = _module->PICC_GetTypeName(piccType);
+  char sakStr[10];
+  sprintf(sakStr, "%02X", _currentCard.sak);
+
+  _rowLabels[_rowCount] = "Type";
+  _rowValues[_rowCount] = (const char*)piccName;
+  _rows[_rowCount] = {_rowLabels[_rowCount].c_str(), _rowValues[_rowCount]};
+  _rowCount++;
+
+  _rowLabels[_rowCount] = "UID";
+  _rowValues[_rowCount] = _uidToString(_currentCard.uidByte, _currentCard.size).c_str();
+  _rows[_rowCount] = {_rowLabels[_rowCount].c_str(), _rowValues[_rowCount]};
+  _rowCount++;
+
+  _rowLabels[_rowCount] = "SAK";
+  _rowValues[_rowCount] = sakStr;
+  _rows[_rowCount] = {_rowLabels[_rowCount].c_str(), _rowValues[_rowCount]};
+  _rowCount++;
+
+  auto it = _mf1CardDetails.find(piccType);
+  if (it != _mf1CardDetails.end()) {
+    for (size_t sector = 0; sector < it->second.first && _rowCount < MAX_ROWS - 1; sector++) {
+      _rowLabels[_rowCount] = "S" + String((int)sector) + " A";
+      _rowValues[_rowCount] = _mf1AuthKeys[sector].first.c_str().c_str();
+      _rows[_rowCount] = {_rowLabels[_rowCount].c_str(), _rowValues[_rowCount]};
+      _rowCount++;
+
+      _rowLabels[_rowCount] = "S" + String((int)sector) + " B";
+      _rowValues[_rowCount] = _mf1AuthKeys[sector].second.c_str().c_str();
+      _rows[_rowCount] = {_rowLabels[_rowCount].c_str(), _rowValues[_rowCount]};
+      _rowCount++;
+    }
+  }
+
+  _scrollView.setRows(_rows, _rowCount);
+  render();
+}
+
+void MFRC522Screen::_callScanUid() {
+  _state = STATE_SCAN_UID;
+
+  TFT_eSprite sp(&Uni.Lcd);
+  sp.createSprite(bodyW(), bodyH());
+  sp.fillSprite(TFT_BLACK);
+  sp.setTextDatum(MC_DATUM);
+  sp.setTextSize(1);
+  sp.drawString("Scanning ISO14443...", bodyW() / 2, bodyH() / 2);
+  sp.pushSprite(bodyX(), bodyY());
+  sp.deleteSprite();
+
+  bool isFound = false;
+  bool cancelled = false;
+  const auto start = millis();
+  while (millis() - start < 5000) {
+    Uni.update();
+    if (Uni.Nav->wasPressed()) {
+      auto dir = Uni.Nav->readDirection();
+      if (dir == INavigation::DIR_BACK) { cancelled = true; break; }
+    }
+    if (_module->PICC_IsNewCardPresent() && _module->PICC_ReadCardSerial()) {
+      isFound = true;
+      break;
+    }
+    delay(50);
+  }
+
+  if (cancelled) { _goMainMenu(); return; }
+
+  sp.createSprite(bodyW(), bodyH());
+  sp.fillSprite(TFT_BLACK);
+  sp.setTextDatum(MC_DATUM);
+
+  if (isFound) {
+    uint8_t piccType = _module->PICC_GetType(_module->uid.sak);
+    const char* piccName = (const char*)_module->PICC_GetTypeName(piccType);
+    std::string uid = _uidToString(_module->uid.uidByte, _module->uid.size);
+
+    sp.setTextSize(1);
+    sp.drawString(piccName, bodyW() / 2, bodyH() / 2 - 24);
+    sp.setTextSize(2);
+    sp.drawString("ISO14443", bodyW() / 2, bodyH() / 2 - 8);
+    sp.drawString(uid.c_str(), bodyW() / 2, bodyH() / 2 + 10);
+  } else {
+    sp.setTextSize(2);
+    sp.drawString("No Tag Found", bodyW() / 2, bodyH() / 2 - 4);
+  }
+
+  sp.setTextSize(1);
+  #ifdef DEVICE_HAS_KEYBOARD
+    sp.drawString("ENTER: Scan  BACK: Menu", bodyW() / 2, bodyH() - 10);
+  #else
+    sp.fillRect(0, bodyH() - 16, bodyW(), 16, Config.getThemeColor());
+    sp.setTextColor(TFT_WHITE, Config.getThemeColor());
+    sp.drawString("PRESS: Scan", bodyW() / 2, bodyH() - 8, 1);
+  #endif
+
+  sp.pushSprite(bodyX(), bodyY());
+  sp.deleteSprite();
+}
+
+bool MFRC522Screen::_resetCardState() {
+  byte bufSize = 2;
+  byte buf[2];
+  _module->PCD_StopCrypto1();
+  _module->PICC_HaltA();
+  delay(100);
+  _module->PICC_WakeupA(buf, &bufSize);
+  delay(100);
+  return static_cast<MFRC522_I2C::StatusCode>(
+    _module->PICC_Select(&(_module->uid), 0)
+  ) != MFRC522_I2C::STATUS_TIMEOUT;
+}
+
+void MFRC522Screen::_callAuthenticate() {
+  _state = STATE_AUTHENTICATE;
+
+  ShowStatusAction::show("Scanning MIFARE Classic...", 0);
+
+  const auto start = millis();
+  while (true) {
+    Uni.update();
+    if (Uni.Nav->wasPressed()) {
+      auto dir = Uni.Nav->readDirection();
+      if (dir == INavigation::DIR_BACK || dir == INavigation::DIR_PRESS) {
+        _goMainMenu();
+        return;
+      }
+    }
+    if (millis() - start > 5000) {
+      ShowStatusAction::show("No card found");
+      _goMainMenu();
+      return;
+    }
+    if (_module->PICC_IsNewCardPresent() && _module->PICC_ReadCardSerial()) {
+      _currentCard.sak = _module->uid.sak;
+      _currentCard.size = _module->uid.size;
+      memcpy(_currentCard.uidByte, _module->uid.uidByte, _currentCard.size);
+      break;
+    }
+    delay(50);
+  }
+
+  auto piccType = static_cast<MFRC522_I2C::PICC_Type>(_module->PICC_GetType(_currentCard.sak));
+  auto it = _mf1CardDetails.find(piccType);
+  if (it == _mf1CardDetails.end()) {
+    ShowStatusAction::show("Unsupported tag");
+    _goMainMenu();
+    return;
+  }
+
+  size_t totalSectors = it->second.first;
+  const MFRC522_I2C::PICC_Command keyTypes[] = {
+    MFRC522_I2C::PICC_CMD_MF_AUTH_KEY_A,
+    MFRC522_I2C::PICC_CMD_MF_AUTH_KEY_B
+  };
+
+  _mf1AuthKeys.fill({});
+
+  for (size_t sector = 0; sector < totalSectors; sector++) {
+    for (const auto& keyType : keyTypes) {
+      String progress = String((int)sector) + "/" + String((int)(totalSectors - 1));
+      String msg = "Auth sector " + progress;
+      msg += (keyType == MFRC522_I2C::PICC_CMD_MF_AUTH_KEY_A) ? " key A..." : " key B...";
+      int pct = (int)((sector * 2 + (keyType == MFRC522_I2C::PICC_CMD_MF_AUTH_KEY_B ? 1 : 0)) * 100 / (totalSectors * 2));
+      ShowProgressAction::show(msg.c_str(), pct);
+
+      for (const auto& key : NFCUtility::getDefaultKeys()) {
+        const auto kv = key.value();
+        MFRC522_I2C::MIFARE_Key currentKey = {kv[0], kv[1], kv[2], kv[3], kv[4], kv[5]};
+        int blockIndex = (sector < 32) ? (sector * 4 + 3) : (128 + (sector - 32) * 16 + 15);
+        auto response = static_cast<MFRC522_I2C::StatusCode>(
+          _module->PCD_Authenticate(keyType, blockIndex, &currentKey, &_currentCard));
+
+        if (response == MFRC522_I2C::STATUS_OK) {
+          if (keyType == MFRC522_I2C::PICC_CMD_MF_AUTH_KEY_A)
+            _mf1AuthKeys[sector].first = key;
+          else
+            _mf1AuthKeys[sector].second = key;
+          break;
+        }
+
+        int counter = 0;
+        do {
+          counter++;
+          delay(500);
+          if (counter > 5) {
+            ShowStatusAction::show("Failed to reset card");
+            _goMainMenu();
+            return;
+          }
+        } while (!_resetCardState());
+      }
+    }
+  }
+
+  _goMifareClassic();
+}
+
+void MFRC522Screen::_callMemoryReader() {
+  _state = STATE_MEMORY_READER;
+  _rowCount = 0;
+
+  auto piccType = static_cast<MFRC522_I2C::PICC_Type>(_module->PICC_GetType(_currentCard.sak));
+  auto piccName = _module->PICC_GetTypeName(piccType);
+  char sakStr[10];
+  sprintf(sakStr, "%02X", _currentCard.sak);
+
+  auto it = _mf1CardDetails.find(piccType);
+  if (it == _mf1CardDetails.end()) {
+    ShowStatusAction::show("Unsupported tag");
+    _goMifareClassic();
+    return;
+  }
+
+  _rowLabels[_rowCount] = "Type";
+  _rowValues[_rowCount] = (const char*)piccName;
+  _rows[_rowCount] = {_rowLabels[_rowCount].c_str(), _rowValues[_rowCount]};
+  _rowCount++;
+
+  _rowLabels[_rowCount] = "UID";
+  _rowValues[_rowCount] = _uidToString(_currentCard.uidByte, _currentCard.size).c_str();
+  _rows[_rowCount] = {_rowLabels[_rowCount].c_str(), _rowValues[_rowCount]};
+  _rowCount++;
+
+  _rowLabels[_rowCount] = "SAK";
+  _rowValues[_rowCount] = sakStr;
+  _rows[_rowCount] = {_rowLabels[_rowCount].c_str(), _rowValues[_rowCount]};
+  _rowCount++;
+
+  size_t totalBlocks = it->second.second;
+  int lastValidatedSector = -1;
+
+  for (size_t block = 0; block < totalBlocks && _rowCount < MAX_ROWS - 1; block++) {
+    int pct = (int)(block * 100 / totalBlocks);
+    String msg = "Reading block " + String((int)block) + "/" + String((int)(totalBlocks - 1));
+    ShowProgressAction::show(msg.c_str(), pct);
+
+    int currentSector = (block < 128) ? (block / 4) : ((block - 128) / 16 + 32);
+    String blockLabel = "Blk " + String((int)block);
+
+    if (!_mf1AuthKeys[currentSector].first && !_mf1AuthKeys[currentSector].second) {
+      _rowLabels[_rowCount] = blockLabel + "a";
+      _rowValues[_rowCount] = "??:??:??:??:??:??:??:??";
+      _rows[_rowCount] = {_rowLabels[_rowCount].c_str(), _rowValues[_rowCount]};
+      _rowCount++;
+      if (_rowCount < MAX_ROWS) {
+        _rowLabels[_rowCount] = blockLabel + "b";
+        _rowValues[_rowCount] = "??:??:??:??:??:??:??:??";
+        _rows[_rowCount] = {_rowLabels[_rowCount].c_str(), _rowValues[_rowCount]};
+        _rowCount++;
+      }
+      continue;
+    }
+
+    if (lastValidatedSector != currentSector) {
+      lastValidatedSector = currentSector;
+      int trailBlock = (currentSector < 32) ? (currentSector * 4 + 3) : (128 + (currentSector - 32) * 16 + 15);
+      MFRC522_I2C::MIFARE_Key activeKey = {};
+      MFRC522_I2C::PICC_Command activeCmd;
+      if (_mf1AuthKeys[currentSector].first) {
+        activeCmd = MFRC522_I2C::PICC_CMD_MF_AUTH_KEY_A;
+        auto kv = _mf1AuthKeys[currentSector].first.value();
+        activeKey = {kv[0], kv[1], kv[2], kv[3], kv[4], kv[5]};
+      } else {
+        activeCmd = MFRC522_I2C::PICC_CMD_MF_AUTH_KEY_B;
+        auto kv = _mf1AuthKeys[currentSector].second.value();
+        activeKey = {kv[0], kv[1], kv[2], kv[3], kv[4], kv[5]};
+      }
+
+      MFRC522_I2C::StatusCode status;
+      int counter = 0;
+      do {
+        status = static_cast<MFRC522_I2C::StatusCode>(
+          _module->PCD_Authenticate(activeCmd, trailBlock, &activeKey, &_currentCard));
+        if (status != MFRC522_I2C::STATUS_OK) _resetCardState();
+        counter++;
+        if (counter > 5) break;
+      } while (status != MFRC522_I2C::STATUS_OK);
+
+      if (status != MFRC522_I2C::STATUS_OK) {
+        lastValidatedSector = -1;
+        _rowLabels[_rowCount] = blockLabel + "a";
+        _rowValues[_rowCount] = "??:??:??:??:??:??:??:??";
+        _rows[_rowCount] = {_rowLabels[_rowCount].c_str(), _rowValues[_rowCount]};
+        _rowCount++;
+        if (_rowCount < MAX_ROWS) {
+          _rowLabels[_rowCount] = blockLabel + "b";
+          _rowValues[_rowCount] = "??:??:??:??:??:??:??:??";
+          _rows[_rowCount] = {_rowLabels[_rowCount].c_str(), _rowValues[_rowCount]};
+          _rowCount++;
+        }
+        continue;
+      }
+    }
+
+    byte blockData[18];
+    byte blockSize = sizeof(blockData);
+    auto readStatus = static_cast<MFRC522_I2C::StatusCode>(
+      _module->MIFARE_Read(block, blockData, &blockSize));
+
+    if (readStatus != MFRC522_I2C::STATUS_OK) {
+      _rowLabels[_rowCount] = blockLabel + "a";
+      _rowValues[_rowCount] = "??:??:??:??:??:??:??:??";
+      _rows[_rowCount] = {_rowLabels[_rowCount].c_str(), _rowValues[_rowCount]};
+      _rowCount++;
+      if (_rowCount < MAX_ROWS) {
+        _rowLabels[_rowCount] = blockLabel + "b";
+        _rowValues[_rowCount] = "??:??:??:??:??:??:??:??";
+        _rows[_rowCount] = {_rowLabels[_rowCount].c_str(), _rowValues[_rowCount]};
+        _rowCount++;
+      }
+    } else {
+      char buf[26];
+      sprintf(buf, "%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X",
+        blockData[0], blockData[1], blockData[2], blockData[3],
+        blockData[4], blockData[5], blockData[6], blockData[7]);
+      _rowLabels[_rowCount] = blockLabel + "a";
+      _rowValues[_rowCount] = buf;
+      _rows[_rowCount] = {_rowLabels[_rowCount].c_str(), _rowValues[_rowCount]};
+      _rowCount++;
+
+      if (_rowCount < MAX_ROWS) {
+        sprintf(buf, "%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X",
+          blockData[8], blockData[9], blockData[10], blockData[11],
+          blockData[12], blockData[13], blockData[14], blockData[15]);
+        _rowLabels[_rowCount] = blockLabel + "b";
+        _rowValues[_rowCount] = buf;
+        _rows[_rowCount] = {_rowLabels[_rowCount].c_str(), _rowValues[_rowCount]};
+        _rowCount++;
+      }
+    }
+  }
+
+  _scrollView.setRows(_rows, _rowCount);
+  render();
+}

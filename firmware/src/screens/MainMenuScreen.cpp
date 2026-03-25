@@ -7,6 +7,7 @@
 #include "screens/ble/BLEMenuScreen.h"
 #include "screens/keyboard/KeyboardMenuScreen.h"
 #include "screens/game/GameMenuScreen.h"
+#include "screens/module/ModuleMenuScreen.h"
 #include "screens/utility/UtilityMenuScreen.h"
 #include "screens/SettingScreen.h"
 
@@ -19,11 +20,12 @@ void MainMenuScreen::onItemSelected(uint8_t index) {
   case 0: Screen.setScreen(new WifiMenuScreen());      break;
   case 1: Screen.setScreen(new BLEMenuScreen());       break;
   case 2: Screen.setScreen(new KeyboardMenuScreen());  break;
-  case 3: Screen.setScreen(new UtilityMenuScreen());   break;
-  case 4: Screen.setScreen(new GameMenuScreen());      break;
-  case 5: Screen.setScreen(new SettingScreen());       break;
+  case 3: Screen.setScreen(new ModuleMenuScreen());    break;
+  case 4: Screen.setScreen(new UtilityMenuScreen());   break;
+  case 5: Screen.setScreen(new GameMenuScreen());      break;
+  case 6: Screen.setScreen(new SettingScreen());       break;
 #ifdef APP_MENU_POWER_OFF
-  case 6: Uni.Power.powerOff(); break;
+  case 7: Uni.Power.powerOff(); break;
 #endif
   }
 }
