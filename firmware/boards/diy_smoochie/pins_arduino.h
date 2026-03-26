@@ -1,5 +1,5 @@
 //
-// M5Stack Cardputer (ESP32-S3)
+// DIY SMoochie (ESP32-S3)
 //
 
 #pragma once
@@ -47,7 +47,9 @@ static const uint8_t SCL = 48;
 #define SPK_I2S_PORT  I2S_NUM_1
 
 // ─── Boot / shoulder button ───────────────────────────────
-#define BTN_BOOT  0
+#define SEL_BTN 0
+#define UP_BTN 41
+#define DW_BTN 40
 
 // ─── TFT_eSPI config ──────────────────────────────────────
 #define DISABLE_ALL_LIBRARY_WARNINGS 1
