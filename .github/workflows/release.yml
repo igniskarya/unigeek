@@ -18,13 +18,13 @@ jobs:
       fail-fast: false
       matrix:
         env:
-          - m5stickcplus_11
+          #- m5stickcplus_11
           - m5stickcplus_2
-          - t_lora_pager
-          - m5_cardputer
-          - m5_cardputer_adv
-          - t_display_16mb
-          # diy_smoochie excluded — not fully working
+          #- t_lora_pager
+          #- m5_cardputer
+          #- m5_cardputer_adv
+          #- t_display_16mb
+           - diy_smoochie
 
     steps:
       - name: Checkout
