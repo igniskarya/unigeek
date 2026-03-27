@@ -202,5 +202,3 @@ firmware/
 - LoRa
 - nr24lf
 - cc1101
-- change post to theme color and remove sound in any captive (ap, mitm and karma)
-- for wardriving, show log instead having legacy display. status bar will have how many wifi capture, distance been walked then status bar on right will have how long wardriving been running. for log maybe just show latest found. and try check if promecius working better than scanNetworks regarding wifi scanning, ble scanning also good to have.
