@@ -37,6 +37,7 @@ public:
     }
 
     BarcodeRenderer::clear();
+    Uni.lastActiveMs = millis();
   }
 };
 

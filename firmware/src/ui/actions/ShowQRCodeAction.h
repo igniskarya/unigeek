@@ -37,5 +37,6 @@ public:
     }
 
     QRCodeRenderer::clear();
+    Uni.lastActiveMs = millis();
   }
 };

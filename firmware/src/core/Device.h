@@ -43,6 +43,13 @@ public:
     boardHook();
     if (Keyboard) Keyboard->update();
     Nav->update();
+
+    // Track activity for power saving — works inside blocking actions too
+    bool active = Nav->isPressed();
+#ifdef DEVICE_HAS_KEYBOARD
+    if (Keyboard && Keyboard->available()) active = true;
+#endif
+    if (active) lastActiveMs = millis();
   }
 
   void boardHook();  // board-specific per-frame hook, defined in each Device.cpp
@@ -66,6 +73,7 @@ public:
   SPIClass*   Spi        = nullptr;  // shared SPI bus (nullable, board-specific)
   TwoWire*    ExI2C      = nullptr;  // external I2C — free state, caller must begin(sda,scl)/end()
   TwoWire*    InI2C      = nullptr;  // internal I2C — board-initialized, do not end()
+  unsigned long lastActiveMs = 0;    // last user input timestamp — updated by update()
 
   // Prevent copying
   Device(const Device&)            = delete;

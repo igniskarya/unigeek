@@ -13,7 +13,9 @@ class InputTextAction
 public:
   static String popup(const char* title, const String& defaultValue = "", bool numberMode = false) {
     InputTextAction action(title, defaultValue, numberMode);
-    return action._run();
+    String result = action._run();
+    Uni.lastActiveMs = millis();
+    return result;
   }
 
 private:
