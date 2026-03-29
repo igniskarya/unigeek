@@ -2,6 +2,7 @@
 #include "core/Device.h"
 #include "core/ScreenManager.h"
 #include "screens/wifi/WifiMenuScreen.h"
+#include "ui/actions/InputNumberAction.h"
 #include "ui/actions/ShowStatusAction.h"
 #include "utils/StorageUtil.h"
 
@@ -87,74 +88,117 @@ WifiEapolCaptureScreen::~WifiEapolCaptureScreen() {
   _ringTail = 0;
 }
 
-// ── Log buffer ────────────────────────────────────────────────────────────
+// ── Status bar callback ───────────────────────────────────────────────────
 
-void WifiEapolCaptureScreen::_pushLog(const char* msg, uint16_t color) {
-  int idx = _logHead % LOG_SIZE;
-  strncpy(_log[idx].msg, msg, sizeof(_log[idx].msg) - 1);
-  _log[idx].msg[sizeof(_log[idx].msg) - 1] = '\0';
-  _log[idx].color = color;
-  _logHead = (idx + 1) % LOG_SIZE;
-  if (_logCount < LOG_SIZE) _logCount++;
+void WifiEapolCaptureScreen::_statusBarCb(TFT_eSprite& sp, int barY, int width, void* userData) {
+  auto* self = static_cast<WifiEapolCaptureScreen*>(userData);
+
+  char countBuf[24];
+  snprintf(countBuf, sizeof(countBuf), "Captured: %u", self->_handshakes);
+  sp.setTextDatum(ML_DATUM);
+  sp.setTextColor(self->_handshakes > 0 ? TFT_MAGENTA : TFT_DARKGREY, TFT_BLACK);
+  sp.drawString(countBuf, 2, barY + 1, 1);
+
+  if (self->_lastEapolName[0] != '\0') {
+    sp.setTextDatum(MR_DATUM);
+    sp.setTextColor(TFT_CYAN, TFT_BLACK);
+    sp.drawString(self->_lastEapolName, width - 2, barY + 1, 1);
+  }
 }
 
 // ── Lifecycle ─────────────────────────────────────────────────────────────
 
 void WifiEapolCaptureScreen::onInit() {
-  _channel          = 0;
-  _needRefresh      = false;
-  _ringHead         = 0;
-  _ringTail         = 0;
-  _skipBeacons      = false;
-  _apCount          = 0;
-  _logHead          = 0;
-  _logCount         = 0;
-  _totalEapol       = 0;
-  _handshakes       = 0;
-  _phase            = PHASE_DISCOVERY;
-  _discoveryCount   = 0;
-  _attackChanCount  = 0;
-  _attackChanIdx    = 0;
-  _deauthFired      = false;
-  _midDeauthSent    = false;
-  _chanDwellUntil   = 0;
-  _midDeauthAt      = 0;
-  memset(_lastEapolName, 0, sizeof(_lastEapolName));
+  _phase = PHASE_MENU;
+  _showMenu();
+}
 
-  _eapolMap.clear();
-  _ssidMap.clear();
-  _pending.clear();
-  _beaconStore.clear();
+void WifiEapolCaptureScreen::_showMenu() {
+  _discoverySub = String(_discoveryDwellMs) + " ms";
+  _attackSub    = String(_attackDwellMs) + " ms";
+  _deauthSub    = String(_maxDeauthAttempts);
+  _menuItems[0] = {"Discovery Dwell", _discoverySub.c_str()};
+  _menuItems[1] = {"Attack Dwell", _attackSub.c_str()};
+  _menuItems[2] = {"Max Deauth", _deauthSub.c_str()};
+  _menuItems[3] = {"Start"};
+  setItems(_menuItems, 4);
+}
 
-  _storageOk     = false;
-  _lastFreeCheck = 0;
+void WifiEapolCaptureScreen::onItemSelected(uint8_t index) {
+  if (_phase != PHASE_MENU) return;
 
-  if (!Uni.Storage || !Uni.Storage->isAvailable()) {
-    ShowStatusAction::show("No storage available.");
-    Screen.setScreen(new WifiMenuScreen());
-    return;
+  switch (index) {
+    case 0:
+      _discoveryDwellMs = InputNumberAction::popup("Discovery Dwell (ms)", 250, 10000, _discoveryDwellMs);
+      _showMenu();
+      break;
+    case 1:
+      _attackDwellMs = InputNumberAction::popup("Attack Dwell (ms)", 250, 10000, _attackDwellMs);
+      _showMenu();
+      break;
+    case 2:
+      _maxDeauthAttempts = InputNumberAction::popup("Max Deauth Attempts", 5, 30, _maxDeauthAttempts);
+      _showMenu();
+      break;
+    case 3: {
+      // Start capture
+      _channel          = 0;
+      _needRefresh      = false;
+      _ringHead         = 0;
+      _ringTail         = 0;
+      _skipBeacons      = false;
+      _apCount          = 0;
+      _logView.clear();
+      _totalEapol       = 0;
+      _handshakes       = 0;
+      _phase            = PHASE_DISCOVERY;
+      _discoveryCount   = 0;
+      _attackChanCount  = 0;
+      _attackChanIdx    = 0;
+      _deauthFired      = false;
+      _midDeauthSent    = false;
+      _chanDwellUntil   = 0;
+      _midDeauthAt      = 0;
+      memset(_lastEapolName, 0, sizeof(_lastEapolName));
+
+      _eapolMap.clear();
+      _ssidMap.clear();
+      _pending.clear();
+      _beaconStore.clear();
+
+      _storageOk     = false;
+      _lastFreeCheck = 0;
+
+      if (!Uni.Storage || !Uni.Storage->isAvailable()) {
+        ShowStatusAction::show("No storage available.");
+        Screen.setScreen(new WifiMenuScreen());
+        return;
+      }
+
+      if (!StorageUtil::hasSpace()) {
+        ShowStatusAction::show("Storage full! (<20KB free)");
+        Screen.setScreen(new WifiMenuScreen());
+        return;
+      }
+
+      Uni.Storage->makeDir(SAVE_DIR);
+      _storageOk = true;
+
+      _logView.addLine("Discovery scan...", TFT_DARKGREY);
+
+      _attacker = new WifiAttackUtil();
+      esp_wifi_set_promiscuous(true);
+      esp_wifi_set_promiscuous_rx_cb(&WifiEapolCaptureScreen::_promiscuousCb);
+
+      render();
+      break;
+    }
   }
-
-  if (!StorageUtil::hasSpace()) {
-    ShowStatusAction::show("Storage full! (<20KB free)");
-    Screen.setScreen(new WifiMenuScreen());
-    return;
-  }
-
-  Uni.Storage->makeDir(SAVE_DIR);
-  _storageOk = true;
-
-  _pushLog("Discovery scan...", TFT_DARKGREY);
-
-  // WifiAttackUtil ctor sets WIFI_MODE_AP + softAP (needed for esp_wifi_80211_tx)
-  _attacker = new WifiAttackUtil();
-  esp_wifi_set_promiscuous(true);
-  esp_wifi_set_promiscuous_rx_cb(&WifiEapolCaptureScreen::_promiscuousCb);
-
-  render();
 }
 
 void WifiEapolCaptureScreen::onUpdate() {
+  if (_phase == PHASE_MENU) { ListScreen::onUpdate(); return; }
+
   const unsigned long now = millis();
 
   _flush();   // process ring buffer first so APs are registered before deauth
@@ -167,8 +211,8 @@ void WifiEapolCaptureScreen::onUpdate() {
 
       char buf[44];
       snprintf(buf, sizeof(buf), "Scan CH%d", _channel);
-      _pushLog(buf, TFT_DARKGREY);
-      _chanDwellUntil = now + DISCOVERY_DWELL_MS;
+      _logView.addLine(buf, TFT_DARKGREY);
+      _chanDwellUntil = now + _discoveryDwellMs;
       render();
 
       if (_discoveryCount >= 13) {
@@ -178,10 +222,10 @@ void WifiEapolCaptureScreen::onUpdate() {
           _phase        = PHASE_ATTACK;
           _skipBeacons  = true;   // stop beacons from evicting EAPOL in ring
           _attackChanIdx = 0;
-          _pushLog("Attacking APs...", TFT_WHITE);
+          _logView.addLine("Attacking APs...", TFT_WHITE);
           _hopToAttackChan();
         } else {
-          _pushLog("No APs, rescanning", TFT_DARKGREY);
+          _logView.addLine("No APs, rescanning", TFT_DARKGREY);
           _channel = 0;   // restart from CH1 next dwell
         }
       }
@@ -192,7 +236,7 @@ void WifiEapolCaptureScreen::onUpdate() {
       _sendDeauth(_channel);
       _deauthFired   = true;
       _midDeauthSent = false;
-      _midDeauthAt   = now + ATTACK_DWELL_MS / 2;
+      _midDeauthAt   = now + _attackDwellMs / 2;
       render();
     }
 
@@ -237,7 +281,7 @@ void WifiEapolCaptureScreen::onUpdate() {
           _discoveryCount = 0;
           _channel        = 0;
           _chanDwellUntil = now;
-          _pushLog("Rescanning...", TFT_WHITE);
+          _logView.addLine("Rescanning...", TFT_WHITE);
           render();
         }
       }
@@ -262,52 +306,8 @@ void WifiEapolCaptureScreen::onUpdate() {
 }
 
 void WifiEapolCaptureScreen::onRender() {
-  TFT_eSprite sp(&Uni.Lcd);
-  sp.createSprite(bodyW(), bodyH());
-  sp.fillSprite(TFT_BLACK);
-
-  const int totalRows = bodyH() / ROW_H;
-  const int logRows   = totalRows - 1;   // last row reserved for status bar
-
-  // Draw log entries: oldest at top, newest just above status bar
-  const int shown = (_logCount < logRows) ? _logCount : logRows;
-  for (int i = 0; i < shown; i++) {
-    // physIdx: walk backwards from _logHead to get oldest→newest order
-    int physIdx = (_logHead - shown + i + LOG_SIZE) % LOG_SIZE;
-    int y = (logRows - shown + i) * ROW_H;
-    sp.setTextDatum(TL_DATUM);
-    sp.setTextColor(_log[physIdx].color, TFT_BLACK);
-    sp.drawString(_log[physIdx].msg, 0, y, 1);
-  }
-
-  // Status bar (last row): EAPOL count left | latest AP name right
-  const int statusY = (totalRows - 1) * ROW_H;
-  sp.fillRect(0, statusY, bodyW(), ROW_H, 0x2104);  // dark grey band
-
-  char countBuf[24];
-  snprintf(countBuf, sizeof(countBuf), "Captured: %u", _handshakes);
-  sp.setTextDatum(ML_DATUM);
-  sp.setTextColor(_handshakes > 0 ? TFT_MAGENTA : TFT_DARKGREY, 0x2104);
-  sp.drawString(countBuf, 2, statusY + ROW_H / 2, 1);
-
-  if (_lastEapolName[0] != '\0') {
-    sp.setTextDatum(MR_DATUM);
-    sp.setTextColor(TFT_CYAN, 0x2104);
-    sp.drawString(_lastEapolName, bodyW() - 2, statusY + ROW_H / 2, 1);
-  }
-
-#ifndef DEVICE_HAS_KEYBOARD
-  // Non-keyboard boards: render a visible "< Back" bar so user knows to press BTN_A
-  // Overlay the status bar row with back hint (replaces it when no keyboard)
-  const uint16_t accent = Config.getThemeColor();
-  sp.fillRect(0, statusY, bodyW(), ROW_H, accent);
-  sp.setTextDatum(MC_DATUM);
-  sp.setTextColor(TFT_WHITE, accent);
-  sp.drawString("< Back / PRESS", bodyW() / 2, statusY + ROW_H / 2, 1);
-#endif
-
-  sp.pushSprite(bodyX(), bodyY());
-  sp.deleteSprite();
+  if (_phase == PHASE_MENU) { ListScreen::onRender(); return; }
+  _logView.draw(Uni.Lcd, bodyX(), bodyY(), bodyW(), bodyH(), _statusBarCb, this);
 }
 
 void WifiEapolCaptureScreen::onBack() {
@@ -325,7 +325,7 @@ void WifiEapolCaptureScreen::_buildAttackChans() {
     auto it = _eapolMap.find(mac);
     // Only skip if PCAP is confirmed valid: beacon + M1 + M2 all written to file
     if (it != _eapolMap.end() && it->second.validated) continue;
-    if (_apTargets[i].deauthCount >= MAX_DEAUTH_ATTEMPTS) continue;
+    if (_apTargets[i].deauthCount >= _maxDeauthAttempts) continue;
 
     uint8_t ch = _apTargets[i].channel;
     bool dup = false;
@@ -344,11 +344,11 @@ void WifiEapolCaptureScreen::_hopToAttackChan() {
   _attacker->setChannel(_channel);
   _deauthFired    = false;
   _midDeauthSent  = false;
-  _chanDwellUntil = millis() + ATTACK_DWELL_MS;
+  _chanDwellUntil = millis() + _attackDwellMs;
 
   char buf[44];
   snprintf(buf, sizeof(buf), "Attack CH%d (%d APs)", _channel, _attackChanCount);
-  _pushLog(buf, TFT_WHITE);
+  _logView.addLine(buf, TFT_WHITE);
 }
 
 // ── Deauth injection ──────────────────────────────────────────────────────
@@ -378,7 +378,7 @@ void WifiEapolCaptureScreen::_sendDeauth(int ch) {
     memcpy(mac.data(), _apTargets[i].bssid, 6);
     auto it = _eapolMap.find(mac);
     if (it != _eapolMap.end() && it->second.validated) continue;
-    if (_apTargets[i].deauthCount >= MAX_DEAUTH_ATTEMPTS) continue;
+    if (_apTargets[i].deauthCount >= _maxDeauthAttempts) continue;
 
     for (int b = 0; b < 5; b++) {
       _attacker->deauthenticate(_apTargets[i].bssid, (uint8_t)ch);
@@ -388,9 +388,15 @@ void WifiEapolCaptureScreen::_sendDeauth(int ch) {
   }
 
   if (deauthed > 0) {
-    char buf[44];
-    snprintf(buf, sizeof(buf), "Deauth CH%d (%d AP)", ch, deauthed);
-    _pushLog(buf, TFT_YELLOW);
+    // Find max deauthCount among APs on this channel for progress display
+    uint8_t maxCount = 0;
+    for (int i = 0; i < _apCount; i++) {
+      if (_apTargets[i].channel == (uint8_t)ch && _apTargets[i].deauthCount > maxCount)
+        maxCount = _apTargets[i].deauthCount;
+    }
+    char buf[56];
+    snprintf(buf, sizeof(buf), "Deauth CH%d (%d AP) [%d/%d]", ch, deauthed, maxCount, _maxDeauthAttempts);
+    _logView.addLine(buf, TFT_YELLOW);
   }
 }
 
@@ -403,7 +409,7 @@ bool WifiEapolCaptureScreen::_checkFreeSpace() {
   _lastFreeCheck = now;
   if (!StorageUtil::hasSpace()) {
     _storageOk = false;
-    _pushLog("Storage full! Stopped.", TFT_RED);
+    _logView.addLine("Storage full! Stopped.", TFT_RED);
     ShowStatusAction::show("Storage full!\nCapture stopped.", 2000);
     return false;
   }
@@ -594,7 +600,7 @@ void WifiEapolCaptureScreen::_flush() {
         if (ssidIt != _ssidMap.end()) {
           char buf[44];
           snprintf(buf, sizeof(buf), "AP: %s", ssidIt->second.c_str());
-          _pushLog(buf, TFT_CYAN);
+          _logView.addLine(buf, TFT_CYAN);
           _needRefresh = true;
         }
       }
@@ -626,7 +632,7 @@ void WifiEapolCaptureScreen::_flush() {
           _handshakes++;
           char buf2[44];
           snprintf(buf2, sizeof(buf2), "Captured! %s", entry.ssid.c_str());
-          _pushLog(buf2, TFT_MAGENTA);
+          _logView.addLine(buf2, TFT_MAGENTA);
           _needRefresh = true;
           _beaconStore.erase(cap.bssid);  // beacon already in PCAP, free memory
         }
@@ -697,13 +703,13 @@ void WifiEapolCaptureScreen::_flush() {
       const char* mLabel = (msg >= 1 && msg <= 4) ? msgName[msg] : msgName[0];
       snprintf(buf, sizeof(buf), "%s: %s", mLabel, apName);
       uint16_t logColor = (msg == 2 || msg == 4) ? TFT_GREEN : TFT_YELLOW;
-      _pushLog(buf, logColor);
+      _logView.addLine(buf, logColor);
 
       // Count handshake when validation first confirms a valid pair
       if (entry.validated && !wasValid) {
         _handshakes++;
         snprintf(buf, sizeof(buf), "Captured! %s", apName);
-        _pushLog(buf, TFT_MAGENTA);
+        _logView.addLine(buf, TFT_MAGENTA);
         // Free memory — beacon and pending no longer needed
         _beaconStore.erase(cap.bssid);
         _pending.erase(cap.bssid);

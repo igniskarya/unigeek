@@ -7,6 +7,7 @@
 #include <esp_wifi.h>
 
 #include "ui/templates/ListScreen.h"
+#include "ui/views/LogView.h"
 #include "utils/network/WifiAttackUtil.h"
 
 class WifiEapolCaptureScreen : public ListScreen {
@@ -20,7 +21,7 @@ public:
   void onUpdate() override;
   void onRender() override;
   void onBack() override;
-  void onItemSelected(uint8_t index) override {}
+  void onItemSelected(uint8_t index) override;
 
   // ── Shared types (callback needs access) ─────────────────────────────────
 
@@ -101,13 +102,20 @@ public:
 
 private:
   static constexpr int      MAX_PENDING        = 8;       // max buffered EAPOL frames per AP before SSID known
-  static constexpr int      MAX_DEAUTH_ATTEMPTS = 20;     // deauth bursts per AP before giving up and rescanning
-  static constexpr unsigned long DISCOVERY_DWELL_MS = 500;   // ms per channel during discovery scan
-  static constexpr unsigned long ATTACK_DWELL_MS    = 6000;  // ms to stay on channel after deauth
+  int                       _maxDeauthAttempts  = 20;     // deauth bursts per AP before giving up and rescanning
+  unsigned long _discoveryDwellMs = 500;    // ms per channel during discovery scan
+  unsigned long _attackDwellMs    = 6000;  // ms to stay on channel after deauth
 
   // ── Scan phase ────────────────────────────────────────────────────────────
-  enum Phase { PHASE_DISCOVERY, PHASE_ATTACK };
-  Phase         _phase            = PHASE_DISCOVERY;
+  enum Phase { PHASE_MENU, PHASE_DISCOVERY, PHASE_ATTACK };
+  Phase         _phase            = PHASE_MENU;
+
+  // ── Menu items ────────────────────────────────────────────────────────────
+  ListItem      _menuItems[4]     = {};
+  String        _discoverySub;
+  String        _attackSub;
+  String        _deauthSub;
+  void          _showMenu();
   int           _discoveryCount   = 0;    // channels scanned in current discovery pass
   uint8_t       _attackChans[13]  = {};   // unique channels with APs needing EAPOL
   int           _attackChanCount  = 0;
@@ -118,16 +126,7 @@ private:
   unsigned long _midDeauthAt      = 0;      // absolute time to send mid-dwell deauth
 
   // ── Action log ────────────────────────────────────────────────────────────
-  static constexpr int LOG_SIZE = 32;
-  static constexpr int ROW_H   = 10;  // px per log row (font1 = 8px + 2px gap)
-
-  struct LogEntry {
-    char     msg[44];
-    uint16_t color;
-  };
-  LogEntry      _log[LOG_SIZE] = {};
-  int           _logHead       = 0;   // next write position
-  int           _logCount      = 0;   // total entries written (capped at LOG_SIZE)
+  LogView       _logView;
   uint32_t      _totalEapol    = 0;
   uint32_t      _handshakes    = 0;   // confirmed M1+M2 pairs
   char          _lastEapolName[20] = {};
@@ -141,7 +140,7 @@ private:
 
   WifiAttackUtil* _attacker = nullptr;
 
-  void _pushLog(const char* msg, uint16_t color);
+  static void _statusBarCb(TFT_eSprite& sp, int barY, int width, void* userData);
   bool _checkFreeSpace();
   void _flush();
   void _buildAttackChans();
