@@ -42,8 +42,9 @@ private:
   int8_t _rxPin = -1;
   uint32_t _baudRate = 9600;
 
-  ListItem _menuItems[6] = {
+  ListItem _menuItems[7] = {
     {"View GPS Info"},
+    {"Scan Mode"},
     {"Wardriver"},
     {"Internet"},
     {"Wigle Token"},
@@ -67,8 +68,11 @@ private:
 
   String _wigleTokenSub;
   String _internetSub;
+  String _scanModeSub;
+  GPSModule::ScanMode _scanMode = GPSModule::SCAN_WIFI_BLE;
 
   void _showMenu();
+  void _selectScanMode();
   void _connectInternet();
   void _editWigleToken();
   void _showWigleStats();

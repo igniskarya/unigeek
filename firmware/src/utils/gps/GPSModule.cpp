@@ -371,14 +371,14 @@ bool GPSModule::initWardrive(IStorage* storage) {
   _wardriveStartTime = millis();
   _wardriveState = WARDRIVE_SCANNING;
 
-  _startPromiscuous();
-  _startBleScan();
+  if (_scanMode != SCAN_BLE_ONLY) _startPromiscuous();
+  if (_scanMode != SCAN_WIFI_ONLY) _startBleScan();
   return true;
 }
 
 void GPSModule::doWardrive(IStorage* storage) {
   // Channel hop every 200ms (13 channels, full cycle ~2.6s)
-  if (millis() - _lastChannelHop > 200) {
+  if (_scanMode != SCAN_BLE_ONLY && millis() - _lastChannelHop > 200) {
     _currentChannel = (_currentChannel % 13) + 1;
     esp_wifi_set_channel(_currentChannel, WIFI_SECOND_CHAN_NONE);
     _lastChannelHop = millis();
@@ -443,8 +443,8 @@ void GPSModule::doWardrive(IStorage* storage) {
 }
 
 void GPSModule::endWardrive() {
-  _stopPromiscuous();
-  _stopBleScan();
+  if (_scanMode != SCAN_BLE_ONLY) _stopPromiscuous();
+  if (_scanMode != SCAN_WIFI_ONLY) _stopBleScan();
 
   _wardriveState = WARDRIVE_IDLE;
   _lastError = "";
@@ -461,6 +461,8 @@ void GPSModule::endWardrive() {
   _wardriveStartTime = 0;
   s_scanCount = 0;
 
-  WiFi.disconnect(true);
-  WiFi.mode(WIFI_OFF);
+  if (_scanMode != SCAN_BLE_ONLY) {
+    WiFi.disconnect(true);
+    WiFi.mode(WIFI_OFF);
+  }
 }

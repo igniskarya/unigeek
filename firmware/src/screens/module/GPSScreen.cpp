@@ -185,7 +185,12 @@ void GPSScreen::onItemSelected(uint8_t index) {
         _state = STATE_INFO;
         _renderInfo();
         break;
-      case 1: {
+      case 1:
+        _selectScanMode();
+        render();
+        break;
+      case 2: {
+        _gps.setScanMode(_scanMode);
         if (!_gps.initWardrive(Uni.Storage)) {
           ShowStatusAction::show(("Wardrive error:\n" + _gps.wardriveError()).c_str());
           render();
@@ -197,18 +202,18 @@ void GPSScreen::onItemSelected(uint8_t index) {
         _renderWardriver();
         break;
       }
-      case 2:
+      case 3:
         _connectInternet();
         break;
-      case 3:
+      case 4:
         _editWigleToken();
         render();
         break;
-      case 4:
+      case 5:
         _showWigleStats();
         render();
         break;
-      case 5:
+      case 6:
         _showUploadMenu();
         render();
         break;
@@ -219,19 +224,53 @@ void GPSScreen::onItemSelected(uint8_t index) {
   }
 }
 
+static const char* _scanModeLabel(GPSModule::ScanMode mode) {
+  switch (mode) {
+    case GPSModule::SCAN_WIFI_ONLY: return "WiFi Only";
+    case GPSModule::SCAN_BLE_ONLY:  return "BLE Only";
+    default:                        return "WiFi + BLE";
+  }
+}
+
 void GPSScreen::_showMenu() {
   _state = STATE_MENU;
   _infoInitialized = false;
 
+  // Scan mode sublabel
+  _scanModeSub = _scanModeLabel(_scanMode);
+  _menuItems[1] = {"Scan Mode", _scanModeSub.c_str()};
+
   // Internet sublabel
   _internetSub = (WiFi.status() == WL_CONNECTED) ? WiFi.SSID() : "";
-  _menuItems[2] = {"Internet", _internetSub.length() ? _internetSub.c_str() : nullptr};
+  _menuItems[3] = {"Internet", _internetSub.length() ? _internetSub.c_str() : nullptr};
 
   // Wigle Token sublabel
   _wigleTokenSub = WigleUtil::tokenSublabel(Uni.Storage);
-  _menuItems[3] = {"Wigle Token", _wigleTokenSub.c_str()};
+  _menuItems[4] = {"Wigle Token", _wigleTokenSub.c_str()};
 
   setItems(_menuItems);
+}
+
+void GPSScreen::_selectScanMode() {
+  static constexpr InputSelectAction::Option opts[] = {
+    {"WiFi + BLE", "wifi_ble"},
+    {"WiFi Only",  "wifi"},
+    {"BLE Only",   "ble"},
+  };
+  const char* current = nullptr;
+  switch (_scanMode) {
+    case GPSModule::SCAN_WIFI_ONLY: current = "wifi"; break;
+    case GPSModule::SCAN_BLE_ONLY:  current = "ble"; break;
+    default:                        current = "wifi_ble"; break;
+  }
+  const char* sel = InputSelectAction::popup("Scan Mode", opts, 3, current);
+  if (!sel) return;
+  if (strcmp(sel, "wifi") == 0) _scanMode = GPSModule::SCAN_WIFI_ONLY;
+  else if (strcmp(sel, "ble") == 0) _scanMode = GPSModule::SCAN_BLE_ONLY;
+  else _scanMode = GPSModule::SCAN_WIFI_BLE;
+
+  _scanModeSub = _scanModeLabel(_scanMode);
+  _menuItems[1] = {"Scan Mode", _scanModeSub.c_str()};
 }
 
 void GPSScreen::_renderInfo() {
@@ -262,12 +301,18 @@ void GPSScreen::_wardStatusCb(TFT_eSprite& sp, int barY, int width, void* userDa
 
   float dist = self->_gps.totalDistance();
   char left[40];
-  if (dist >= 1000)
-    snprintf(left, sizeof(left), "W:%u B:%u %.1fkm",
-             self->_gps.discoveredCount(), self->_gps.bleDiscoveredCount(), dist / 1000.0f);
-  else
-    snprintf(left, sizeof(left), "W:%u B:%u %dm",
-             self->_gps.discoveredCount(), self->_gps.bleDiscoveredCount(), (int)dist);
+  auto mode = self->_scanMode;
+
+  if (mode == GPSModule::SCAN_WIFI_ONLY) {
+    if (dist >= 1000) snprintf(left, sizeof(left), "W:%u %.1fkm", self->_gps.discoveredCount(), dist / 1000.0f);
+    else snprintf(left, sizeof(left), "W:%u %dm", self->_gps.discoveredCount(), (int)dist);
+  } else if (mode == GPSModule::SCAN_BLE_ONLY) {
+    if (dist >= 1000) snprintf(left, sizeof(left), "B:%u %.1fkm", self->_gps.bleDiscoveredCount(), dist / 1000.0f);
+    else snprintf(left, sizeof(left), "B:%u %dm", self->_gps.bleDiscoveredCount(), (int)dist);
+  } else {
+    if (dist >= 1000) snprintf(left, sizeof(left), "W:%u B:%u %.1fkm", self->_gps.discoveredCount(), self->_gps.bleDiscoveredCount(), dist / 1000.0f);
+    else snprintf(left, sizeof(left), "W:%u B:%u %dm", self->_gps.discoveredCount(), self->_gps.bleDiscoveredCount(), (int)dist);
+  }
   sp.drawString(left, 2, barY);
 
   sp.setTextDatum(TR_DATUM);

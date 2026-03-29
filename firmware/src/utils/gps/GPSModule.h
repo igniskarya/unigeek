@@ -21,6 +21,14 @@ public:
     WARDRIVE_SAVING
   };
 
+  enum ScanMode {
+    SCAN_WIFI_BLE,   // default
+    SCAN_WIFI_ONLY,
+    SCAN_BLE_ONLY,
+  };
+
+  void setScanMode(ScanMode mode) { _scanMode = mode; }
+
   struct FoundEntry {
     char name[33];
     char addr[18];
@@ -54,6 +62,7 @@ private:
   HardwareSerial* _serial = nullptr;
   bool _ownSerial = false;
   WardriveState _wardriveState = WARDRIVE_IDLE;
+  ScanMode _scanMode = SCAN_WIFI_BLE;
 
   String _savePath = "/unigeek/gps/wardriver";
   String _filename;
