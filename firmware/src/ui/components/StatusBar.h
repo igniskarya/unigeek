@@ -22,7 +22,7 @@ public:
   static constexpr uint8_t WIDTH           = 32;
   static constexpr uint8_t BOX_SIZE        = 20;
   static constexpr uint8_t BOX_X           = (WIDTH - BOX_SIZE) / 2;
-  static constexpr uint8_t SLOT_GAP        = 4;
+  static constexpr uint8_t SLOT_GAP        = 2;
   static constexpr uint8_t SLOT_START      = 6;
   // clock box: width=BOX_SIZE, height = PAD + textH + lineGap + textH + PAD
   static constexpr uint8_t CLOCK_PAD       = 3;   // top/bottom padding inside box

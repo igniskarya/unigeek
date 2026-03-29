@@ -102,9 +102,9 @@ public:
 
 private:
   static constexpr int      MAX_PENDING        = 8;       // max buffered EAPOL frames per AP before SSID known
-  int                       _maxDeauthAttempts  = 20;     // deauth bursts per AP before giving up and rescanning
-  unsigned long _discoveryDwellMs = 500;    // ms per channel during discovery scan
-  unsigned long _attackDwellMs    = 6000;  // ms to stay on channel after deauth
+  int                       _maxDeauthAttempts  = 10;     // deauth bursts per AP before giving up and rescanning
+  unsigned long _discoveryDwellMs = 1000;    // ms per channel during discovery scan
+  unsigned long _attackDwellMs    = 8000;  // ms to stay on channel after deauth
 
   // ── Scan phase ────────────────────────────────────────────────────────────
   enum Phase { PHASE_MENU, PHASE_DISCOVERY, PHASE_ATTACK };
@@ -120,10 +120,8 @@ private:
   uint8_t       _attackChans[13]  = {};   // unique channels with APs needing EAPOL
   int           _attackChanCount  = 0;
   int           _attackChanIdx    = 0;
-  bool          _deauthFired      = false;  // initial deauth sent for current attack slot
-  bool          _midDeauthSent    = false;  // mid-dwell deauth sent
-  unsigned long _chanDwellUntil   = 0;      // absolute time to hop away
-  unsigned long _midDeauthAt      = 0;      // absolute time to send mid-dwell deauth
+  bool          _deauthFired      = false;  // deauth sent for current dwell slot
+  unsigned long _chanDwellUntil   = 0;      // absolute time to fire next deauth or hop
 
   // ── Action log ────────────────────────────────────────────────────────────
   LogView       _logView;

@@ -156,9 +156,7 @@ void WifiEapolCaptureScreen::onItemSelected(uint8_t index) {
       _attackChanCount  = 0;
       _attackChanIdx    = 0;
       _deauthFired      = false;
-      _midDeauthSent    = false;
       _chanDwellUntil   = 0;
-      _midDeauthAt      = 0;
       memset(_lastEapolName, 0, sizeof(_lastEapolName));
 
       _eapolMap.clear();
@@ -234,28 +232,31 @@ void WifiEapolCaptureScreen::onUpdate() {
   } else {  // PHASE_ATTACK
     if (!_deauthFired) {
       _sendDeauth(_channel);
-      _deauthFired   = true;
-      _midDeauthSent = false;
-      _midDeauthAt   = now + _attackDwellMs / 2;
-      render();
-    }
-
-    // Mid-dwell second burst — if no EAPOL yet for this channel's APs
-    if (!_midDeauthSent && now >= _midDeauthAt) {
-      _midDeauthSent = true;
-      _sendDeauth(_channel);
+      _deauthFired    = true;
+      _chanDwellUntil = now + _attackDwellMs;
       render();
     }
 
     if (now >= _chanDwellUntil) {
-      _attackChanIdx = (_attackChanIdx + 1) % _attackChanCount;
+      // Check if any APs on this channel still need deauth
+      bool channelDone = true;
+      for (int i = 0; i < _apCount; i++) {
+        if (_apTargets[i].channel != (uint8_t)_channel) continue;
+        MacAddr mac;
+        memcpy(mac.data(), _apTargets[i].bssid, 6);
+        auto it = _eapolMap.find(mac);
+        if (it != _eapolMap.end() && it->second.validated) continue;
+        if (_apTargets[i].deauthCount >= _maxDeauthAttempts) continue;
+        channelDone = false;
+        break;
+      }
 
-      // Rebuild at the start of each new cycle through all attack channels
-      if (_attackChanIdx == 0) {
-        _buildAttackChans();
-        if (_attackChanCount == 0) {
-          // Reset incomplete APs: clear deauth count and partial EAPOL data
-          // so they get a fresh attack in the next cycle
+      if (!channelDone) {
+        _deauthFired = false;  // fire next deauth on same channel
+      } else {
+        _attackChanIdx++;
+        if (_attackChanIdx >= _attackChanCount) {
+          // All attack channels exhausted — reset incomplete APs and rescan
           for (int i = 0; i < _apCount; i++) {
             MacAddr mac;
             memcpy(mac.data(), _apTargets[i].bssid, 6);
@@ -264,11 +265,9 @@ void WifiEapolCaptureScreen::onUpdate() {
 
             _apTargets[i].deauthCount = 0;
 
-            // Delete partial PCAP and reset entry
             if (it != _eapolMap.end()) {
-              if (!it->second.filepath.empty()) {
+              if (!it->second.filepath.empty())
                 Uni.Storage->deleteFile(it->second.filepath.c_str());
-              }
               _eapolMap.erase(it);
             }
             _pending.erase(mac);
@@ -283,11 +282,9 @@ void WifiEapolCaptureScreen::onUpdate() {
           _chanDwellUntil = now;
           _logView.addLine("Rescanning...", TFT_WHITE);
           render();
+        } else {
+          _hopToAttackChan();
         }
-      }
-
-      if (_attackChanCount > 0) {
-        _hopToAttackChan();
       }
     }
   }
@@ -342,12 +339,10 @@ void WifiEapolCaptureScreen::_buildAttackChans() {
 void WifiEapolCaptureScreen::_hopToAttackChan() {
   _channel     = _attackChans[_attackChanIdx];
   _attacker->setChannel(_channel);
-  _deauthFired    = false;
-  _midDeauthSent  = false;
-  _chanDwellUntil = millis() + _attackDwellMs;
+  _deauthFired = false;
 
   char buf[44];
-  snprintf(buf, sizeof(buf), "Attack CH%d (%d APs)", _channel, _attackChanCount);
+  snprintf(buf, sizeof(buf), "Attack CH%d [%d/%d]", _channel, _attackChanIdx + 1, _attackChanCount);
   _logView.addLine(buf, TFT_WHITE);
 }
 
@@ -380,7 +375,7 @@ void WifiEapolCaptureScreen::_sendDeauth(int ch) {
     if (it != _eapolMap.end() && it->second.validated) continue;
     if (_apTargets[i].deauthCount >= _maxDeauthAttempts) continue;
 
-    for (int b = 0; b < 5; b++) {
+    for (int b = 0; b < 10; b++) {
       _attacker->deauthenticate(_apTargets[i].bssid, (uint8_t)ch);
     }
     _apTargets[i].deauthCount++;
@@ -388,7 +383,6 @@ void WifiEapolCaptureScreen::_sendDeauth(int ch) {
   }
 
   if (deauthed > 0) {
-    // Find max deauthCount among APs on this channel for progress display
     uint8_t maxCount = 0;
     for (int i = 0; i < _apCount; i++) {
       if (_apTargets[i].channel == (uint8_t)ch && _apTargets[i].deauthCount > maxCount)
