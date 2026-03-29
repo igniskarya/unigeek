@@ -5,7 +5,7 @@
 class WebFileManagerScreen : public ListScreen {
 public:
   const char* title()         override { return "Web File Manager"; }
-  bool inhibitPowerSave()     override { return _state == STATE_RUNNING; }
+  bool inhibitPowerOff()     override { return _state == STATE_RUNNING; }
 
   void onInit() override;
   void onBack() override;
