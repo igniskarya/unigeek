@@ -210,3 +210,8 @@ firmware/
 - nr24lf
 - cc1101
 - infrared
+- log view and scroll list view should be on template instead of component
+- use log view on eapol capture
+- add attack counter and max attempt on eapol capture
+- add interval configuration for hopping channel and attack interval and wait on different list before it start
+- on gps walking mode, add channel number on status so user know which channel that program listening 
