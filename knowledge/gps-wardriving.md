@@ -12,6 +12,8 @@ On launch, the screen waits for a satellite fix. Go outside for best GPS recepti
 
 ## Menu
 
+Menu items: View GPS Info, Scan Mode, Wardrive Mode, Wardriver, Internet, Wigle Token, Wardrive Stat, Upload Wardrive.
+
 ### View GPS Info
 
 Shows real-time GPS data, updated every second:
@@ -21,11 +23,26 @@ Shows real-time GPS data, updated every second:
 - Satellite count
 - Date and Time (UTC)
 
+### Scan Mode
+
+Choose what to scan during wardriving:
+- **WiFi + BLE** (default) — scan both WiFi networks and BLE devices
+- **WiFi Only** — scan WiFi networks only
+- **BLE Only** — scan BLE devices only
+
+The status bar adapts to show only the relevant counts (W: for WiFi, B: for BLE).
+
+### Wardrive Mode
+
+Choose the WiFi scanning method:
+- **Driving** (default) — active scanning using `WiFi.scanNetworks()`, better coverage at speed since it actively probes for networks every 3 seconds
+- **Walking** — passive promiscuous mode with channel hopping across 13 channels (~2.6s per cycle), captures beacons and probe responses without transmitting
+
 ### Wardriver
 
-Logs nearby WiFi networks and BLE devices with GPS coordinates. Uses NimBLE for lightweight BLE scanning on all boards (no PSRAM required). WiFi capture uses promiscuous mode with channel hopping across all 13 channels.
+Logs nearby WiFi networks and BLE devices with GPS coordinates. Uses NimBLE for lightweight BLE scanning on all boards (no PSRAM required).
 
-The display shows a scrolling log of discovered devices with timestamp, name, and address, plus a status bar with WiFi count, BLE count, distance traveled, and elapsed time.
+The display shows a scrolling log of discovered devices with timestamp, name, and address, plus a status bar with counts, distance traveled, and elapsed time.
 
 Press BACK or PRESS to stop wardriving. A status message is shown during cleanup.
 
@@ -51,7 +68,7 @@ View your Wigle profile: username, rank, month rank, WiFi/Cell/BT discovered, Wi
 
 ### Upload Wardrive
 
-Lists wardrive CSV files sorted by name. Uploaded files are marked with "Uploaded" sublabel and renamed with `_uploaded` suffix. Requires internet connection and a valid Wigle token.
+Lists wardrive CSV files sorted by name (newest first). Uploaded files are marked with "Uploaded" sublabel and renamed with `_uploaded` suffix. Requires internet connection and a valid Wigle token.
 
 ## Storage
 

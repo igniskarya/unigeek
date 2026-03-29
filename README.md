@@ -62,7 +62,7 @@ Multi-tool firmware for ESP32-based handheld devices. Built with PlatformIO + Ar
 - **I2C Detector** — Scan I2C bus and list all responding device addresses
 - **QR Code** — Generate and display a QR code from typed or file-loaded text; supports WiFi QR format
 - **Barcode** — Generate and display a Code 128 barcode from typed or file-loaded text
-- **File Manager** — Browse, rename, copy, cut, paste, and delete files and folders on storage; hold 1s to open context menu
+- **File Manager** — Browse, rename, copy, cut, paste, and delete files and folders on storage; tap a file to view its contents; hold 1s to open context menu
 
 ### Games
 - **HEX Decoder** — Wordle-style game using hexadecimal characters (0–9, A–F)
@@ -88,6 +88,8 @@ Multi-tool firmware for ESP32-based handheld devices. Built with PlatformIO + Ar
   - **Darkside Attack** — Recover the first key when no keys are known
 - **GPS** — GPS module support with wardriving, works on all boards via external GPS ([details](knowledge/gps-wardriving.md))
   - **Live View** — Real-time satellite count, coordinates, altitude, speed, and heading
+  - **Scan Mode** — Choose WiFi + BLE (default), WiFi Only, or BLE Only for wardriving
+  - **Wardrive Mode** — Driving (default, active WiFi scan) or Walking (passive promiscuous sniffing)
   - **Wardriving** — Log nearby WiFi and BLE devices with GPS coordinates in Wigle CSV format
   - **Wigle Integration** — Connect to WiFi, upload wardrive logs, view user stats, manage API token
 
@@ -207,4 +209,4 @@ firmware/
 - LoRa
 - nr24lf
 - cc1101
-
+- infrared
