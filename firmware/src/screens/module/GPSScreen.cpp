@@ -189,8 +189,13 @@ void GPSScreen::onItemSelected(uint8_t index) {
         _selectScanMode();
         render();
         break;
-      case 2: {
+      case 2:
+        _selectWardriveMode();
+        render();
+        break;
+      case 3: {
         _gps.setScanMode(_scanMode);
+        _gps.setWardriveMode(_wardMode);
         if (!_gps.initWardrive(Uni.Storage)) {
           ShowStatusAction::show(("Wardrive error:\n" + _gps.wardriveError()).c_str());
           render();
@@ -202,18 +207,18 @@ void GPSScreen::onItemSelected(uint8_t index) {
         _renderWardriver();
         break;
       }
-      case 3:
+      case 4:
         _connectInternet();
         break;
-      case 4:
+      case 5:
         _editWigleToken();
         render();
         break;
-      case 5:
+      case 6:
         _showWigleStats();
         render();
         break;
-      case 6:
+      case 7:
         _showUploadMenu();
         render();
         break;
@@ -232,6 +237,10 @@ static const char* _scanModeLabel(GPSModule::ScanMode mode) {
   }
 }
 
+static const char* _wardModeLabel(GPSModule::WardriveMode mode) {
+  return mode == GPSModule::MODE_DRIVING ? "Driving" : "Walking";
+}
+
 void GPSScreen::_showMenu() {
   _state = STATE_MENU;
   _infoInitialized = false;
@@ -240,13 +249,17 @@ void GPSScreen::_showMenu() {
   _scanModeSub = _scanModeLabel(_scanMode);
   _menuItems[1] = {"Scan Mode", _scanModeSub.c_str()};
 
+  // Wardrive mode sublabel
+  _wardModeSub = _wardModeLabel(_wardMode);
+  _menuItems[2] = {"Wardrive Mode", _wardModeSub.c_str()};
+
   // Internet sublabel
   _internetSub = (WiFi.status() == WL_CONNECTED) ? WiFi.SSID() : "";
-  _menuItems[3] = {"Internet", _internetSub.length() ? _internetSub.c_str() : nullptr};
+  _menuItems[4] = {"Internet", _internetSub.length() ? _internetSub.c_str() : nullptr};
 
   // Wigle Token sublabel
   _wigleTokenSub = WigleUtil::tokenSublabel(Uni.Storage);
-  _menuItems[4] = {"Wigle Token", _wigleTokenSub.c_str()};
+  _menuItems[5] = {"Wigle Token", _wigleTokenSub.c_str()};
 
   setItems(_menuItems);
 }
@@ -271,6 +284,20 @@ void GPSScreen::_selectScanMode() {
 
   _scanModeSub = _scanModeLabel(_scanMode);
   _menuItems[1] = {"Scan Mode", _scanModeSub.c_str()};
+}
+
+void GPSScreen::_selectWardriveMode() {
+  static constexpr InputSelectAction::Option opts[] = {
+    {"Driving", "driving"},
+    {"Walking", "walking"},
+  };
+  const char* current = _wardMode == GPSModule::MODE_DRIVING ? "driving" : "walking";
+  const char* sel = InputSelectAction::popup("Wardrive Mode", opts, 2, current);
+  if (!sel) return;
+  _wardMode = strcmp(sel, "driving") == 0 ? GPSModule::MODE_DRIVING : GPSModule::MODE_WALKING;
+
+  _wardModeSub = _wardModeLabel(_wardMode);
+  _menuItems[2] = {"Wardrive Mode", _wardModeSub.c_str()};
 }
 
 void GPSScreen::_renderInfo() {
@@ -396,7 +423,7 @@ void GPSScreen::_editWigleToken() {
   token.trim();
   WigleUtil::saveToken(Uni.Storage, token);
   _wigleTokenSub = WigleUtil::tokenSublabel(Uni.Storage);
-  _menuItems[3] = {"Wigle Token", _wigleTokenSub.c_str()};
+  _menuItems[5] = {"Wigle Token", _wigleTokenSub.c_str()};
   ShowStatusAction::show("Token saved");
 }
 

@@ -323,6 +323,69 @@ void GPSModule::_stopBleScan() {
   _bleTask = nullptr;
 }
 
+// === Active WiFi scan (driving mode) ===
+
+void GPSModule::_startActiveScan() {
+  WiFi.mode(WIFI_STA);
+  WiFi.disconnect();
+  delay(100);
+  WiFi.scanNetworks(true); // async
+  _activeScanPending = true;
+  _lastWifiScan = millis();
+}
+
+void GPSModule::_doActiveScan(IStorage* storage) {
+  int16_t result = WiFi.scanComplete();
+  if (result == WIFI_SCAN_RUNNING) return;
+
+  if (result > 0) {
+    for (int i = 0; i < result; i++) {
+      uint8_t* bssid = WiFi.BSSID(i);
+      if (!bssid || _isWifiScanned(bssid)) continue;
+
+      char addrStr[18];
+      snprintf(addrStr, 18, "%02X:%02X:%02X:%02X:%02X:%02X",
+               bssid[0], bssid[1], bssid[2], bssid[3], bssid[4], bssid[5]);
+
+      wifi_auth_mode_t auth = WiFi.encryptionType(i);
+      String authMode;
+      switch (auth) {
+        case WIFI_AUTH_OPEN:         authMode = "[OPEN][ESS]"; break;
+        case WIFI_AUTH_WEP:          authMode = "[WEP][ESS]"; break;
+        case WIFI_AUTH_WPA_PSK:      authMode = "[WPA-PSK][ESS]"; break;
+        case WIFI_AUTH_WPA2_PSK:     authMode = "[WPA2-PSK][ESS]"; break;
+        case WIFI_AUTH_WPA_WPA2_PSK: authMode = "[WPA-WPA2-PSK][ESS]"; break;
+        default:                     authMode = "[WPA2][ESS]"; break;
+      }
+
+      _addWigleRecord(storage, WiFi.SSID(i), String(addrStr),
+                       authMode, WiFi.RSSI(i), WiFi.channel(i));
+      _totalDiscovered++;
+
+      const char* displayName = WiFi.SSID(i).length() > 0 ? WiFi.SSID(i).c_str() : "<hidden>";
+      _addRecentFind(displayName, addrStr, WiFi.RSSI(i), WiFi.channel(i), false);
+    }
+  }
+
+  WiFi.scanDelete();
+
+  // Start next scan every 3 seconds
+  if (millis() - _lastWifiScan > 3000) {
+    WiFi.scanNetworks(true);
+    _activeScanPending = true;
+    _lastWifiScan = millis();
+  } else {
+    _activeScanPending = false;
+  }
+}
+
+void GPSModule::_stopActiveScan() {
+  if (_activeScanPending) {
+    WiFi.scanDelete();
+    _activeScanPending = false;
+  }
+}
+
 // === Wardrive lifecycle ===
 
 bool GPSModule::initWardrive(IStorage* storage) {
@@ -371,14 +434,22 @@ bool GPSModule::initWardrive(IStorage* storage) {
   _wardriveStartTime = millis();
   _wardriveState = WARDRIVE_SCANNING;
 
-  if (_scanMode != SCAN_BLE_ONLY) _startPromiscuous();
+  if (_scanMode != SCAN_BLE_ONLY) {
+    if (_wardriveMode == MODE_DRIVING) _startActiveScan();
+    else _startPromiscuous();
+  }
   if (_scanMode != SCAN_WIFI_ONLY) _startBleScan();
   return true;
 }
 
 void GPSModule::doWardrive(IStorage* storage) {
-  // Channel hop every 200ms (13 channels, full cycle ~2.6s)
-  if (_scanMode != SCAN_BLE_ONLY && millis() - _lastChannelHop > 200) {
+  // Active scan mode (driving) — process WiFi results directly
+  if (_scanMode != SCAN_BLE_ONLY && _wardriveMode == MODE_DRIVING) {
+    _doActiveScan(storage);
+  }
+
+  // Passive mode (walking) — channel hop
+  if (_scanMode != SCAN_BLE_ONLY && _wardriveMode == MODE_WALKING && millis() - _lastChannelHop > 200) {
     _currentChannel = (_currentChannel % 13) + 1;
     esp_wifi_set_channel(_currentChannel, WIFI_SECOND_CHAN_NONE);
     _lastChannelHop = millis();
@@ -443,7 +514,10 @@ void GPSModule::doWardrive(IStorage* storage) {
 }
 
 void GPSModule::endWardrive() {
-  if (_scanMode != SCAN_BLE_ONLY) _stopPromiscuous();
+  if (_scanMode != SCAN_BLE_ONLY) {
+    if (_wardriveMode == MODE_DRIVING) _stopActiveScan();
+    else _stopPromiscuous();
+  }
   if (_scanMode != SCAN_WIFI_ONLY) _stopBleScan();
 
   _wardriveState = WARDRIVE_IDLE;

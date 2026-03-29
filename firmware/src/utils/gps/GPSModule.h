@@ -27,7 +27,13 @@ public:
     SCAN_BLE_ONLY,
   };
 
+  enum WardriveMode {
+    MODE_DRIVING,    // active WiFi.scanNetworks — default, better for driving
+    MODE_WALKING,    // passive promiscuous sniffing — better for walking
+  };
+
   void setScanMode(ScanMode mode) { _scanMode = mode; }
+  void setWardriveMode(WardriveMode mode) { _wardriveMode = mode; }
 
   struct FoundEntry {
     char name[33];
@@ -63,6 +69,7 @@ private:
   bool _ownSerial = false;
   WardriveState _wardriveState = WARDRIVE_IDLE;
   ScanMode _scanMode = SCAN_WIFI_BLE;
+  WardriveMode _wardriveMode = MODE_DRIVING;
 
   String _savePath = "/unigeek/gps/wardriver";
   String _filename;
@@ -92,11 +99,17 @@ private:
   uint8_t _bleHead = 0;
   bool _isBleScanned(const uint8_t* addr);
 
-  // Promiscuous mode channel hopping
+  // Promiscuous mode channel hopping (walking mode)
   uint8_t _currentChannel = 1;
   unsigned long _lastChannelHop = 0;
   void _startPromiscuous();
   void _stopPromiscuous();
+
+  // Active WiFi scan (driving mode)
+  bool _activeScanPending = false;
+  void _startActiveScan();
+  void _doActiveScan(IStorage* storage);
+  void _stopActiveScan();
 
   // BLE scanning task
   TaskHandle_t _bleTask = nullptr;
