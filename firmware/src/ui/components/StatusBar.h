@@ -22,7 +22,7 @@ public:
   static constexpr uint8_t WIDTH           = 32;
   static constexpr uint8_t BOX_SIZE        = 20;
   static constexpr uint8_t BOX_X           = (WIDTH - BOX_SIZE) / 2;
-  static constexpr uint8_t SLOT_GAP        = 4;
+  static constexpr uint8_t SLOT_GAP        = 2;
   static constexpr uint8_t SLOT_START      = 6;
   // clock box: width=BOX_SIZE, height = PAD + textH + lineGap + textH + PAD
   static constexpr uint8_t CLOCK_PAD       = 3;   // top/bottom padding inside box
@@ -57,27 +57,42 @@ public:
     // background
     sprite.fillRoundRect(4, 4, WIDTH - 8, lcd.height() - 8, 3, Config.getThemeColor());
 
-    // ─── Battery (slot 0) ─────────────────────────────
-    uint16_t y0 = _slotY(0);
-    _drawBox(sprite, y0);
-    _renderText(sprite, y0, std::to_string(status.battery).c_str(),
+    uint8_t slot = 0;
+
+    // ─── Battery (always) ────────────────────────────
+    uint16_t yBat = _slotY(slot++);
+    _drawBox(sprite, yBat);
+    _renderText(sprite, yBat, std::to_string(status.battery).c_str(),
                 status.isCharging ? TFT_GREEN : TFT_WHITE);
 
-    // ─── Storage (slot 1) ─────────────────────────────
-    uint16_t y1 = _slotY(1);
-    _drawBox(sprite, y1);
+    // ─── Heap % (always) ─────────────────────────────
+    uint16_t yHeap = _slotY(slot++);
+    _drawBox(sprite, yHeap);
+    uint32_t freeHeap = ESP.getFreeHeap();
+    uint32_t totalHeap = ESP.getHeapSize();
+    uint8_t heapPct = totalHeap > 0 ? (uint8_t)((totalHeap - freeHeap) * 100 / totalHeap) : 0;
+    _renderText(sprite, yHeap, std::to_string(heapPct).c_str(),
+                heapPct >= 85 ? TFT_RED : TFT_WHITE);
+
+    // ─── Storage (always) ────────────────────────────
+    uint16_t ySt = _slotY(slot++);
+    _drawBox(sprite, ySt);
     bool isSD = (Uni.StorageSD != nullptr && Uni.Storage == Uni.StorageSD);
-    _renderText(sprite, y1, isSD ? "SD" : "FS", TFT_WHITE);
+    _renderText(sprite, ySt, isSD ? "SD" : "FS", TFT_WHITE);
 
-    // ─── WiFi (slot 2) ────────────────────────────────
-    uint16_t y2 = _slotY(2);
-    _drawBox(sprite, y2);
-    Icons::drawWifi(sprite, BOX_X - 2, y2 - 5, status.wifiOn);
+    // ─── WiFi (only when active) ─────────────────────
+    if (status.wifiOn) {
+      uint16_t yWifi = _slotY(slot++);
+      _drawBox(sprite, yWifi);
+      Icons::drawWifi(sprite, BOX_X - 2, yWifi - 5, true);
+    }
 
-    // ─── Bluetooth (slot 3) ───────────────────────────
-    uint16_t y3 = _slotY(3);
-    _drawBox(sprite, y3);
-    Icons::drawBluetooth(sprite, BOX_X + 1, y3 + 1, status.bluetoothOn);
+    // ─── Bluetooth (only when active) ────────────────
+    if (status.bluetoothOn) {
+      uint16_t yBt = _slotY(slot++);
+      _drawBox(sprite, yBt);
+      Icons::drawBluetooth(sprite, BOX_X + 1, yBt + 1, true);
+    }
 
     // ─── Clock: hour/minute in one box (bottom-anchored) ─
     {

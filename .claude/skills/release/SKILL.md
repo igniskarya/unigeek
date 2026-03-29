@@ -27,10 +27,12 @@ Create a new firmware release. Usage: `/release <version>` (e.g. `/release 1.3.0
 
 6. **Get the current supported boards list** from the release workflow matrix in `.github/workflows/release.yml`. Exclude any commented-out boards.
 
-7. **Show the draft** tag message and announcement to the user. Wait for approval before proceeding.
+7. **Show the draft** tag message and announcement to the user. Wait for explicit approval before proceeding.
 
-8. **On approval**, execute:
-   - Create annotated git tag: `git tag -a <version> -m "<tag message>"`
+8. **On approval**, execute in this exact order:
+   - Create announcement file at `release-notes/<version>.md`
+   - Commit: `git add release-notes/<version>.md && git commit -m "📝 add release notes <version>"`
+   - Create annotated git tag on the new commit: `git tag -a <version> -m "<tag message>"`
    - Push: `git push origin main && git push origin <version>`
 
 9. **Create announcement file** at `release-notes/<version>.md` in Discord-compatible markdown:

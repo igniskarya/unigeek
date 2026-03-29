@@ -5,6 +5,9 @@
 class FileManagerScreen : public ListScreen
 {
 public:
+  FileManagerScreen() = default;
+  FileManagerScreen(const String& startPath) : _curPath(startPath) {}
+
   const char* title() override { return _titleBuf; }
 
   void onInit() override;
@@ -16,7 +19,7 @@ private:
   enum State { STATE_FILE, STATE_MENU } _state = STATE_FILE;
 
   enum MenuAction {
-    ACT_NEW_FOLDER, ACT_RENAME, ACT_DELETE,
+    ACT_VIEW, ACT_NEW_FOLDER, ACT_RENAME, ACT_DELETE,
     ACT_COPY, ACT_CUT, ACT_PASTE, ACT_CANCEL_CLIP, ACT_CLOSE_MENU, ACT_EXIT,
   };
 

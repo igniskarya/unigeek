@@ -5,8 +5,10 @@
 #pragma once
 
 #include "ui/templates/ListScreen.h"
-#include "ui/components/ScrollListView.h"
-#include "utils/GPSModule.h"
+#include "ui/views/ScrollListView.h"
+#include "ui/views/LogView.h"
+#include "utils/gps/GPSModule.h"
+#include "utils/gps/WigleUtil.h"
 
 class GPSScreen : public ListScreen
 {
@@ -40,8 +42,10 @@ private:
   int8_t _rxPin = -1;
   uint32_t _baudRate = 9600;
 
-  ListItem _menuItems[6] = {
+  ListItem _menuItems[8] = {
     {"View GPS Info"},
+    {"Scan Mode"},
+    {"Wardrive Mode"},
     {"Wardriver"},
     {"Internet"},
     {"Wigle Token"},
@@ -54,21 +58,25 @@ private:
 
   // Wigle stats
   ScrollListView _statsView;
-  static constexpr uint8_t MAX_STAT_ROWS = 12;
-  ScrollListView::Row _statsRows[MAX_STAT_ROWS];
-  bool _statsInitialized = false;
+  ScrollListView::Row _statsRows[WigleUtil::MAX_STAT_ROWS];
 
   // Wigle upload
-  static constexpr const char* _wigleTokenPath = "/unigeek/wigle_token";
-  static constexpr const char* _wardrivePath = "/unigeek/gps/wardriver";
-  static constexpr uint8_t MAX_FILES = 20;
-  ListItem _uploadItems[MAX_FILES];
-  String _wigleTokenSub;
-  String _internetSub;
-  String _fileNames[MAX_FILES];
+  ListItem _uploadItems[WigleUtil::MAX_FILES];
+  String _fileNames[WigleUtil::MAX_FILES];
+  String _fileLabels[WigleUtil::MAX_FILES];
+  bool _fileUploaded[WigleUtil::MAX_FILES];
   uint8_t _fileCount = 0;
 
+  String _wigleTokenSub;
+  String _internetSub;
+  String _scanModeSub;
+  String _wardModeSub;
+  GPSModule::ScanMode _scanMode = GPSModule::SCAN_WIFI_BLE;
+  GPSModule::WardriveMode _wardMode = GPSModule::MODE_DRIVING;
+
   void _showMenu();
+  void _selectScanMode();
+  void _selectWardriveMode();
   void _connectInternet();
   void _editWigleToken();
   void _showWigleStats();
@@ -76,6 +84,9 @@ private:
   void _uploadFile(uint8_t fileIndex);
   void _renderInfo();
   void _renderWardriver();
+  static void _wardStatusCb(TFT_eSprite& sp, int barY, int width, void* userData);
+  LogView _wardLog;
+
   void _enableGnssPower();
   void _disableGnssPower();
 };

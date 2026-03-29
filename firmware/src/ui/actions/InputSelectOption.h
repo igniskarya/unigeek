@@ -18,7 +18,9 @@ public:
 
   static const char* popup(const char* title, const Option* options, uint8_t count, const char* defaultValue = nullptr) {
     InputSelectAction action(title, options, count, defaultValue);
-    return action._run();
+    const char* result = action._run();
+    Uni.lastActiveMs = millis();
+    return result;
   }
 
 private:

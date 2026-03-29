@@ -5,7 +5,7 @@
 #pragma once
 
 #include "ui/templates/ListScreen.h"
-#include "ui/components/ScrollListView.h"
+#include "ui/views/ScrollListView.h"
 #include "utils/network/WifiUtility.h"
 
 class NetworkMenuScreen : public ListScreen
@@ -38,7 +38,7 @@ private:
   uint8_t     _scannedCount = 0;
   ListItem    _scannedItems[WifiUtility::MAX_WIFI];
 
-  ListItem _menuItems[9] = {
+  ListItem _menuItems[10] = {
     {"Information"},
     {"WiFi QRCode"},
     {"World Clock"},
@@ -48,6 +48,7 @@ private:
     {"Download"},
     {"MITM Attack"},
     {"CCTV Sniffer"},
+    {"Wigle"},
   };
 
   void   _showMenu();

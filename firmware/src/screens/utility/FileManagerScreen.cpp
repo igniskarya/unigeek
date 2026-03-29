@@ -2,6 +2,7 @@
 #include "core/Device.h"
 #include "core/ScreenManager.h"
 #include "screens/utility/UtilityMenuScreen.h"
+#include "screens/utility/FileViewerScreen.h"
 #include "ui/actions/InputTextAction.h"
 #include "ui/actions/ShowStatusAction.h"
 
@@ -14,7 +15,7 @@ void FileManagerScreen::onInit()
     Screen.setScreen(new UtilityMenuScreen());
     return;
   }
-  _loadDir("/");
+  _loadDir(_curPath);
 }
 
 void FileManagerScreen::onUpdate()
@@ -56,8 +57,12 @@ void FileManagerScreen::onBack()
 void FileManagerScreen::onItemSelected(uint8_t index)
 {
   if (_state == STATE_FILE) {
-    if (index < _fileCount && _fileIsDir[index]) {
-      _loadDir(_filePath[index]);
+    if (index < _fileCount) {
+      if (_fileIsDir[index]) {
+        _loadDir(_filePath[index]);
+      } else {
+        Screen.setScreen(new FileViewerScreen(_filePath[index]));
+      }
     }
   } else if (_state == STATE_MENU) {
     _handleMenuAction(index);
@@ -74,6 +79,21 @@ void FileManagerScreen::_loadDir(const String& path)
 
   IStorage::DirEntry entries[kMaxFiles];
   uint8_t count = Uni.Storage->listDir(path.c_str(), entries, kMaxFiles);
+
+  // Sort: directories first, then alphabetical ascending
+  for (uint8_t i = 1; i < count; i++) {
+    IStorage::DirEntry tmp = entries[i];
+    int j = i - 1;
+    while (j >= 0) {
+      bool swap = false;
+      if (tmp.isDir && !entries[j].isDir) swap = true;
+      else if (tmp.isDir == entries[j].isDir && strcasecmp(tmp.name.c_str(), entries[j].name.c_str()) < 0) swap = true;
+      if (!swap) break;
+      entries[j + 1] = entries[j];
+      j--;
+    }
+    entries[j + 1] = tmp;
+  }
 
   String base = (path == "/") ? "" : path;
   for (uint8_t i = 0; i < count; i++) {
@@ -97,6 +117,11 @@ void FileManagerScreen::_openMenu(uint8_t fileIdx)
   _menuCount  = 0;
 
   bool isFile = !_fileIsDir[fileIdx];
+
+  if (isFile) {
+    _menuActions[_menuCount] = ACT_VIEW;
+    _menuItems[_menuCount++] = {"View"};
+  }
 
   _menuActions[_menuCount] = ACT_NEW_FOLDER;
   _menuItems[_menuCount++] = {"New Folder"};
@@ -146,6 +171,10 @@ void FileManagerScreen::_handleMenuAction(uint8_t index)
   String targetName = _fileName[_menuSelIdx];
 
   switch (_menuActions[index]) {
+
+    case ACT_VIEW:
+      Screen.setScreen(new FileViewerScreen(targetPath));
+      return;
 
     case ACT_NEW_FOLDER: {
       String name = InputTextAction::popup("New Folder");

@@ -13,7 +13,9 @@ class InputNumberAction
 public:
   static int popup(const char* title, int min = INT_MIN, int max = INT_MAX, int defaultValue = 0) {
     InputNumberAction action(title, min, max, defaultValue);
-    return action._run();
+    int result = action._run();
+    Uni.lastActiveMs = millis();
+    return result;
   }
 
 private:

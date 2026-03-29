@@ -16,6 +16,7 @@ public:
   static void show(const char* message, int32_t durationMs = -1) {
     ShowStatusAction action(message, durationMs);
     action._run();
+    Uni.lastActiveMs = millis();
   }
 
 private:

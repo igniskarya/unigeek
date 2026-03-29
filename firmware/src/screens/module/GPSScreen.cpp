@@ -6,17 +6,19 @@
 
 #include <WiFi.h>
 #include <Wire.h>
-#include <WiFiClientSecure.h>
 
 #include "core/Device.h"
 #include "core/ScreenManager.h"
 #include "core/PinConfigManager.h"
 #include "screens/module/ModuleMenuScreen.h"
+#include "ui/actions/ShowStatusAction.h"
 #include "ui/actions/InputTextAction.h"
 #include "ui/actions/InputSelectOption.h"
-#include "ui/actions/ShowStatusAction.h"
-#include "ui/actions/ShowProgressAction.h"
 #include "utils/network/WifiUtility.h"
+#include <sys/time.h>
+#ifdef DEVICE_HAS_RTC
+#include "core/RtcManager.h"
+#endif
 
 void GPSScreen::onInit() {
   _initTime = millis();
@@ -36,7 +38,39 @@ void GPSScreen::onUpdate() {
   _gps.update();
 
   if (_state == STATE_LOADING) {
+    // Re-render to animate spinner
+    if (millis() - _lastRender > 250) {
+      _lastRender = millis();
+      render();
+    }
+    if (Uni.Nav->wasPressed()) {
+      auto dir = Uni.Nav->readDirection();
+      if (dir == INavigation::DIR_BACK || dir == INavigation::DIR_PRESS) {
+        ShowStatusAction::show("Stopping GPS...", 0);
+        _gps.end();
+        _disableGnssPower();
+        Screen.setScreen(new ModuleMenuScreen());
+      }
+    }
     if (_gps.gps.location.isValid()) {
+      // Sync device time from GPS (UTC)
+      auto& d = _gps.gps.date;
+      auto& t = _gps.gps.time;
+      if (d.isValid() && t.isValid() && d.year() >= 2020) {
+        struct tm tm = {};
+        tm.tm_year = d.year() - 1900;
+        tm.tm_mon  = d.month() - 1;
+        tm.tm_mday = d.day();
+        tm.tm_hour = t.hour();
+        tm.tm_min  = t.minute();
+        tm.tm_sec  = t.second();
+        time_t epoch = mktime(&tm);
+        struct timeval tv = { .tv_sec = epoch, .tv_usec = 0 };
+        settimeofday(&tv, nullptr);
+#ifdef DEVICE_HAS_RTC
+        RtcManager::syncRtcFromSystem();
+#endif
+      }
       _showMenu();
       return;
     }
@@ -46,19 +80,6 @@ void GPSScreen::onUpdate() {
       _disableGnssPower();
       Screen.setScreen(new ModuleMenuScreen());
       return;
-    }
-    // Re-render every second to update status message
-    if (millis() - _lastRender > 1000) {
-      _lastRender = millis();
-      render();
-    }
-    if (Uni.Nav->wasPressed()) {
-      auto dir = Uni.Nav->readDirection();
-      if (dir == INavigation::DIR_BACK || dir == INavigation::DIR_PRESS) {
-        _gps.end();
-        _disableGnssPower();
-        Screen.setScreen(new ModuleMenuScreen());
-      }
     }
     return;
   }
@@ -78,10 +99,11 @@ void GPSScreen::onUpdate() {
 
   if (_state == STATE_WARDRIVING) {
     _gps.doWardrive(Uni.Storage);
-    if (millis() - _lastRender > 500) _renderWardriver();
+    if (millis() - _lastRender > 1000) _renderWardriver();
     if (Uni.Nav->wasPressed()) {
       auto dir = Uni.Nav->readDirection();
       if (dir == INavigation::DIR_BACK || dir == INavigation::DIR_PRESS) {
+        ShowStatusAction::show("Stopping wardrive...", 0);
         _gps.endWardrive();
         _showMenu();
       }
@@ -113,17 +135,23 @@ void GPSScreen::onRender() {
     sp.setTextDatum(MC_DATUM);
     sp.setTextSize(1);
     bool gpsFound = _gps.gps.charsProcessed() >= 10;
+    static const char spinner[] = {'/', '-', '\\', '|'};
+    uint8_t frame = (millis() / 250) % 4;
+    char anim[4] = {'[', spinner[frame], ']', '\0'};
+
     sp.setTextColor(TFT_WHITE);
     if (gpsFound) {
-      sp.drawString("GPS module found!", bodyW() / 2, bodyH() / 2 - 16);
+      sp.drawString("GPS module found!", bodyW() / 2, bodyH() / 2 - 20);
       sp.setTextColor(TFT_DARKGREY);
-      sp.drawString("Acquiring satellite fix...", bodyW() / 2, bodyH() / 2);
-      sp.drawString("This may take a few minutes", bodyW() / 2, bodyH() / 2 + 12);
+      sp.drawString("Acquiring satellite fix...", bodyW() / 2, bodyH() / 2 - 4);
+      sp.drawString("This may take a few minutes", bodyW() / 2, bodyH() / 2 + 8);
     } else {
-      sp.drawString("Waiting for GPS signal...", bodyW() / 2, bodyH() / 2 - 8);
+      sp.drawString("Waiting for GPS signal...", bodyW() / 2, bodyH() / 2 - 12);
       sp.setTextColor(TFT_DARKGREY);
-      sp.drawString("Go outside for best reception", bodyW() / 2, bodyH() / 2 + 8);
+      sp.drawString("Go outside for best reception", bodyW() / 2, bodyH() / 2 + 4);
     }
+    sp.setTextColor(TFT_YELLOW);
+    sp.drawString(anim, bodyW() / 2, bodyH() / 2 + 24);
     sp.pushSprite(bodyX(), bodyY());
     sp.deleteSprite();
     return;
@@ -138,15 +166,14 @@ void GPSScreen::onRender() {
 }
 
 void GPSScreen::onBack() {
-  if (_state == STATE_MENU || _state == STATE_LOADING) {
-    ShowStatusAction::show("Stopping GPS...", 500);
+  if (_state == STATE_MENU) {
+    ShowStatusAction::show("Stopping GPS...", 0);
+    WiFi.disconnect(true);
+    WiFi.mode(WIFI_OFF);
     _gps.end();
     _disableGnssPower();
     Screen.setScreen(new ModuleMenuScreen());
-  } else if (_state == STATE_UPLOAD || _state == STATE_STATS) {
-    _showMenu();
   } else {
-    if (_state == STATE_WARDRIVING) _gps.endWardrive();
     _showMenu();
   }
 }
@@ -158,54 +185,119 @@ void GPSScreen::onItemSelected(uint8_t index) {
         _state = STATE_INFO;
         _renderInfo();
         break;
-      case 1: {
+      case 1:
+        _selectScanMode();
+        render();
+        break;
+      case 2:
+        _selectWardriveMode();
+        render();
+        break;
+      case 3: {
+        _gps.setScanMode(_scanMode);
+        _gps.setWardriveMode(_wardMode);
         if (!_gps.initWardrive(Uni.Storage)) {
           ShowStatusAction::show(("Wardrive error:\n" + _gps.wardriveError()).c_str());
           render();
           return;
         }
+        _wardLog.clear();
+        _wardLog.addLine(("File: " + _gps.wardriveFilename()).c_str(), TFT_DARKGREY);
         _state = STATE_WARDRIVING;
         _renderWardriver();
         break;
       }
-      case 2:
+      case 4:
         _connectInternet();
         break;
-      case 3:
-        _editWigleToken();
-        _showMenu();
-        break;
-      case 4:
-        _showWigleStats();
-        break;
       case 5:
+        _editWigleToken();
+        render();
+        break;
+      case 6:
+        _showWigleStats();
+        render();
+        break;
+      case 7:
         _showUploadMenu();
+        render();
         break;
     }
   } else if (_state == STATE_UPLOAD) {
     _uploadFile(index);
+    render();
   }
+}
+
+static const char* _scanModeLabel(GPSModule::ScanMode mode) {
+  switch (mode) {
+    case GPSModule::SCAN_WIFI_ONLY: return "WiFi Only";
+    case GPSModule::SCAN_BLE_ONLY:  return "BLE Only";
+    default:                        return "WiFi + BLE";
+  }
+}
+
+static const char* _wardModeLabel(GPSModule::WardriveMode mode) {
+  return mode == GPSModule::MODE_DRIVING ? "Driving" : "Walking";
 }
 
 void GPSScreen::_showMenu() {
   _state = STATE_MENU;
   _infoInitialized = false;
-  _statsInitialized = false;
+
+  // Scan mode sublabel
+  _scanModeSub = _scanModeLabel(_scanMode);
+  _menuItems[1] = {"Scan Mode", _scanModeSub.c_str()};
+
+  // Wardrive mode sublabel
+  _wardModeSub = _wardModeLabel(_wardMode);
+  _menuItems[2] = {"Wardrive Mode", _wardModeSub.c_str()};
 
   // Internet sublabel
   _internetSub = (WiFi.status() == WL_CONNECTED) ? WiFi.SSID() : "";
-  _menuItems[2] = {"Internet", _internetSub.length() ? _internetSub.c_str() : nullptr};
+  _menuItems[4] = {"Internet", _internetSub.length() ? _internetSub.c_str() : nullptr};
 
   // Wigle Token sublabel
-  String token = Uni.Storage ? Uni.Storage->readFile(_wigleTokenPath) : "";
-  token.trim();
-  if (token.length() > 4)
-    _wigleTokenSub = "..." + token.substring(token.length() - 4);
-  else
-    _wigleTokenSub = "No token";
-  _menuItems[3] = {"Wigle Token", _wigleTokenSub.c_str()};
+  _wigleTokenSub = WigleUtil::tokenSublabel(Uni.Storage);
+  _menuItems[5] = {"Wigle Token", _wigleTokenSub.c_str()};
 
   setItems(_menuItems);
+}
+
+void GPSScreen::_selectScanMode() {
+  static constexpr InputSelectAction::Option opts[] = {
+    {"WiFi + BLE", "wifi_ble"},
+    {"WiFi Only",  "wifi"},
+    {"BLE Only",   "ble"},
+  };
+  const char* current = nullptr;
+  switch (_scanMode) {
+    case GPSModule::SCAN_WIFI_ONLY: current = "wifi"; break;
+    case GPSModule::SCAN_BLE_ONLY:  current = "ble"; break;
+    default:                        current = "wifi_ble"; break;
+  }
+  const char* sel = InputSelectAction::popup("Scan Mode", opts, 3, current);
+  if (!sel) return;
+  if (strcmp(sel, "wifi") == 0) _scanMode = GPSModule::SCAN_WIFI_ONLY;
+  else if (strcmp(sel, "ble") == 0) _scanMode = GPSModule::SCAN_BLE_ONLY;
+  else _scanMode = GPSModule::SCAN_WIFI_BLE;
+
+  _scanModeSub = _scanModeLabel(_scanMode);
+  _menuItems[1] = {"Scan Mode", _scanModeSub.c_str()};
+}
+
+void GPSScreen::_selectWardriveMode() {
+  static constexpr InputSelectAction::Option opts[] = {
+    {"Driving", "driving"},
+    {"Walking", "walking"},
+  };
+  const char* current = _wardMode == GPSModule::MODE_DRIVING ? "driving" : "walking";
+  const char* sel = InputSelectAction::popup("Wardrive Mode", opts, 2, current);
+  if (!sel) return;
+  _wardMode = strcmp(sel, "driving") == 0 ? GPSModule::MODE_DRIVING : GPSModule::MODE_WALKING;
+
+  _wardModeSub = _wardModeLabel(_wardMode);
+  _menuItems[2] = {"Wardrive Mode", _wardModeSub.c_str()};
 }
 
 void GPSScreen::_renderInfo() {
@@ -228,198 +320,63 @@ void GPSScreen::_renderInfo() {
   _infoView.render(bodyX(), bodyY(), bodyW(), bodyH());
 }
 
+void GPSScreen::_wardStatusCb(TFT_eSprite& sp, int barY, int width, void* userData) {
+  auto* self = (GPSScreen*)userData;
+
+  sp.setTextDatum(TL_DATUM);
+  sp.setTextColor(TFT_GREEN);
+
+  float dist = self->_gps.totalDistance();
+  char left[48];
+  auto mode = self->_scanMode;
+  bool walking = self->_wardMode == GPSModule::MODE_WALKING && mode != GPSModule::SCAN_BLE_ONLY;
+  uint8_t ch = self->_gps.getCurrentChannel();
+
+  if (mode == GPSModule::SCAN_WIFI_ONLY) {
+    if (dist >= 1000) snprintf(left, sizeof(left), walking ? "W:%u %.1fkm CH:%u" : "W:%u %.1fkm", self->_gps.discoveredCount(), dist / 1000.0f, ch);
+    else snprintf(left, sizeof(left), walking ? "W:%u %dm CH:%u" : "W:%u %dm", self->_gps.discoveredCount(), (int)dist, ch);
+  } else if (mode == GPSModule::SCAN_BLE_ONLY) {
+    if (dist >= 1000) snprintf(left, sizeof(left), "B:%u %.1fkm", self->_gps.bleDiscoveredCount(), dist / 1000.0f);
+    else snprintf(left, sizeof(left), "B:%u %dm", self->_gps.bleDiscoveredCount(), (int)dist);
+  } else {
+    if (dist >= 1000) snprintf(left, sizeof(left), walking ? "W:%u B:%u %.1fkm CH:%u" : "W:%u B:%u %.1fkm", self->_gps.discoveredCount(), self->_gps.bleDiscoveredCount(), dist / 1000.0f, ch);
+    else snprintf(left, sizeof(left), walking ? "W:%u B:%u %dm CH:%u" : "W:%u B:%u %dm", self->_gps.discoveredCount(), self->_gps.bleDiscoveredCount(), (int)dist, ch);
+  }
+  sp.drawString(left, 2, barY);
+
+  sp.setTextDatum(TR_DATUM);
+  unsigned long rt = self->_gps.wardriveRuntime() / 1000;
+  char timeBuf[9];
+  snprintf(timeBuf, sizeof(timeBuf), "%02d:%02d:%02d",
+           (int)(rt / 3600), (int)((rt % 3600) / 60), (int)(rt % 60));
+  sp.drawString(timeBuf, width - 2, barY);
+}
+
 void GPSScreen::_renderWardriver() {
   _lastRender = millis();
 
-  TFT_eSprite sp(&Uni.Lcd);
-  sp.createSprite(bodyW(), bodyH());
-  sp.fillSprite(TFT_BLACK);
-  sp.setTextSize(1);
-  sp.setTextDatum(TL_DATUM);
-
-  int fh = sp.fontHeight();
-  int w = bodyW();
-  int h = bodyH();
-
-  // date/time top-left
-  sp.setTextColor(TFT_WHITE);
-  sp.drawString(_gps.getCurrentDate(), 0, 0);
-  sp.drawString(_gps.getCurrentTime() + " UTC", 0, fh + 2);
-
-  // coords top-right
-  sp.setTextDatum(TR_DATUM);
-  sp.drawString(String(_gps.gps.location.lat(), 6), w, 0);
-  sp.drawString(String(_gps.gps.location.lng(), 6), w, fh + 2);
-
-  // file
-  sp.setTextDatum(TL_DATUM);
-  sp.drawString("File: " + _gps.wardriveFilename(), 0, fh * 2 + 4);
-
-  // discovered count centered
-  sp.setTextDatum(MC_DATUM);
-  sp.setTextColor(TFT_CYAN);
-  sp.drawString("WiFi Discovered", w / 2, h / 2 + fh + 2);
-  sp.setTextSize(2);
-  sp.drawString(String(_gps.discoveredCount()), w / 2, h / 2 - fh / 2);
-
-  // status bottom-right
-  sp.setTextSize(1);
-  sp.setTextDatum(BR_DATUM);
-  const char* status = "Idle";
-  switch (_gps.wardriveStatus()) {
-    case GPSModule::WARDRIVE_SCANNING: status = "Scanning..."; break;
-    case GPSModule::WARDRIVE_SAVING:   status = "Saving..."; break;
-    default: break;
+  // Poll recent finds and add to log
+  GPSModule::FoundEntry finds[10];
+  uint8_t count = _gps.getRecentFinds(finds, 10);
+  if (count > 0 && _wardLog.count() == 1 && _gps.discoveredCount() + _gps.bleDiscoveredCount() <= count) {
+    _wardLog.clear();
   }
-  sp.setTextColor(TFT_GREEN);
-  sp.drawString(status, w, h);
+  unsigned long secs = _gps.wardriveRuntime() / 1000;
+  char timeBuf[9];
+  snprintf(timeBuf, sizeof(timeBuf), "%02lu:%02lu:%02lu", secs / 3600, (secs / 60) % 60, secs % 60);
+  for (uint8_t i = 0; i < count; i++) {
+    auto& f = finds[i];
+    char line[60];
+    if (f.isBle)
+      snprintf(line, sizeof(line), "[+] %s [BLE] %s %s", timeBuf, f.name, f.addr);
+    else
+      snprintf(line, sizeof(line), "[+] %s %s %s", timeBuf, f.name, f.addr);
+    _wardLog.addLine(line, f.isBle ? TFT_CYAN : TFT_WHITE);
+  }
 
-  // exit hint bottom-left
-  sp.setTextDatum(BL_DATUM);
-  sp.setTextColor(TFT_DARKGREY);
-#ifdef DEVICE_HAS_KEYBOARD
-  sp.drawString("BACK: Exit", 0, h);
-#else
-  sp.drawString("< Back", 0, h);
-#endif
-
-  sp.pushSprite(bodyX(), bodyY());
-  sp.deleteSprite();
+  _wardLog.draw(Uni.Lcd, bodyX(), bodyY(), bodyW(), bodyH(), _wardStatusCb, this);
 }
 
-// Simple JSON value extractor — finds "key":value or "key":"value"
-static String _jsonVal(const String& json, const char* key) {
-  String search = "\"" + String(key) + "\":";
-  int pos = json.indexOf(search);
-  if (pos < 0) return "";
-  pos += search.length();
-  while (pos < (int)json.length() && json[pos] == ' ') pos++;
-  if (json[pos] == '"') {
-    int end = json.indexOf('"', pos + 1);
-    return (end > pos) ? json.substring(pos + 1, end) : "";
-  }
-  int end = pos;
-  while (end < (int)json.length() && json[end] != ',' && json[end] != '}') end++;
-  return json.substring(pos, end);
-}
-
-static String _wigleGet(WiFiClientSecure& client, const String& token, const String& path) {
-  client.print(
-    "GET " + path + " HTTP/1.1\r\n"
-    "Host: api.wigle.net\r\n"
-    "Authorization: Basic " + token + "\r\n"
-    "Connection: keep-alive\r\n\r\n"
-  );
-
-  unsigned long timeout = millis() + 10000;
-  while (!client.available() && millis() < timeout) delay(50);
-
-  String response = "";
-  while (client.available()) response += (char)client.read();
-
-  // Extract body after \r\n\r\n
-  int bodyStart = response.indexOf("\r\n\r\n");
-  return (bodyStart > 0) ? response.substring(bodyStart + 4) : response;
-}
-
-void GPSScreen::_showWigleStats() {
-  if (WiFi.status() != WL_CONNECTED) {
-    ShowStatusAction::show("Connect to internet first");
-    return;
-  }
-  String token = Uni.Storage ? Uni.Storage->readFile(_wigleTokenPath) : "";
-  token.trim();
-  if (token.length() == 0) {
-    ShowStatusAction::show("Set Wigle token first");
-    return;
-  }
-
-  ShowProgressAction::show("Connecting to Wigle...", 10);
-  WiFiClientSecure client;
-  client.setInsecure();
-  if (!client.connect("api.wigle.net", 443, 10000)) {
-    ShowStatusAction::show("Connection failed!");
-    return;
-  }
-
-  // Get username
-  ShowProgressAction::show("Fetching profile...", 30);
-  String profileBody = _wigleGet(client, token, "/api/v2/profile/user");
-  String username = _jsonVal(profileBody, "userid");
-  if (username.length() == 0) username = _jsonVal(profileBody, "userName");
-  if (username.length() == 0) {
-    client.stop();
-    ShowStatusAction::show("Failed to get username");
-    return;
-  }
-
-  // Get stats
-  ShowProgressAction::show("Fetching stats...", 60);
-  String statsBody = _wigleGet(client, token, "/api/v2/stats/user?user=" + username);
-  client.stop();
-
-  if (_jsonVal(statsBody, "success") != "true") {
-    ShowStatusAction::show("Failed to get stats");
-    return;
-  }
-
-  // Populate rows
-  uint8_t r = 0;
-  _statsRows[r++] = {"User",           _jsonVal(statsBody, "userName")};
-  _statsRows[r++] = {"Rank",           _jsonVal(statsBody, "rank")};
-  _statsRows[r++] = {"Month Rank",     _jsonVal(statsBody, "monthRank")};
-  _statsRows[r++] = {"WiFi (GPS)",     _jsonVal(statsBody, "discoveredWiFiGPS")};
-  _statsRows[r++] = {"WiFi Total",     _jsonVal(statsBody, "discoveredWiFi")};
-  _statsRows[r++] = {"Cell (GPS)",     _jsonVal(statsBody, "discoveredCellGPS")};
-  _statsRows[r++] = {"Cell Total",     _jsonVal(statsBody, "discoveredCell")};
-  _statsRows[r++] = {"BT (GPS)",       _jsonVal(statsBody, "discoveredBtGPS")};
-  _statsRows[r++] = {"BT Total",       _jsonVal(statsBody, "discoveredBt")};
-  _statsRows[r++] = {"WiFi Locations", _jsonVal(statsBody, "totalWiFiLocations")};
-  _statsRows[r++] = {"First Upload",   _jsonVal(statsBody, "first")};
-  _statsRows[r++] = {"Last Upload",    _jsonVal(statsBody, "last")};
-
-  _statsView.setRows(_statsRows, r);
-  _statsInitialized = true;
-  _state = STATE_STATS;
-  render();
-}
-
-void GPSScreen::_showUploadMenu() {
-  if (WiFi.status() != WL_CONNECTED) {
-    ShowStatusAction::show("Connect to internet first");
-    return;
-  }
-
-  String token = Uni.Storage ? Uni.Storage->readFile(_wigleTokenPath) : "";
-  token.trim();
-  if (token.length() == 0) {
-    ShowStatusAction::show("Set Wigle token first");
-    return;
-  }
-
-  _state = STATE_UPLOAD;
-
-  _fileCount = 0;
-  if (Uni.Storage && Uni.Storage->isAvailable()) {
-    IStorage::DirEntry entries[MAX_FILES];
-    uint8_t count = Uni.Storage->listDir(_wardrivePath, entries, MAX_FILES);
-    for (uint8_t i = 0; i < count && _fileCount < MAX_FILES; i++) {
-      if (!entries[i].isDir && entries[i].name.endsWith(".csv")) {
-        _fileNames[_fileCount] = entries[i].name;
-        _uploadItems[_fileCount] = {_fileNames[_fileCount].c_str()};
-        _fileCount++;
-      }
-    }
-  }
-
-  if (_fileCount == 0) {
-    ShowStatusAction::show("No wardrive files found");
-    _showMenu();
-    return;
-  }
-
-  setItems(_uploadItems, _fileCount);
-}
 
 void GPSScreen::_connectInternet() {
   ShowStatusAction::show("Scanning WiFi...", 0);
@@ -462,99 +419,55 @@ void GPSScreen::_connectInternet() {
 }
 
 void GPSScreen::_editWigleToken() {
-  String current = Uni.Storage ? Uni.Storage->readFile(_wigleTokenPath) : "";
-  current.trim();
+  String current = WigleUtil::readToken(Uni.Storage);
   String token = InputTextAction::popup("Wigle API Token", current);
-  if (token.length() == 0) { render(); return; }
+  if (token.length() == 0) return;
   token.trim();
-  if (Uni.Storage) {
-    Uni.Storage->makeDir("/unigeek");
-    Uni.Storage->writeFile(_wigleTokenPath, token.c_str());
-    ShowStatusAction::show("Token saved");
+  WigleUtil::saveToken(Uni.Storage, token);
+  _wigleTokenSub = WigleUtil::tokenSublabel(Uni.Storage);
+  _menuItems[5] = {"Wigle Token", _wigleTokenSub.c_str()};
+  ShowStatusAction::show("Token saved");
+}
+
+void GPSScreen::_showWigleStats() {
+  uint8_t count = WigleUtil::fetchStats(_statsRows, WigleUtil::MAX_STAT_ROWS);
+  if (count == 0) return;
+
+  _statsView.setRows(_statsRows, count);
+  _state = STATE_STATS;
+  render();
+}
+
+void GPSScreen::_showUploadMenu() {
+  if (WiFi.status() != WL_CONNECTED) {
+    ShowStatusAction::show("Connect to internet first");
+    return;
   }
+  String token = WigleUtil::readToken(Uni.Storage);
+  if (token.length() == 0) {
+    ShowStatusAction::show("Set Wigle token first");
+    return;
+  }
+
+  _state = STATE_UPLOAD;
+  _fileCount = WigleUtil::listFiles(Uni.Storage, _fileNames, _fileLabels,
+                                     _fileUploaded, WigleUtil::MAX_FILES);
+
+  if (_fileCount == 0) {
+    ShowStatusAction::show("No wardrive files found");
+    _showMenu();
+    return;
+  }
+
+  for (uint8_t i = 0; i < _fileCount; i++) {
+    _uploadItems[i] = {_fileLabels[i].c_str(), _fileUploaded[i] ? "Uploaded" : nullptr};
+  }
+  setItems(_uploadItems, _fileCount);
 }
 
 void GPSScreen::_uploadFile(uint8_t fileIndex) {
   if (fileIndex >= _fileCount) return;
-
-  String token = Uni.Storage ? Uni.Storage->readFile(_wigleTokenPath) : "";
-  token.trim();
-
-  String filePath = String(_wardrivePath) + "/" + _fileNames[fileIndex];
-  if (!Uni.Storage->exists(filePath.c_str())) {
-    ShowStatusAction::show("File not found");
-    return;
-  }
-
-  ShowProgressAction::show("Reading file...", 10);
-  fs::File f = Uni.Storage->open(filePath.c_str(), FILE_READ);
-  if (!f) {
-    ShowStatusAction::show("Failed to open file");
-    return;
-  }
-  size_t fileSize = f.size();
-
-  ShowProgressAction::show("Connecting to Wigle...", 20);
-
-  WiFiClientSecure client;
-  client.setInsecure();
-  if (!client.connect("api.wigle.net", 443, 10000)) {
-    f.close();
-    ShowStatusAction::show("Connection failed!");
-    _showUploadMenu();
-    return;
-  }
-
-  String boundary = "----UniGeek" + String(millis());
-  String head = "--" + boundary + "\r\n"
-    "Content-Disposition: form-data; name=\"file\"; filename=\"" + _fileNames[fileIndex] + "\"\r\n"
-    "Content-Type: text/csv\r\n\r\n";
-  String tail = "\r\n--" + boundary + "--\r\n";
-  size_t totalLen = head.length() + fileSize + tail.length();
-
-  ShowProgressAction::show("Uploading to Wigle...", 30);
-
-  client.print(
-    "POST /api/v2/file/upload HTTP/1.1\r\n"
-    "Host: api.wigle.net\r\n"
-    "Authorization: Basic " + token + "\r\n"
-    "Content-Type: multipart/form-data; boundary=" + boundary + "\r\n"
-    "Content-Length: " + String(totalLen) + "\r\n"
-    "Connection: close\r\n\r\n"
-  );
-  client.print(head);
-
-  // Stream file in chunks
-  uint8_t buf[512];
-  size_t sent = 0;
-  while (f.available()) {
-    size_t bytesRead = f.read(buf, sizeof(buf));
-    client.write(buf, bytesRead);
-    sent += bytesRead;
-    int pct = 30 + (int)(sent * 60 / fileSize);
-    ShowProgressAction::show("Uploading to Wigle...", pct);
-  }
-  f.close();
-
-  client.print(tail);
-
-  ShowProgressAction::show("Waiting for response...", 95);
-
-  // Read response
-  unsigned long timeout = millis() + 15000;
-  while (!client.available() && millis() < timeout) delay(50);
-
-  String response = "";
-  while (client.available()) response += (char)client.read();
-  client.stop();
-
-  if (response.indexOf("\"success\":true") >= 0 || response.indexOf("200") >= 0) {
-    ShowStatusAction::show("Upload successful!");
-  } else if (response.indexOf("401") >= 0 || response.indexOf("\"success\":false") >= 0) {
-    ShowStatusAction::show("Upload failed!\nCheck token");
-  } else {
-    ShowStatusAction::show("Upload error\nCheck connection");
-  }
+  WigleUtil::uploadFile(Uni.Storage, _fileNames[fileIndex]);
   _showUploadMenu();
 }
 

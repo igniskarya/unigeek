@@ -6,6 +6,7 @@
 #include "core/ConfigManager.h"
 #include "core/PinConfigManager.h"
 #include "core/RtcManager.h"
+#include "core/RandomSeed.h"
 
 #include "screens/MainMenuScreen.h"
 
@@ -59,6 +60,8 @@ void setup() {
   _checkStorageFallback();
   Config.load(Uni.Storage);
   PinConfig.load(Uni.Storage);
+
+  RandomSeed::init();
   Uni.applyNavMode();
   Uni.Lcd.setBrightness((uint8_t)Config.get(APP_CONFIG_BRIGHTNESS, APP_CONFIG_BRIGHTNESS_DEFAULT).toInt());
   if (Uni.Speaker) Uni.Speaker->setVolume((uint8_t)Config.get(APP_CONFIG_VOLUME, APP_CONFIG_VOLUME_DEFAULT).toInt());
@@ -69,23 +72,15 @@ void setup() {
 void loop() {
   Uni.update();
 
-  // ── Activity detection (non-consuming) ────────────────────────────────────
-  static bool          _lcdOff    = false;
-  static unsigned long _lastActive = millis();
-
-  bool active = Uni.Nav->isPressed();
-#ifdef DEVICE_HAS_KEYBOARD
-  if (Uni.Keyboard && Uni.Keyboard->available()) active = true;
-#endif
-  if (active) _lastActive = millis();
-
   // ── Power saving ──────────────────────────────────────────────────────────
+  static bool _lcdOff = false;
+
   IScreen* _cur       = Screen.current();
   bool _psInhibit     = _cur && _cur->inhibitPowerSave();
   bool _poInhibit     = _psInhibit || (_cur && _cur->inhibitPowerOff());
 
   if (!_psInhibit && Config.get(APP_CONFIG_ENABLE_POWER_SAVING, APP_CONFIG_ENABLE_POWER_SAVING_DEFAULT).toInt()) {
-    unsigned long idle   = millis() - _lastActive;
+    unsigned long idle   = millis() - Uni.lastActiveMs;
     unsigned long dispMs = (unsigned long)Config.get(APP_CONFIG_INTERVAL_DISPLAY_OFF, APP_CONFIG_INTERVAL_DISPLAY_OFF_DEFAULT).toInt() * 1000UL;
 
     if (!_lcdOff && idle > dispMs) {
