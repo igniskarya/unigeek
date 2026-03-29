@@ -210,6 +210,8 @@ firmware/
 - nr24lf
 - cc1101
 - infrared
+- upon gettig in to file viewer it's flickering
+- file manager should sort directory first then sort name asending
 - eapol brute force restart upon testing __test__ on 106++
 - log view and scroll list view should be on template instead of component
 - use log view on eapol capture
