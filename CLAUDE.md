@@ -318,8 +318,12 @@ All hardware differences are isolated in board-specific folders.
     bool inhibitPowerSave() override { return true; }   // keep display always on (no screen-off, no power-off)
     bool inhibitPowerOff()  override { return true; }   // allow screen-off but block auto power-off
 
-    Override in screen .h files. Use for active operations (scanning, streaming, attacks)
-    that should not be interrupted by power management timers.
+    Override in screen .h files.
+
+    inhibitPowerOff:  use when background process must keep running but screen can turn off
+                      (WiFi attacks, GPS wardrive, EAPOL capture, scanning, BLE spam, etc.)
+    inhibitPowerSave: use ONLY when screen must stay visible — games during play, MJPEG streaming,
+                      real-time visual displays (packet monitor, chat). Implies inhibitPowerOff.
 
     When display is off (Uni.lcdOff == true):
     - onUpdate() still runs — background logic (GPS, EAPOL capture, Karma, etc.) keeps working

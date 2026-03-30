@@ -14,7 +14,7 @@ public:
   NetworkMenuScreen();
 
   const char* title()        override { return "Network"; }
-  bool inhibitPowerSave()    override { return _scanning; }
+  bool inhibitPowerOff()     override { return _scanning; }
 
   void onInit() override;
   void onBack() override;

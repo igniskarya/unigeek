@@ -11,7 +11,6 @@
 class NetworkMitmScreen : public ListScreen {
 public:
   const char* title()        override { return "MITM Attack"; }
-  bool inhibitPowerSave()    override { return _state == STATE_RUNNING; }
   bool inhibitPowerOff()     override { return _state == STATE_RUNNING; }
 
   void onInit() override;
