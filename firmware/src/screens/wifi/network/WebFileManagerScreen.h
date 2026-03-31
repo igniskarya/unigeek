@@ -8,6 +8,7 @@ public:
   bool inhibitPowerOff()     override { return _state == STATE_RUNNING; }
 
   void onInit() override;
+  void onRender() override;
   void onBack() override;
   void onItemSelected(uint8_t index) override;
 
@@ -16,12 +17,15 @@ private:
   State  _state = STATE_MENU;
 
   String _passwordSub;
+  String _ipUrl;
+  String _mdnsUrl;
 
   WebFileManager _server;
 
   ListItem _menuItems[2];
 
   void _showMenu();
+  void _drawRunning();
   void _start();
   void _stop();
 };
