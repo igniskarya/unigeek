@@ -94,7 +94,7 @@ public:
     uint8_t channel;
     uint8_t deauthCount = 0;  // number of deauth bursts sent to this AP
   };
-  static constexpr int MAX_TARGETS = 20;
+  static constexpr int MAX_TARGETS = 80;
   static ApTarget _apTargets[MAX_TARGETS];
   static int      _apCount;
 
