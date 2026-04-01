@@ -209,8 +209,18 @@ firmware/
 
 This project was built with inspiration and reference from:
 
-- [Evil-M5Project](https://github.com/7h30th3r0n3/Evil-M5Project) — Evil Twin and WiFi attack reference for M5Stack Cardputer
-- [Bruce](https://github.com/pr3y/Bruce) — Multi-tool firmware reference for ESP32 devices
+- [Evil-M5Project](https://github.com/7h30th3r0n3/Evil-M5Project) by 7h30th3r0n3
+  - Evil Twin with captive portal and credential capture
+  - Karma Attack (rogue AP responding to probe requests)
+  - WiFi Deauther
+  - Beacon Spam
+  - CIW Zeroclick
+  - EAPOL / WPA2 handshake capture and cracking
+  - CCTV Sniffer (network camera discovery and streaming)
+  - DNS Spoofing and captive portal templates
+  - BLE Spam and BLE Detector (Flipper Zero, AirTag, skimmer detection)
+- [Bruce](https://github.com/pr3y/Bruce) by pr3y
+  - Multiple boards implementation
 - [LilyGoLib](https://github.com/Xinyuan-LilyGO/LilyGoLib) — Hardware reference for LilyGO T-Lora Pager
 - [M5Unified](https://github.com/m5stack/M5Unified) — Hardware reference for M5Stack devices (speaker, display, power)
 
