@@ -25,6 +25,21 @@
   #define PIN_CONFIG_GPS_RX_DEFAULT   "2"
 #endif
 
+// ─── IR pin config ──────────────────────────────────────────────────────────
+#define PIN_CONFIG_IR_TX            "ir_tx"
+#define PIN_CONFIG_IR_RX            "ir_rx"
+
+#if defined(IR_TX)
+  #define PIN_CONFIG_IR_TX_DEFAULT    String(IR_TX)
+#elif defined(IR_TX_PIN)
+  #define PIN_CONFIG_IR_TX_DEFAULT    String(IR_TX_PIN)
+#else
+  #define PIN_CONFIG_IR_TX_DEFAULT    "-1"
+#endif
+
+#define PIN_CONFIG_IR_RX_DEFAULT      "-1"
+
+// ─── GPS pin config ─────────────────────────────────────────────────────────
 #define PIN_CONFIG_GPS_TX           "gps_tx"
 #define PIN_CONFIG_GPS_RX           "gps_rx"
 #define PIN_CONFIG_GPS_BAUD         "gps_baud"
