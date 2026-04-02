@@ -56,6 +56,9 @@ static const uint8_t SCL = GROVE_SCL;
 #define SPI_FREQUENCY       20000000
 #define SPI_READ_FREQUENCY   5000000
 
+// ─── IR Transmitter ──────────────────────────────────────
+#define IR_TX_PIN  9
+
 // ─── Speaker (buzzer, LEDC PWM) ───────────────────────────
 #define SPK_PIN  2
 
