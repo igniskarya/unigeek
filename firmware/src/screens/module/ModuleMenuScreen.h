@@ -12,8 +12,9 @@ public:
   void onItemSelected(uint8_t index) override;
 
 private:
-  ListItem _items[2] = {
+  ListItem _items[3] = {
     {"M5 RFID 2"},
     {"GPS"},
+    {"IR Remote"},
   };
 };

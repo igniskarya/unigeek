@@ -93,6 +93,12 @@ Multi-tool firmware for ESP32-based handheld devices. Built with PlatformIO + Ar
   - **Wardrive Mode** — Driving (default, active WiFi scan) or Walking (passive promiscuous sniffing)
   - **Wardriving** — Log nearby WiFi and BLE devices with GPS coordinates in Wigle CSV format
   - **Wigle Integration** — Connect to WiFi, upload wardrive logs, view user stats, manage API token
+- **IR Remote** — Infrared transceiver for capturing, replaying, and managing IR signals
+  - **TX/RX Pin** — Configurable GPIO pins for IR transmitter and receiver (saved per device)
+  - **Receive** — Capture IR signals with automatic protocol detection (NEC, Samsung, Sony, RC5, RC6 and more), duplicate filtering, and signal details as sublabels
+  - **Send** — Browse and load IR remote files from storage (`/unigeek/ir/`), tap to send, hold for actions (replay, rename, delete), save changes back to file
+  - **TV-B-Gone** — Send power-off codes from the WORLD_IR_CODES database (271 codes), choose North America or Europe region, with progress display and cancel support
+  - Compatible with Bruce IR file format for sharing signal libraries
 
 ### Settings
 - Device name
@@ -220,7 +226,8 @@ This project was built with inspiration and reference from:
   - DNS Spoofing and captive portal templates
   - BLE Spam and BLE Detector (Flipper Zero, AirTag, skimmer detection)
 - [Bruce](https://github.com/pr3y/Bruce) by pr3y
-  - Multiple boards implementation
+  - All boards configuration and pin definitions
+  - IR Remote (receive, send, TV-B-Gone with WORLD_IR_CODES database)
 - [LilyGoLib](https://github.com/Xinyuan-LilyGO/LilyGoLib) — Hardware reference for LilyGO T-Lora Pager
 - [M5Unified](https://github.com/m5stack/M5Unified) — Hardware reference for M5Stack devices (speaker, display, power)
 
@@ -231,7 +238,6 @@ This project was built with inspiration and reference from:
 - LoRa
 - nr24lf
 - cc1101
-- infrared
 - change keyboard to HID instead, mode will be USB and BLE, while BLE and USB only have Keyboard, Mouse and Jiggle Mouse, USB has 1 more option is Mass Storage.
 
 <!-- README last synced at commit: 6dc4338 -->
