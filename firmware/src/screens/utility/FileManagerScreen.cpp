@@ -21,8 +21,7 @@ void FileManagerScreen::onInit()
 void FileManagerScreen::onUpdate()
 {
   // Trigger menu immediately on 1s hold in file state
-  if (_state == STATE_FILE && !_holdFired &&
-      Uni.Nav->isPressed() && Uni.Nav->heldDuration() >= 1000) {
+  if (_state == STATE_FILE && !_holdFired && Uni.Nav->isPressed() && Uni.Nav->heldDuration() >= 1000) {
     _holdFired = true;
     _openMenu(_selectedIndex);
     return;
