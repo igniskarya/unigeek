@@ -1,5 +1,6 @@
 firmware/.pio
 .idea
+.vscode
 *.bin
 .DS_Store
 
