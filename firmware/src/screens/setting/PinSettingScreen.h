@@ -1,10 +1,16 @@
 #pragma once
 
 #include "ui/templates/ListScreen.h"
+#include "core/IScreen.h"
 
 class PinSettingScreen : public ListScreen
 {
 public:
+  using BackFactory = IScreen*(*)();
+
+  PinSettingScreen() = default;
+  explicit PinSettingScreen(BackFactory backFn) : _backFn(backFn) {}
+
   const char* title() override { return "Pin Setting"; }
 
   void onInit() override;
@@ -14,12 +20,15 @@ public:
 private:
   void _refresh();
 
-  static const uint8_t MAX_ITEMS = 6;
+  BackFactory _backFn = nullptr;
+
+  static const uint8_t MAX_ITEMS = 8;
   ListItem _items[MAX_ITEMS];
   uint8_t _itemCount = 0;
 
   // track which config each index maps to
-  enum PinType { PIN_GPS_TX, PIN_GPS_RX, PIN_GPS_BAUD, PIN_EXT_SDA, PIN_EXT_SCL };
+  enum PinType { PIN_GPS_TX, PIN_GPS_RX, PIN_GPS_BAUD, PIN_EXT_SDA, PIN_EXT_SCL,
+                 PIN_CC1101_CS, PIN_CC1101_GDO0 };
   PinType _map[MAX_ITEMS];
 
   String _gpsTxSub;
@@ -27,4 +36,6 @@ private:
   String _gpsBaudSub;
   String _sdaSub;
   String _sclSub;
+  String _cc1101CsSub;
+  String _cc1101Gdo0Sub;
 };

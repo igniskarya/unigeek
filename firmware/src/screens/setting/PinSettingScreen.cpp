@@ -32,6 +32,15 @@ void PinSettingScreen::onInit() {
     _itemCount++;
   }
 
+  // CC1101
+  _items[_itemCount] = {"CC1101 CS Pin", ""};
+  _map[_itemCount] = PIN_CC1101_CS;
+  _itemCount++;
+
+  _items[_itemCount] = {"CC1101 GDO0 Pin", ""};
+  _map[_itemCount] = PIN_CC1101_GDO0;
+  _itemCount++;
+
   setItems(_items, _itemCount);
   _refresh();
 }
@@ -42,14 +51,18 @@ void PinSettingScreen::_refresh() {
   _gpsBaudSub = PinConfig.get(PIN_CONFIG_GPS_BAUD, PIN_CONFIG_GPS_BAUD_DEFAULT);
   _sdaSub = PinConfig.get(PIN_CONFIG_EXT_SDA, PIN_CONFIG_EXT_SDA_DEFAULT);
   _sclSub = PinConfig.get(PIN_CONFIG_EXT_SCL, PIN_CONFIG_EXT_SCL_DEFAULT);
+  _cc1101CsSub = PinConfig.get(PIN_CONFIG_CC1101_CS, PIN_CONFIG_CC1101_CS_DEFAULT);
+  _cc1101Gdo0Sub = PinConfig.get(PIN_CONFIG_CC1101_GDO0, PIN_CONFIG_CC1101_GDO0_DEFAULT);
 
   for (uint8_t i = 0; i < _itemCount; i++) {
     switch (_map[i]) {
-      case PIN_GPS_TX:   _items[i].sublabel = _gpsTxSub.c_str(); break;
-      case PIN_GPS_RX:   _items[i].sublabel = _gpsRxSub.c_str(); break;
-      case PIN_GPS_BAUD: _items[i].sublabel = _gpsBaudSub.c_str(); break;
-      case PIN_EXT_SDA:  _items[i].sublabel = _sdaSub.c_str(); break;
-      case PIN_EXT_SCL:  _items[i].sublabel = _sclSub.c_str(); break;
+      case PIN_GPS_TX:     _items[i].sublabel = _gpsTxSub.c_str(); break;
+      case PIN_GPS_RX:     _items[i].sublabel = _gpsRxSub.c_str(); break;
+      case PIN_GPS_BAUD:   _items[i].sublabel = _gpsBaudSub.c_str(); break;
+      case PIN_EXT_SDA:    _items[i].sublabel = _sdaSub.c_str(); break;
+      case PIN_EXT_SCL:    _items[i].sublabel = _sclSub.c_str(); break;
+      case PIN_CC1101_CS:  _items[i].sublabel = _cc1101CsSub.c_str(); break;
+      case PIN_CC1101_GDO0: _items[i].sublabel = _cc1101Gdo0Sub.c_str(); break;
     }
   }
 
@@ -97,10 +110,29 @@ void PinSettingScreen::onItemSelected(uint8_t index) {
       PinConfig.save(Uni.Storage);
       break;
     }
+    case PIN_CC1101_CS: {
+      int cur = PinConfig.getInt(PIN_CONFIG_CC1101_CS, PIN_CONFIG_CC1101_CS_DEFAULT);
+      int val = InputNumberAction::popup("CC1101 CS Pin", 0, 48, cur);
+      if (val >= 0) {
+        PinConfig.set(PIN_CONFIG_CC1101_CS, String(val));
+        PinConfig.save(Uni.Storage);
+      }
+      break;
+    }
+    case PIN_CC1101_GDO0: {
+      int cur = PinConfig.getInt(PIN_CONFIG_CC1101_GDO0, PIN_CONFIG_CC1101_GDO0_DEFAULT);
+      int val = InputNumberAction::popup("CC1101 GDO0 Pin", 0, 48, cur);
+      if (val >= 0) {
+        PinConfig.set(PIN_CONFIG_CC1101_GDO0, String(val));
+        PinConfig.save(Uni.Storage);
+      }
+      break;
+    }
   }
   _refresh();
 }
 
 void PinSettingScreen::onBack() {
-  Screen.setScreen(new SettingScreen());
+  if (_backFn) Screen.setScreen(_backFn());
+  else Screen.setScreen(new SettingScreen());
 }
