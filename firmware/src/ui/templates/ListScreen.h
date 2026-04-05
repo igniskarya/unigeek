@@ -158,6 +158,16 @@ public:
 protected:
   uint8_t _selectedIndex = 0;
 
+  // Update only the count after in-place array edits (SettingScreen pattern).
+  // Clamps selection and adjusts scroll — does NOT call render(). Caller must.
+  void setCount(uint8_t count)
+  {
+    _count = count;
+    uint8_t eff = _effectiveCount();
+    if (eff > 0 && _selectedIndex >= eff) _selectedIndex = eff - 1;
+    _scrollIfNeeded();
+  }
+
 private:
   ListItem*     _items        = nullptr;
   uint8_t       _count        = 0;
