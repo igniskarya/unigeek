@@ -253,4 +253,4 @@ This project was built with inspiration and reference from:
 - nr24lf
 - change keyboard to HID instead, mode will be USB and BLE, while BLE and USB only have Keyboard, Mouse and Jiggle Mouse, USB has 1 more option is Mass Storage.
 
-<!-- README last synced at commit: 6dc4338 -->
+<!-- README last synced at commit: ea61587 -->
