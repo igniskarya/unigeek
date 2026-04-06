@@ -1,0 +1,170 @@
+/* UniGeek custom overrides */
+
+/* Template accent color — update this when switching template-colors/xxx.css */
+:root {
+  --color-main: #0856c1;
+}
+
+
+/* 4-column menu grid */
+.menu-grid.box-items .box-item {
+  width: calc(25% - 3%) !important;
+}
+@media (max-width: 840px) {
+  .menu-grid.box-items .box-item {
+    width: calc(50% - 3%) !important;
+  }
+}
+@media (max-width: 580px) {
+  .menu-grid.box-items .box-item {
+    width: 100% !important;
+  }
+}
+
+/* Fix box-items grid without Isotope */
+.box-items {
+  display: flex !important;
+  flex-wrap: wrap;
+  overflow: visible !important;
+}
+.box-items .box-item {
+  float: none !important;
+  position: relative !important;
+  top: auto !important;
+  left: auto !important;
+}
+
+.single-post-text h1,
+.single-post-text h2,
+.single-post-text h3 {
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+}
+.single-post-text pre {
+  background: #1a1a1a;
+  border: 1px solid #727272;
+  padding: 1em;
+  overflow-x: auto;
+  margin: 1em 0;
+  font-size: 0.85em;
+}
+.single-post-text code {
+  background: #1a1a1a;
+  padding: 2px 5px;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+.single-post-text ul,
+.single-post-text ol {
+  padding-left: 1.5em;
+  margin: 0.75em 0;
+}
+.single-post-text table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1em 0;
+  font-size: 0.85em;
+}
+.single-post-text th,
+.single-post-text td {
+  border: 1px solid #727272;
+  padding: 8px 12px;
+  text-align: left;
+}
+.single-post-text th {
+  background: #1a1a1a;
+  color: #ccc;
+  font-weight: 600;
+}
+.feature-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+.feature-filters button {
+  background: transparent;
+  border: 1px solid #444;
+  color: #ccc;
+  padding: 5px 14px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.8em;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: all 0.2s;
+}
+.feature-filters button.active,
+.feature-filters button:hover {
+  border-color: var(--color-main, #f5a623);
+  color: var(--color-main, #f5a623);
+}
+.board-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+.board-card {
+  border: 1px solid #727272;
+  padding: 20px 16px;
+  cursor: pointer;
+  transition: border-color 0.2s;
+  text-align: center;
+}
+.board-card:hover,
+.board-card.selected {
+  border-color: var(--color-main, #f5a623);
+}
+.board-card .board-name {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.board-card .board-chip {
+  font-size: 0.75em;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+}
+.board-card .board-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: center;
+}
+.board-card .tag {
+  font-size: 0.65em;
+  border: 1px solid #444;
+  padding: 1px 6px;
+  color: #999;
+  text-transform: uppercase;
+}
+.flash-log {
+  background: #0d0d0d;
+  border: 1px solid #727272;
+  font-family: monospace;
+  font-size: 0.8em;
+  padding: 12px;
+  height: 200px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  color: #aaa;
+  margin-top: 16px;
+}
+.flash-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+.install-step {
+  margin-bottom: 32px;
+}
+.install-step .step-label {
+  font-size: 0.75em;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: #888;
+  margin-bottom: 8px;
+}

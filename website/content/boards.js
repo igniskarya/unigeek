@@ -1,0 +1,44 @@
+export const BOARDS = [
+  {
+    id: "m5stickcplus_11",
+    name: "M5StickC Plus 1.1",
+    chip: "ESP32",
+    tags: ["WiFi", "BLE", "NFC", "IR"],
+    bin: "/firmware/unigeek-m5stickcplus_11.bin",
+  },
+  {
+    id: "m5stickcplus_2",
+    name: "M5StickC Plus 2",
+    chip: "ESP32",
+    tags: ["WiFi", "BLE", "NFC", "IR", "Encoder"],
+    bin: "/firmware/unigeek-m5stickcplus_2.bin",
+  },
+  {
+    id: "t_lora_pager",
+    name: "T-Lora Pager",
+    chip: "ESP32-S3",
+    tags: ["WiFi", "BLE", "NFC", "IR", "Sub-GHz", "LoRa", "Keyboard", "USB HID"],
+    bin: "/firmware/unigeek-t_lora_pager.bin",
+  },
+  {
+    id: "t_display_16mb",
+    name: "T-Display 16MB",
+    chip: "ESP32",
+    tags: ["WiFi", "BLE", "NFC", "IR"],
+    bin: "/firmware/unigeek-t_display_16mb.bin",
+  },
+  {
+    id: "m5_cardputer",
+    name: "M5 Cardputer",
+    chip: "ESP32-S3",
+    tags: ["WiFi", "BLE", "NFC", "IR", "Keyboard", "USB HID"],
+    bin: "/firmware/unigeek-m5_cardputer.bin",
+  },
+  {
+    id: "m5_cardputer_adv",
+    name: "M5 Cardputer ADV",
+    chip: "ESP32-S3",
+    tags: ["WiFi", "BLE", "NFC", "IR", "Sub-GHz", "Keyboard", "USB HID"],
+    bin: "/firmware/unigeek-m5_cardputer_adv.bin",
+  },
+];
