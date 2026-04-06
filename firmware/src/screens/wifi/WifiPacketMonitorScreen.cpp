@@ -7,27 +7,30 @@
 // ── Promiscuous callback ───────────────────────────────────────────────────
 
 static std::atomic<uint32_t> _pktCounter{0};
-static std::atomic<uint32_t> _cbActive{0};
 
 static void _snifferCb(void* buf, wifi_promiscuous_pkt_type_t type)
 {
   if (type == WIFI_PKT_MGMT || type == WIFI_PKT_DATA) {
     _pktCounter.fetch_add(1, std::memory_order_relaxed);
   }
-  _cbActive.fetch_sub(1, std::memory_order_release);
 }
 
 // ── Lifecycle ─────────────────────────────────────────────────────────────
 
 void WifiPacketMonitorScreen::onInit()
 {
-  _history.assign(bodyW() / 4, 0);
-  _quitting = false;
+  memset(_chanAccum,     0, sizeof(_chanAccum));
+  memset(_displayCounts, 0, sizeof(_displayCounts));
+  _sweepCh    = 1;
+  _firstSweep = true;
+  _quitting   = false;
+  _pktCounter.store(0, std::memory_order_relaxed);
 
   WiFi.mode(WIFI_MODE_STA);
   esp_wifi_set_promiscuous(true);
   esp_wifi_set_promiscuous_rx_cb(&_snifferCb);
-  _setChannel(1);
+  esp_wifi_set_channel(_sweepCh, WIFI_SECOND_CHAN_NONE);
+  _lastHop = millis();
 }
 
 void WifiPacketMonitorScreen::onUpdate()
@@ -40,12 +43,10 @@ void WifiPacketMonitorScreen::onUpdate()
       _quit();
       return;
     }
-    if (dir == INavigation::DIR_UP)   { _setChannel(_channel < 13 ? _channel + 1 : 1);  }
-    if (dir == INavigation::DIR_DOWN) { _setChannel(_channel > 1  ? _channel - 1 : 13); }
   }
 
-  if (millis() - _lastRender >= 1000) {
-    render();
+  if (millis() - _lastHop >= _HOP_MS) {
+    _hop();
   }
 }
 
@@ -53,36 +54,55 @@ void WifiPacketMonitorScreen::onRender()
 {
   if (_quitting) return;
 
-  _lastRender = millis();
-
-  const uint32_t rawCount = _pktCounter.exchange(0, std::memory_order_relaxed);
-  auto sample = static_cast<uint16_t>(rawCount > 180 ? 90 : (rawCount + 1) / 2);
-
-  // shift history left, append new sample
-  const int histSize = static_cast<int>(_history.size());
-  for (int i = histSize - 1; i > 0; --i) _history[i] = _history[i - 1];
-  _history[0] = sample;
-
   const uint16_t themeColor = Config.getThemeColor();
 
   TFT_eSprite body(&Uni.Lcd);
   body.createSprite(bodyW(), bodyH());
   body.fillSprite(TFT_BLACK);
 
-  const uint16_t barW   = 3;
-  const uint16_t barGap = 1;
-  const uint16_t maxH   = bodyH() - body.fontHeight() - 12;
+  // Bar layout — T-Lora Pager: fixed bar size; others: fit all 13 in bodyW
+#ifdef DEVICE_T_LORA_PAGER
+  const uint16_t barW = 20;
+  const uint16_t gap  = 4;
+#else
+  const uint16_t gap  = 2;
+  const uint16_t barW = (uint16_t)((bodyW() - gap * (_NUM_CH - 1)) / _NUM_CH);
+#endif
 
-  for (int i = 0; i < histSize; i++) {
-    uint16_t h = _history[i];
-    if (h > maxH) h = maxH;
-    uint16_t x = i * (barW + barGap);
-    body.fillRect(x, bodyH() - body.fontHeight() - 10 - h, barW, h, themeColor);
+  const uint16_t labelH  = (uint16_t)(body.fontHeight() + 2);
+  const uint16_t maxBarH = (uint16_t)(bodyH() - labelH - 2);
+
+  if (_firstSweep) {
+    body.setTextColor(TFT_WHITE, TFT_BLACK);
+    body.setTextDatum(MC_DATUM);
+    body.drawString("Scanning...", bodyW() / 2, bodyH() / 2);
+    body.setTextDatum(TL_DATUM);
+  } else {
+    // normalize to tallest bar
+    uint32_t maxCount = 1;
+    for (uint8_t i = 1; i <= _NUM_CH; i++) {
+      if (_displayCounts[i] > maxCount) maxCount = _displayCounts[i];
+    }
+
+    for (uint8_t ch = 1; ch <= _NUM_CH; ch++) {
+      uint16_t x = (uint16_t)((ch - 1) * (barW + gap));
+      uint16_t h = (uint16_t)(((uint32_t)_displayCounts[ch] * maxBarH) / maxCount);
+      if (h == 0 && _displayCounts[ch] > 0) h = 1;
+
+      if (h > 0) {
+        body.fillRect(x, maxBarH - h, barW, h, themeColor);
+      }
+    }
   }
 
+  // channel number labels along the bottom
   body.setTextColor(TFT_WHITE, TFT_BLACK);
-  body.drawString(String(rawCount) + " pkt/s", 0, 0);
-  body.drawString("UP/DN: Channel | BACK: Exit", 0, bodyH() - body.fontHeight());
+  body.setTextDatum(TC_DATUM);
+  for (uint8_t ch = 1; ch <= _NUM_CH; ch++) {
+    uint16_t cx = (uint16_t)((ch - 1) * (barW + gap) + barW / 2);
+    body.drawString(String(ch), cx, bodyH() - labelH + 2);
+  }
+  body.setTextDatum(TL_DATUM);
 
   body.pushSprite(bodyX(), bodyY());
   body.deleteSprite();
@@ -90,12 +110,25 @@ void WifiPacketMonitorScreen::onRender()
 
 // ── Private ───────────────────────────────────────────────────────────────
 
-void WifiPacketMonitorScreen::_setChannel(int8_t ch)
+void WifiPacketMonitorScreen::_hop()
 {
-  _channel = ch;
-  snprintf(_title, sizeof(_title), "PM Channel %d", _channel);
-  esp_wifi_set_channel(_channel, WIFI_SECOND_CHAN_NONE);
-  render();
+  // collect packets counted on the outgoing channel
+  _chanAccum[_sweepCh] += _pktCounter.exchange(0, std::memory_order_relaxed);
+
+  if (_sweepCh >= _NUM_CH) {
+    // sweep complete — publish display data and reset accumulator
+    _sweepCh = 1;
+    memcpy(_displayCounts, _chanAccum, sizeof(_chanAccum));
+    memset(_chanAccum, 0, sizeof(_chanAccum));
+    _firstSweep = false;
+    esp_wifi_set_channel(_sweepCh, WIFI_SECOND_CHAN_NONE);
+    _lastHop = millis();
+    render();
+  } else {
+    _sweepCh++;
+    esp_wifi_set_channel(_sweepCh, WIFI_SECOND_CHAN_NONE);
+    _lastHop = millis();
+  }
 }
 
 void WifiPacketMonitorScreen::_quit()
@@ -103,13 +136,7 @@ void WifiPacketMonitorScreen::_quit()
   _quitting = true;
 
   esp_wifi_set_promiscuous_rx_cb(nullptr);
-
-  uint32_t waited = 0;
-  while (_cbActive.load(std::memory_order_acquire) != 0 && waited < 200) {
-    delay(5);
-    waited += 5;
-  }
-
+  delay(10);
   esp_wifi_set_promiscuous(false);
 
   Screen.setScreen(new WifiMenuScreen());
