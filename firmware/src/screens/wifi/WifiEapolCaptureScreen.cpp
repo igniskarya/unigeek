@@ -715,9 +715,9 @@ void WifiEapolCaptureScreen::_flush() {
   }
 }
 
-// ── Promiscuous callback (IRAM_ATTR — must stay in .cpp) ──────────────────
+// ── Promiscuous callback ───────────────────────────────────────────────────
 
-void IRAM_ATTR WifiEapolCaptureScreen::_promiscuousCb(void* buf, wifi_promiscuous_pkt_type_t type) {
+void WifiEapolCaptureScreen::_promiscuousCb(void* buf, wifi_promiscuous_pkt_type_t type) {
   if (buf == nullptr) return;
   if (type != WIFI_PKT_MGMT && type != WIFI_PKT_DATA) return;
 

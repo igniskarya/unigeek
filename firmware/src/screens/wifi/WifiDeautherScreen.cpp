@@ -238,9 +238,9 @@ void WifiDeautherScreen::_drawStatus(const char* msg)
   sp.deleteSprite();
 }
 
-// ── Beacon callback (IRAM_ATTR — must be in .cpp) ─────────────────────────
+// ── Beacon callback ────────────────────────────────────────────────────────
 
-void IRAM_ATTR WifiDeautherScreen::_beaconCb(void* buf, wifi_promiscuous_pkt_type_t type)
+void WifiDeautherScreen::_beaconCb(void* buf, wifi_promiscuous_pkt_type_t type)
 {
   if (type != WIFI_PKT_MGMT || buf == nullptr) return;
 

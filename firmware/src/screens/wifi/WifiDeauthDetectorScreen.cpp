@@ -207,9 +207,9 @@ void WifiDeauthDetectorScreen::_refresh()
   }
 }
 
-// ── Promiscuous callback (IRAM_ATTR — must be in .cpp) ────────────────────
+// ── Promiscuous callback ───────────────────────────────────────────────────
 
-void IRAM_ATTR WifiDeauthDetectorScreen::_promiscuousCb(void* buf, wifi_promiscuous_pkt_type_t type)
+void WifiDeauthDetectorScreen::_promiscuousCb(void* buf, wifi_promiscuous_pkt_type_t type)
 {
   if (type != WIFI_PKT_MGMT || buf == nullptr) return;
 
