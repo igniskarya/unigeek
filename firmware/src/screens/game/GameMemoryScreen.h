@@ -5,7 +5,7 @@
 class GameMemoryScreen : public BaseScreen
 {
 public:
-  const char* title()       override { return "Memory Seq"; }
+  const char* title()       override { return "Memory Sequence"; }
   bool inhibitPowerSave()   override { return _state == STATE_SHOW_SEQUENCE || _state == STATE_WAITING_INPUT; }
   bool inhibitPowerOff()    override { return true; }
 

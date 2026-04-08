@@ -433,7 +433,7 @@ void GameMemoryScreen::_renderShowSequence()
     sp.setTextColor(TFT_YELLOW, TFT_BLACK);
     sp.drawString(buf, 0, 0);
 
-    snprintf(buf, sizeof(buf), "%s  len:%u", _diffStrShort(), _seqLen);
+    snprintf(buf, sizeof(buf), "%s", _diffStrShort());
     sp.setTextDatum(TC_DATUM);
     sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
     sp.drawString(buf, bodyW() / 2, 0);
