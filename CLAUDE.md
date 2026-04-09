@@ -384,19 +384,6 @@ Tiers: 0=bronze +100 EXP  1=silver +300  2=gold +600  3=platinum +1000
       - Karma Attack         → WiFi (rogue AP that responds to probe requests)
       - Full Network Analysis → WiFi (ARP scan + port scan on connected network)
 
-### Migration from puteros
-
-    Reference: ../puteros/firmware/src/os/screens/
-    Adapt puteros patterns to unigeek conventions:
-      - Template::renderHead() / setEntries()  →  title() / setItems()
-      - _global->setScreen(new X())            →  Screen.setScreen(new X())
-      - InputTextScreen::popup()               →  InputTextAction::popup()
-      - Template::renderStatus()               →  ShowStatusAction::show()
-      - Template::renderQRCode()               →  ShowQRCodeAction::show()
-      - onEnter(entry) / entry.label           →  onItemSelected(index) / switch(index)
-      - Always qualify DIR_* as INavigation::DIR_BACK etc.
-      - Always read both .h and .cpp from puteros before migrating
-
 ---
 
 ## Code Conventions

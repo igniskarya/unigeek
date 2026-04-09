@@ -321,19 +321,6 @@ If adding .cpp files in a board folder, ensure boards.ini includes:
 
 ---
 
-## Migrating Screens from puteros
-
-    Reference: ../puteros/firmware/src/os/screens/
-    Key adaptations:
-    - _global->setScreen(new X())  →  Screen.setScreen(new X())
-    - Template::renderQRCode()     →  ShowQRCodeAction::show()
-    - Template::renderStatus()     →  ShowStatusAction::show()
-    - InputTextScreen::popup()     →  InputTextAction::popup()
-    - onEnter(entry) string match  →  onItemSelected(index) switch
-    Always read both .h and .cpp from puteros before migrating.
-
----
-
 ## Website Content Sync
 
 The website reads content directly from the repo — no copy step needed:
