@@ -43,12 +43,15 @@ void _drawInlineBar(TFT_eSprite& sp, int x, int y, int w, int h,
 
 struct RankInfo { const char* label; uint16_t color; };
 
+// Total possible EXP across all 129 catalog achievements = 45,200
+// Rank thresholds: NOVICE 0 | HACKER 4,500 (10%) | EXPERT 15,000 (33%)
+//                 ELITE 30,000 (66%) | LEGEND 43,000 (95%)
 RankInfo _getRank(int exp)
 {
-  if (exp >= 10000) return { "LEGEND", TFT_VIOLET   };
-  if (exp >= 5000)  return { "ELITE",  TFT_YELLOW   };
-  if (exp >= 2000)  return { "EXPERT", TFT_CYAN     };
-  if (exp >= 500)   return { "HACKER", TFT_GREEN    };
+  if (exp >= 43000) return { "LEGEND", TFT_VIOLET   };
+  if (exp >= 30000) return { "ELITE",  TFT_YELLOW   };
+  if (exp >= 15000) return { "EXPERT", TFT_CYAN     };
+  if (exp >= 4500)  return { "HACKER", TFT_GREEN    };
                     return { "NOVICE", TFT_DARKGREY };
 }
 
@@ -136,7 +139,6 @@ void CharacterScreen::onRender()
   int numUnlk = 0;
   for (int i = 0; i < kTotal; i++)
     if (Achievement.isUnlocked(cat[i].id)) numUnlk++;
-
   int      exp   = Achievement.getExp();
   RankInfo rank  = _getRank(exp);
   int      hp    = _clampPct(Uni.Power.getBatteryPercentage());
@@ -178,11 +180,11 @@ void CharacterScreen::onRender()
     sp.setTextColor(TFT_ORANGE);
     sp.drawString(expBuf, cx + indent, cy, 1);
 
-    int nextExp = (exp < 500)  ? 500  : (exp < 2000) ? 2000
-                : (exp < 5000) ? 5000 : 10000;
-    int prevExp = (exp < 500)  ? 0    : (exp < 2000) ? 500
-                : (exp < 5000) ? 2000 : 5000;
-    int rPct    = (exp >= 10000) ? 100
+    int nextExp = (exp < 4500)  ? 4500  : (exp < 15000) ? 15000
+                : (exp < 30000) ? 30000 : 43000;
+    int prevExp = (exp < 4500)  ? 0     : (exp < 15000) ? 4500
+                : (exp < 30000) ? 15000 : 30000;
+    int rPct    = (exp >= 43000) ? 100
                 : _clampPct((exp - prevExp) * 100 / (nextExp - prevExp));
 
     int bx     = W * 5 / 8;
