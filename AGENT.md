@@ -46,6 +46,73 @@ section with the repo link, author, and specific features taken as sub-bullets.
 5. Use new for allocation — ScreenManager handles deletion
 6. Declare item arrays as class members, not braced-init-lists
 7. Use onInit() not init()
+8. **Think about achievements**: for every meaningful user action in the screen,
+   add appropriate achievements to the catalog in `AchievementManager.h::catalog()`
+   and hook `Achievement.inc()` / `Achievement.setMax()` / `Achievement.unlock()` calls
+   at the appropriate points in the screen implementation (see Achievement System below)
+
+---
+
+## Achievement System
+
+`AchievementManager` (singleton, header-only) manages the achievement catalog and state.
+
+    #define Achievement AchievementManager::getInstance()
+
+    // Increment a counter — auto-unlocks when threshold achievements are met
+    Achievement.inc("wifi_first_scan");        // increments ach_cnt_wifi_first_scan by 1
+    Achievement.setMax("flappy_score_25", 25); // sets ach_max_flappy_score_25 to max(current, 25)
+
+    // Check unlock state
+    bool done = Achievement.isUnlocked("wifi_first_scan");
+
+    // Read a counter value
+    int  val  = Achievement.getInt("wifi_first_scan");
+
+    // Total accumulated EXP
+    int  exp  = Achievement.getExp();
+
+### Catalog location
+
+The full achievement catalog lives in `AchievementManager.h` inside the static method:
+
+    static const AchDef* catalog() {
+      static constexpr AchDef kAchs[] = { /* 122 entries ordered by domain */ };
+      return kAchs;
+    }
+
+When adding new achievements, append entries to `kAchs[]` and increment `kAchCount`.
+
+### Unlock mechanism
+
+`Achievement.inc(id)` and `Achievement.setMax(id, value)` look up the id in the catalog.
+If `getInt(id) >= 1` (for inc) or the value satisfies a threshold, they call `unlock()` automatically.
+`unlock()` saves to Config, adds EXP, and queues a toast.
+
+### Toast
+
+`drawToastIfNeeded()` is called from `BaseScreen::update()` every frame — no screen needs to call it.
+Toast shows for 3 seconds at the bottom: "Achievement!" header (yellow) + title + "+N EXP" (green).
+
+### Domains and tiers
+
+    domain 0  WiFi Network    domain 1  WiFi Attacks   domain 2  Bluetooth
+    domain 3  Keyboard        domain 4  NFC            domain 5  IR
+    domain 6  Sub-GHz         domain 7  GPS            domain 8  Utility
+    domain 9  Games           domain 10 Settings
+
+    tier 0 bronze  +100 EXP    tier 1 silver +300 EXP
+    tier 2 gold    +600 EXP    tier 3 platinum +1000 EXP
+
+### Rule: every new screen with meaningful actions must have achievements
+
+When creating a screen that involves:
+- A first-use action (scan, connect, send, generate) → bronze achievement
+- A repeated-use milestone (5x, 10x, 20x) → silver/gold achievement
+- A high-skill or rare outcome (cracked, full dump, exploit) → gold/platinum
+
+Add the entries to `catalog()` in the correct domain, then call `Achievement.inc()` or
+`Achievement.setMax()` from the screen at the relevant moment.
 
 ---
 

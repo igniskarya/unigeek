@@ -182,6 +182,31 @@ All hardware differences are isolated in board-specific folders.
       };
     };
 
+### Achievement System
+
+`AchievementManager` (singleton, `src/core/AchievementManager.h`) manages the catalog and progress.
+`#define Achievement AchievementManager::getInstance()` — use everywhere.
+
+    Achievement.inc("wifi_first_scan")        // increments counter; auto-unlocks catalog entries
+    Achievement.setMax("flappy_score_25", 25) // records a high-water mark
+    Achievement.isUnlocked("wifi_first_scan") // bool — used by AchievementScreen
+    Achievement.getInt("wifi_first_scan")     // raw counter value
+    Achievement.getExp()                      // total accumulated EXP
+
+Toast is drawn from `BaseScreen::update()` automatically — screens never call it directly.
+
+**Rule: when creating a new screen or menu with meaningful user actions, add achievements.**
+
+- First-use action (first scan, first send, first connect) → bronze tier (domain 0-10)
+- Repeated-use milestones (5x, 10x, 20x) → silver / gold
+- High-skill or rare outcomes (cracked, exploit, full dump) → gold / platinum
+- Add entries to `catalog()` in `AchievementManager.h`, then call `Achievement.inc()` or
+  `Achievement.setMax()` at the right moment in the screen implementation.
+
+Catalog lives in `static const AchDef* catalog()` as a static constexpr local (avoids linker errors).
+Domains: 0=WiFi Network 1=WiFi Attacks 2=BT 3=KBD 4=NFC 5=IR 6=Sub-GHz 7=GPS 8=Utility 9=Games 10=Settings
+Tiers: 0=bronze +100 EXP  1=silver +300  2=gold +600  3=platinum +1000
+
 ### Rendering Rule (Screen-Off Safe)
 
     onUpdate() runs ALWAYS — even when display is off (Uni.lcdOff == true).

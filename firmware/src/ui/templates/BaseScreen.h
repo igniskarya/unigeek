@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/IScreen.h"
+#include "core/AchievementManager.h"
 #include "ui/components/Header.h"
 #include "ui/components/StatusBar.h"
 
@@ -15,6 +16,7 @@ public:
 
   void update() override {
     onUpdate();
+    Achievement.drawToastIfNeeded();
     if (Uni.lcdOff) return;
     if (millis() - _lastStatusUpdate > 1000) {
       StatusBar::refresh();
