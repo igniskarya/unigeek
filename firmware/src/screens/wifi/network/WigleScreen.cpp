@@ -1,11 +1,14 @@
 #include "WigleScreen.h"
 #include <WiFi.h>
 #include "core/ScreenManager.h"
+#include "core/AchievementManager.h"
 #include "screens/wifi/network/NetworkMenuScreen.h"
 #include "ui/actions/InputTextAction.h"
 #include "ui/actions/ShowStatusAction.h"
 
 void WigleScreen::onInit() {
+  int n = Achievement.inc("wifi_wigle_visit");
+  if (n == 1) Achievement.unlock("wifi_wigle_visit");
   _showMenu();
 }
 
@@ -119,6 +122,12 @@ void WigleScreen::_showUploadMenu() {
 void WigleScreen::_uploadFile(uint8_t index) {
   if (index >= _fileCount) return;
   WigleUtil::uploadFile(Uni.Storage, _fileNames[index]);
+  int n = Achievement.inc("gps_wigle_upload");
+  if (n == 1)  Achievement.unlock("gps_wigle_upload");
+  if (n == 5)  Achievement.unlock("gps_wigle_5");
+  if (n == 10) Achievement.unlock("gps_wigle_10");
+  if (n == 20) Achievement.unlock("gps_wigle_20");
+  if (n == 50) Achievement.unlock("gps_wigle_50");
   _showUploadMenu();
 }
 

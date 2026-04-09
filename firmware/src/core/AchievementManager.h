@@ -55,8 +55,7 @@ public:
       { "wifi_download_10",          "Data Hoarder",           0, 1, "Download 10 files over WiFi" },
       { "wifi_download_ir",          "Remote Arsenal",         0, 1, "Download IR codes from the internet" },
       { "wifi_world_clock",          "Time Lord",              0, 0, "View world clock via WiFi time sync" },
-      { "wifi_wigle_upload",         "Wardrive Reporter",      0, 1, "Upload a scan session to WiGLE" },
-      { "wifi_wigle_5",              "Street Mapper",          0, 2, "Upload 5 wardrive sessions to WiGLE" },
+      { "wifi_wigle_visit",          "WiGLE Curious",          0, 0, "Discover the WiGLE upload section from the WiFi menu" },
       // ── WiFi Attacks (domain 1) ────────────────────────────────────────────
       { "wifi_ap_started",           "Fake Hotspot",           1, 0, "Start a rogue access point" },
       { "wifi_ap_client_visit",      "First Guest",            1, 1, "Get a client to connect to your AP" },
@@ -135,6 +134,10 @@ public:
       { "wardrive_100_nets",         "Urban Mapper",           7, 2, "Log 100 networks during wardriving" },
       { "wardrive_500_nets",         "City Cartographer",      7, 3, "Log 500 networks during wardriving" },
       { "gps_wigle_upload",          "Cloud Reporter",         7, 1, "Upload wardriving data to WiGLE" },
+      { "gps_wigle_5",               "Street Mapper",          7, 2, "Upload 5 wardrive sessions to WiGLE" },
+      { "gps_wigle_10",              "Grid Mapper",            7, 2, "Upload 10 wardrive sessions to WiGLE" },
+      { "gps_wigle_20",              "Signal Archivist",       7, 3, "Upload 20 wardrive sessions to WiGLE" },
+      { "gps_wigle_50",              "WiGLE Legend",           7, 3, "Upload 50 wardrive sessions to WiGLE" },
       // ── Utility (domain 8) ────────────────────────────────────────────────
       { "i2c_scan_first",            "Bus Detective",          8, 0, "Run an I2C bus scan" },
       { "i2c_device_found",          "I2C Discovery",          8, 1, "Find a device on the I2C bus" },

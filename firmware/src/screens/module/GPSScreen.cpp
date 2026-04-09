@@ -10,6 +10,7 @@
 #include "core/Device.h"
 #include "core/ScreenManager.h"
 #include "core/PinConfigManager.h"
+#include "core/AchievementManager.h"
 #include "screens/module/ModuleMenuScreen.h"
 #include "ui/actions/ShowStatusAction.h"
 #include "ui/actions/InputTextAction.h"
@@ -71,6 +72,8 @@ void GPSScreen::onUpdate() {
         RtcManager::syncRtcFromSystem();
 #endif
       }
+      int n = Achievement.inc("gps_fix_first");
+      if (n == 1) Achievement.unlock("gps_fix_first");
       _showMenu();
       return;
     }
@@ -99,6 +102,12 @@ void GPSScreen::onUpdate() {
 
   if (_state == STATE_WARDRIVING) {
     _gps.doWardrive(Uni.Storage);
+    {
+      uint32_t nets = _gps.discoveredCount() + _gps.bleDiscoveredCount();
+      if (nets >= 10  && !Achievement.isUnlocked("wardrive_10_nets"))  Achievement.unlock("wardrive_10_nets");
+      if (nets >= 100 && !Achievement.isUnlocked("wardrive_100_nets")) Achievement.unlock("wardrive_100_nets");
+      if (nets >= 500 && !Achievement.isUnlocked("wardrive_500_nets")) Achievement.unlock("wardrive_500_nets");
+    }
     if (millis() - _lastRender > 1000) render();
     if (Uni.Nav->wasPressed()) {
       auto dir = Uni.Nav->readDirection();
@@ -204,6 +213,10 @@ void GPSScreen::onItemSelected(uint8_t index) {
         _wardLog.clear();
         _wardLog.addLine(("File: " + _gps.wardriveFilename()).c_str(), TFT_DARKGREY);
         _state = STATE_WARDRIVING;
+        {
+          int n = Achievement.inc("wardrive_start");
+          if (n == 1) Achievement.unlock("wardrive_start");
+        }
         render();
         break;
       }
@@ -468,6 +481,12 @@ void GPSScreen::_showUploadMenu() {
 void GPSScreen::_uploadFile(uint8_t fileIndex) {
   if (fileIndex >= _fileCount) return;
   WigleUtil::uploadFile(Uni.Storage, _fileNames[fileIndex]);
+  int n = Achievement.inc("gps_wigle_upload");
+  if (n == 1)  Achievement.unlock("gps_wigle_upload");
+  if (n == 5)  Achievement.unlock("gps_wigle_5");
+  if (n == 10) Achievement.unlock("gps_wigle_10");
+  if (n == 20) Achievement.unlock("gps_wigle_20");
+  if (n == 50) Achievement.unlock("gps_wigle_50");
   _showUploadMenu();
 }
 
