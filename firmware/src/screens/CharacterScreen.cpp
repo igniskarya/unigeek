@@ -153,26 +153,21 @@ void CharacterScreen::onRender()
   const int indent = sp.textWidth("AGENT ", 1);
 
   // ── SECTION 1: identity ───────────────────────────────────────────────────
-  sp.setTextDatum(TL_DATUM);
-  sp.setTextColor(TFT_DARKGREY);
-  sp.drawString("AGENT", cx, cy, 1);
-  sp.setTextColor(TFT_WHITE);
-  sp.drawString(agent.substring(0, 15).c_str(), cx + indent, cy, 1);
-  sp.setTextDatum(TR_DATUM);
-  sp.setTextColor(rank.color);
-  sp.drawString(rank.label, W - PAD, cy, 1);
-  cy += lineH + gap;
-
-  // Agent title: [RANK] title  or  [RANK] No Title
   {
-    char titleBuf[48];
     const char* t = agentTitle.length() > 0 ? agentTitle.c_str() : "No Title";
-    snprintf(titleBuf, sizeof(titleBuf), "[%s] %s", rank.label, t);
+    char rankTitleBuf[48];
+    snprintf(rankTitleBuf, sizeof(rankTitleBuf), "[%s] %s", rank.label, t);
+
     sp.setTextDatum(TL_DATUM);
+    sp.setTextColor(TFT_DARKGREY);
+    sp.drawString("AGENT", cx, cy, 1);
+    sp.setTextColor(TFT_WHITE);
+    sp.drawString(agent.substring(0, 15).c_str(), cx + indent, cy, 1);
+    sp.setTextDatum(TR_DATUM);
     sp.setTextColor(rank.color);
-    sp.drawString(titleBuf, cx, cy, 1);
-    cy += lineH + gap;
+    sp.drawString(rankTitleBuf, W - PAD, cy, 1);
   }
+  cy += lineH + gap;
 
   {
     char expBuf[12];

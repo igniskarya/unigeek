@@ -52,11 +52,16 @@ export const CATALOG = [
   { slug: "barcode",              title: "Barcode",             category: "utility",  summary: "Generate and display a Code 128 barcode from typed or file-loaded text",                             hasDetail: false },
   { slug: "file-manager",         title: "File Manager",        category: "utility",  summary: "Browse, rename, copy, cut, paste, and delete files on device storage",                               hasDetail: false },
   { slug: "i2c-detector",         title: "I2C Detector",        category: "utility",  summary: "Scan the I2C bus and list all responding device addresses",                                           hasDetail: false },
+  { slug: "achievements",         title: "Achievements",        category: "utility",  summary: "View all achievements grouped by domain; long-press an unlocked achievement to set it as your Agent Title", hasDetail: false },
 
   // Games
   { slug: "game-flappy",          title: "Flappy Bird",         category: "game",     summary: "Classic side-scrolling game with randomized pipes and scoring",                                       hasDetail: false },
   { slug: "game-wordle",          title: "Wordle",              category: "game",     summary: "Guess a 5-letter word in up to 10 attempts — available in English and Indonesian",                   hasDetail: false },
   { slug: "game-hex-decoder",     title: "HEX Decoder",         category: "game",     summary: "Wordle-style game using hex characters — guess a 4-character hex code with color-coded feedback",   hasDetail: false },
+  { slug: "game-memory",          title: "Memory Sequence",     category: "game",     summary: "Simon Says-style memory game — repeat a growing sequence across 4 difficulty levels with high score tracking", hasDetail: false },
+
+  // Profile
+  { slug: "character-screen",     title: "Character Screen",    category: "profile",  summary: "Full-screen profile showing rank, EXP, HP, BRAIN, achievement progress, domain bars, and your Agent Title", hasDetail: false },
 
   // Settings
   { slug: "setting-general",      title: "General Settings",    category: "setting",  summary: "Device name, display timeout, brightness, volume, navigation sound, theme color, and web file manager password", hasDetail: false },

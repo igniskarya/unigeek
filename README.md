@@ -67,6 +67,7 @@ Multi-tool firmware for ESP32-based handheld devices. Built with PlatformIO + Ar
 - **QR Code** — Generate and display a QR code from typed or file-loaded text; supports WiFi QR format
 - **Barcode** — Generate and display a Code 128 barcode from typed or file-loaded text
 - **File Manager** — Browse, rename, copy, cut, paste, and delete files and folders on storage; directories sorted first then alphabetical; tap a file to view its contents; hold 1s to open context menu
+- **Achievements** — View all achievements grouped by domain; shows tier (Bronze/Silver/Gold/Platinum), description, and unlock status; long-press an unlocked achievement to set it as your Agent Title
 
 ### Games
 - **HEX Decoder** — Wordle-style game using hexadecimal characters (0–9, A–F)
@@ -81,6 +82,10 @@ Multi-tool firmware for ESP32-based handheld devices. Built with PlatformIO + Ar
   - 3 difficulty levels: Easy (10 attempts, colors + alphabet hint), Medium (7 attempts, colors), Hard (7 attempts, no colors)
   - Choose between Common (curated) or Full word database
   - Available in English (EN) and Indonesian (ID)
+- **Memory Sequence** — Simon Says-style memory game; repeat an ever-growing sequence of directions
+  - 4 difficulty levels: Easy, Medium, Hard, Extreme
+  - Tracks high scores per difficulty; earn bonus achievements for extreme wins and new high scores
+  - Set a new high score after 5 extreme wins to unlock the Extreme Master achievement
 
 ### Modules
 - **NFC (MFRC522)** — MIFARE Classic card reader and key recovery tool ([details](knowledge/nfc-mifare.md))
@@ -112,6 +117,16 @@ Multi-tool firmware for ESP32-based handheld devices. Built with PlatformIO + Ar
   - Compatible with Flipper Zero and Bruce `.sub` file formats
   - On M5StickC: CC1101 SPI (GPIO 32/33) is shared with GPS UART — the firmware manages the handoff automatically
 - **Pin Setting** — Configure GPIO pins for all external modules (GPS TX/RX/baud, external I2C SDA/SCL, CC1101 CS/GDO0); accessible from both Modules menu and Settings
+
+### Character Screen
+Full-screen profile accessible from the main menu. Displays:
+- **AGENT** — device name and current rank (Novice → Hacker → Expert → Elite → Legend) based on total EXP
+- **Agent Title** — the achievement title you set via long-press in Achievements; shown as `[RANK] Title` (e.g. `[NOVICE] WiFi First`); defaults to `[RANK] No Title`
+- **EXP** — total experience points with a progress bar toward the next rank
+- **HP** — battery percentage; shows `+CHG` when charging
+- **BRAIN** — free heap as a percentage of total heap
+- **ACHIEVEMENT** — total unlocked achievements out of all available
+- Domain bars for WiFi, Attacks, BT, HID, NFC, IR, RF, GPS showing per-domain completion
 
 ### Settings
 - Device name
