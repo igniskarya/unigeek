@@ -1,6 +1,7 @@
 #include "utils/network/WifiUtility.h"
 #include "core/Device.h"
 #include "ui/actions/InputTextAction.h"
+#include "ui/actions/ShowStatusAction.h"
 #include <esp_wifi.h>
 
 // ── Scan ──────────────────────────────────────────────────────────────────
@@ -32,8 +33,14 @@ bool WifiUtility::connect(const char* ssid, const char* password)
     WiFi.mode(WIFI_MODE_STA);
   }
 
+  WiFi.setAutoReconnect(false);
   WiFi.begin(ssid, password);
-  return WiFi.waitForConnectResult(10000) == WL_CONNECTED;
+  bool ok = WiFi.waitForConnectResult(10000) == WL_CONNECTED;
+  if (!ok) {
+    WiFi.disconnect(false);
+    delay(200);
+  }
+  return ok;
 }
 
 // ── Connect with prompt ──────────────────────────────────────────────────
@@ -43,6 +50,7 @@ WifiUtility::ConnectResult WifiUtility::connectWithPrompt(const char* bssid, con
   // Try saved password first
   String saved = readPassword(bssid, ssid);
   if (saved.length() > 0) {
+    ShowStatusAction::show(("Connecting to " + String(ssid) + "...").c_str(), 0);
     if (connect(ssid, saved.c_str())) {
       savePassword(bssid, ssid, saved.c_str());
       return CONNECT_OK;
@@ -53,6 +61,7 @@ WifiUtility::ConnectResult WifiUtility::connectWithPrompt(const char* bssid, con
   String password = InputTextAction::popup(ssid);
   if (password.length() == 0) return CONNECT_CANCELLED;
 
+  ShowStatusAction::show(("Connecting to " + String(ssid) + "...").c_str(), 0);
   if (!connect(ssid, password.c_str())) {
     return CONNECT_FAILED;
   }

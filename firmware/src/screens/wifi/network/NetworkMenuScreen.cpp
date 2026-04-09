@@ -97,7 +97,6 @@ void NetworkMenuScreen::_showWifiList() {
 void NetworkMenuScreen::_connectToSelected(uint8_t index) {
   if (index >= _scannedCount) return;
 
-  ShowStatusAction::show(("Connecting to " + String(_scanned[index].ssid) + "...").c_str(), 0);
   auto result = WifiUtility::connectWithPrompt(_scanned[index].bssid, _scanned[index].ssid);
 
   if (result == WifiUtility::CONNECT_OK) {
