@@ -123,11 +123,11 @@ void WigleScreen::_uploadFile(uint8_t index) {
   if (index >= _fileCount) return;
   WigleUtil::uploadFile(Uni.Storage, _fileNames[index]);
   int n = Achievement.inc("gps_wigle_upload");
-  if (n == 1)  Achievement.unlock("gps_wigle_upload");
-  if (n == 5)  Achievement.unlock("gps_wigle_5");
-  if (n == 10) Achievement.unlock("gps_wigle_10");
-  if (n == 20) Achievement.unlock("gps_wigle_20");
-  if (n == 50) Achievement.unlock("gps_wigle_50");
+  if (n == 1)   Achievement.unlock("gps_wigle_upload");
+  if (n == 5)   Achievement.unlock("gps_wigle_5");
+  if (n == 20)  Achievement.unlock("gps_wigle_20");
+  if (n == 50)  Achievement.unlock("gps_wigle_50");
+  if (n == 100) Achievement.unlock("gps_wigle_100");
   _showUploadMenu();
 }
 

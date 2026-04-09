@@ -31,9 +31,9 @@ public:
   };
 
   static constexpr uint8_t kDomainCount = 11;
-  static constexpr uint8_t kAchCount    = 129;
+  static constexpr uint8_t kAchCount    = 143;
 
-  // Returns the full catalog array (122 entries)
+  // Returns the full catalog array (143 entries)
   static const AchDef* catalog() {
     static constexpr AchDef kAchs[] = {
       // ── WiFi Network (domain 0) ────────────────────────────────────────────
@@ -67,17 +67,28 @@ public:
       { "wifi_evil_twin_started",    "Dark Mirror",            1, 1, "Start an evil twin AP attack" },
       { "wifi_evil_twin_captured",   "Credential Thief",       1, 2, "Capture credentials via evil twin" },
       { "wifi_evil_twin_5",          "Master Deceiver",        1, 3, "Capture 5 credential sets via evil twin" },
+      { "wifi_evil_twin_20",         "Twin Overlord",          1, 3, "Capture 20 credential sets via evil twin" },
+      { "wifi_evil_twin_50",         "Identity Harvester",     1, 3, "Capture 50 credential sets via evil twin" },
       { "wifi_karma_captive_started","Open Arms",              1, 1, "Start Karma captive portal attack" },
       { "wifi_karma_captive_captured","Bait & Hook",           1, 2, "Capture a victim via Karma portal" },
       { "wifi_karma_captive_10",     "Mass Trap",              1, 3, "Capture 10 victims via Karma portal" },
+      { "wifi_karma_captive_25",     "Portal Warden",          1, 3, "Capture 25 victims via Karma portal" },
+      { "wifi_karma_captive_50",     "Net Caster",             1, 3, "Capture 50 victims via Karma portal" },
       { "wifi_karma_eapol_started",  "Handshake Hustler",      1, 1, "Start Karma EAPOL handshake capture" },
       { "wifi_karma_eapol_captured", "EAPOL Farmer",           1, 2, "Capture a handshake via Karma EAPOL" },
+      { "wifi_karma_eapol_5",        "Handshake Poacher",      1, 3, "Capture 5 handshakes via Karma EAPOL" },
+      { "wifi_karma_eapol_20",       "Karma Reaper",           1, 3, "Capture 20 handshakes via Karma EAPOL" },
+      { "wifi_karma_eapol_50",       "Karma God",              1, 3, "Capture 50 handshakes via Karma EAPOL" },
       { "wifi_eapol_capture_started","Passive Listener",       1, 1, "Start passive EAPOL capture mode" },
-      { "wifi_eapol_frame_captured", "First Frame",            1, 1, "Capture your first EAPOL frame" },
       { "wifi_eapol_handshake_valid","WPA Trophy",             1, 2, "Capture a valid WPA 4-way handshake" },
       { "wifi_eapol_handshake_5",    "Handshake Collector",    1, 3, "Collect 5 valid WPA handshakes" },
+      { "wifi_eapol_handshake_20",   "Handshake Hoarder",      1, 3, "Collect 20 valid WPA handshakes" },
+      { "wifi_eapol_handshake_50",   "Handshake Legend",       1, 3, "Collect 50 valid WPA handshakes" },
       { "wifi_brute_started",        "Cracker",                1, 1, "Start a WiFi brute-force attack" },
       { "wifi_brute_cracked",        "Key Master",             1, 3, "Successfully crack a WiFi password" },
+      { "wifi_brute_cracked_5",      "Serial Cracker",         1, 3, "Successfully crack 5 WiFi passwords" },
+      { "wifi_brute_cracked_20",     "Password Reaper",        1, 3, "Successfully crack 20 WiFi passwords" },
+      { "wifi_brute_cracked_50",     "Crypto Nemesis",         1, 3, "Successfully crack 50 WiFi passwords" },
       { "wifi_mitm_started",         "Man in the Middle",      1, 1, "Launch a MITM intercept attack" },
       { "wifi_ciw_started",          "Zero-Day Tourist",       1, 1, "Launch the CIW exploit tool" },
       { "wifi_ciw_device_connected", "Got One",                1, 2, "Get a device to connect via CIW" },
@@ -124,20 +135,23 @@ public:
       // ── Sub-GHz (domain 6) ────────────────────────────────────────────────
       { "rf_receive_first",          "RF Listener",            6, 0, "Receive a Sub-GHz RF signal" },
       { "rf_signal_saved",           "RF Archive",             6, 1, "Save a received RF signal to storage" },
+      { "rf_signal_saved_5",         "RF Collector",           6, 2, "Save 5 RF signals to storage" },
+      { "rf_signal_saved_20",        "RF Library",             6, 3, "Save 20 RF signals to storage" },
       { "rf_send_first",             "RF Transmitter",         6, 0, "Transmit a Sub-GHz RF signal" },
       { "rf_jammer_first",           "Frequency Disruptor",    6, 1, "Start RF jamming on a frequency" },
       { "rf_detect_freq",            "Frequency Finder",       6, 1, "Detect an active RF frequency" },
       // ── GPS (domain 7) ────────────────────────────────────────────────────
       { "gps_fix_first",             "Locked On",              7, 1, "Get your first GPS position fix" },
       { "wardrive_start",            "Street Racer",           7, 1, "Start a wardriving session with GPS" },
-      { "wardrive_10_nets",          "Network Scout",          7, 1, "Log 10 networks during wardriving" },
-      { "wardrive_100_nets",         "Urban Mapper",           7, 2, "Log 100 networks during wardriving" },
+      { "wardrive_50_nets",          "Network Scout",          7, 2, "Log 50 networks during wardriving" },
       { "wardrive_500_nets",         "City Cartographer",      7, 3, "Log 500 networks during wardriving" },
+      { "wardrive_1000_nets",        "Urban Mapper",           7, 3, "Log 1000 networks during wardriving" },
+      { "wardrive_3000_nets",        "Mass Surveyor",          7, 3, "Log 3000 networks during wardriving" },
       { "gps_wigle_upload",          "Cloud Reporter",         7, 1, "Upload wardriving data to WiGLE" },
       { "gps_wigle_5",               "Street Mapper",          7, 2, "Upload 5 wardrive sessions to WiGLE" },
-      { "gps_wigle_10",              "Grid Mapper",            7, 2, "Upload 10 wardrive sessions to WiGLE" },
       { "gps_wigle_20",              "Signal Archivist",       7, 3, "Upload 20 wardrive sessions to WiGLE" },
       { "gps_wigle_50",              "WiGLE Legend",           7, 3, "Upload 50 wardrive sessions to WiGLE" },
+      { "gps_wigle_100",             "WiGLE Titan",            7, 3, "Upload 100 wardrive sessions to WiGLE" },
       // ── Utility (domain 8) ────────────────────────────────────────────────
       { "i2c_scan_first",            "Bus Detective",          8, 0, "Run an I2C bus scan" },
       { "i2c_device_found",          "I2C Discovery",          8, 1, "Find a device on the I2C bus" },
@@ -151,10 +165,10 @@ public:
       { "fileview_first",            "Page Turner",            8, 0, "View a file in the file viewer" },
       // ── Games (domain 9) ──────────────────────────────────────────────────
       { "flappy_first_play",         "First Flight",           9, 0, "Play Flappy Bird for the first time" },
-      { "flappy_score_5",            "Pipe Dodger",            9, 0, "Score 5 points in Flappy Bird" },
       { "flappy_score_10",           "Skilled Flapper",        9, 1, "Score 10 points in Flappy Bird" },
       { "flappy_score_25",           "Air Master",             9, 2, "Score 25 points in Flappy Bird" },
       { "flappy_score_50",           "Pipe Legend",            9, 3, "Score 50 points in Flappy Bird" },
+      { "flappy_score_100",          "Pipe God",               9, 3, "Score 100 points in Flappy Bird" },
       { "wordle_en_first_play",      "Word Player",            9, 0, "Play Wordle (English) for the first time" },
       { "wordle_en_first_win",       "Wordsmith",              9, 1, "Win a game of Wordle (English)" },
       { "wordle_en_win_5",           "Word Master",            9, 2, "Win 5 games of Wordle (English)" },

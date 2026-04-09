@@ -132,10 +132,10 @@ void GameFlappyScreen::_updateGame()
       _pipes[i].scored = true;
       _score++;
       if (Uni.Speaker && !Uni.Speaker->isPlaying()) Uni.Speaker->playRandomTone(0, 50);
-      if (_score == 5)  Achievement.unlock("flappy_score_5");
-      if (_score == 10) Achievement.unlock("flappy_score_10");
-      if (_score == 25) Achievement.unlock("flappy_score_25");
-      if (_score == 50) Achievement.unlock("flappy_score_50");
+      if (_score == 10)  Achievement.unlock("flappy_score_10");
+      if (_score == 25)  Achievement.unlock("flappy_score_25");
+      if (_score == 50)  Achievement.unlock("flappy_score_50");
+      if (_score == 100) Achievement.unlock("flappy_score_100");
     }
   }
 

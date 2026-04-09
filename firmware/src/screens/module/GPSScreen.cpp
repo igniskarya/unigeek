@@ -104,9 +104,10 @@ void GPSScreen::onUpdate() {
     _gps.doWardrive(Uni.Storage);
     {
       uint32_t nets = _gps.discoveredCount() + _gps.bleDiscoveredCount();
-      if (nets >= 10  && !Achievement.isUnlocked("wardrive_10_nets"))  Achievement.unlock("wardrive_10_nets");
-      if (nets >= 100 && !Achievement.isUnlocked("wardrive_100_nets")) Achievement.unlock("wardrive_100_nets");
-      if (nets >= 500 && !Achievement.isUnlocked("wardrive_500_nets")) Achievement.unlock("wardrive_500_nets");
+      if (nets >= 50   && !Achievement.isUnlocked("wardrive_50_nets"))   Achievement.unlock("wardrive_50_nets");
+      if (nets >= 500  && !Achievement.isUnlocked("wardrive_500_nets"))  Achievement.unlock("wardrive_500_nets");
+      if (nets >= 1000 && !Achievement.isUnlocked("wardrive_1000_nets")) Achievement.unlock("wardrive_1000_nets");
+      if (nets >= 3000 && !Achievement.isUnlocked("wardrive_3000_nets")) Achievement.unlock("wardrive_3000_nets");
     }
     if (millis() - _lastRender > 1000) render();
     if (Uni.Nav->wasPressed()) {
@@ -482,11 +483,11 @@ void GPSScreen::_uploadFile(uint8_t fileIndex) {
   if (fileIndex >= _fileCount) return;
   WigleUtil::uploadFile(Uni.Storage, _fileNames[fileIndex]);
   int n = Achievement.inc("gps_wigle_upload");
-  if (n == 1)  Achievement.unlock("gps_wigle_upload");
-  if (n == 5)  Achievement.unlock("gps_wigle_5");
-  if (n == 10) Achievement.unlock("gps_wigle_10");
-  if (n == 20) Achievement.unlock("gps_wigle_20");
-  if (n == 50) Achievement.unlock("gps_wigle_50");
+  if (n == 1)   Achievement.unlock("gps_wigle_upload");
+  if (n == 5)   Achievement.unlock("gps_wigle_5");
+  if (n == 20)  Achievement.unlock("gps_wigle_20");
+  if (n == 50)  Achievement.unlock("gps_wigle_50");
+  if (n == 100) Achievement.unlock("gps_wigle_100");
   _showUploadMenu();
 }
 
