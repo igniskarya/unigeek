@@ -1,6 +1,7 @@
 #include "FileManagerScreen.h"
 #include "core/Device.h"
 #include "core/ScreenManager.h"
+#include "core/AchievementManager.h"
 #include "screens/utility/UtilityMenuScreen.h"
 #include "screens/utility/FileViewerScreen.h"
 #include "ui/actions/InputTextAction.h"
@@ -15,6 +16,8 @@ void FileManagerScreen::onInit()
     Screen.setScreen(new UtilityMenuScreen());
     return;
   }
+  int n = Achievement.inc("filemgr_opened");
+  if (n == 1) Achievement.unlock("filemgr_opened");
   _loadDir(_curPath);
 }
 
@@ -221,12 +224,20 @@ void FileManagerScreen::_handleMenuAction(uint8_t index)
                   ? _removeDir(targetPath)
                   : Uni.Storage->deleteFile(targetPath.c_str());
       if (!ok) ShowStatusAction::show("Delete failed", 1500);
+      else {
+        int n = Achievement.inc("filemgr_delete_first");
+        if (n == 1) Achievement.unlock("filemgr_delete_first");
+      }
       break;
     }
 
     case ACT_COPY:
       _clipPath = targetPath;
       _clipOp   = "Copy";
+      {
+        int n = Achievement.inc("filemgr_copy_first");
+        if (n == 1) Achievement.unlock("filemgr_copy_first");
+      }
       break;
 
     case ACT_CUT:

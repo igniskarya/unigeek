@@ -3,6 +3,7 @@
 #include "core/INavigation.h"
 #include "core/ScreenManager.h"
 #include "core/PinConfigManager.h"
+#include "core/AchievementManager.h"
 #include "screens/utility/UtilityMenuScreen.h"
 
 void I2CDetectorScreen::onInit() {
@@ -37,6 +38,13 @@ void I2CDetectorScreen::_scan() {
       bus->beginTransmission(addr);
       if (bus->endTransmission() == 0) _found[addr] = true;
     }
+  }
+
+  int n = Achievement.inc("i2c_scan_first");
+  if (n == 1) Achievement.unlock("i2c_scan_first");
+
+  for (uint8_t addr = 0x08; addr < 0x78; addr++) {
+    if (_found[addr]) { Achievement.unlock("i2c_device_found"); break; }
   }
 }
 

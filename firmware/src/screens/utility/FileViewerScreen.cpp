@@ -1,6 +1,7 @@
 #include "FileViewerScreen.h"
 #include "core/Device.h"
 #include "core/ScreenManager.h"
+#include "core/AchievementManager.h"
 #include "screens/utility/FileManagerScreen.h"
 #include "ui/actions/ShowStatusAction.h"
 
@@ -52,6 +53,9 @@ void FileViewerScreen::onInit() {
 
   _parseLines();
   _visibleLines = bodyH() / LINE_HEIGHT;
+
+  int n = Achievement.inc("fileview_first");
+  if (n == 1) Achievement.unlock("fileview_first");
 }
 
 void FileViewerScreen::onUpdate() {

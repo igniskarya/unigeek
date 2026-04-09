@@ -1,5 +1,6 @@
 #include "QRCodeScreen.h"
 #include "core/ScreenManager.h"
+#include "core/AchievementManager.h"
 #include "screens/utility/UtilityMenuScreen.h"
 #include "ui/actions/InputTextAction.h"
 #include "ui/actions/ShowStatusAction.h"
@@ -76,6 +77,8 @@ void QRCodeScreen::_generate() {
   String text = InputTextAction::popup("QR Content");
   if (text.length() == 0) { render(); return; }
   ShowQRCodeAction::show(text.c_str(), text.c_str(), _inverted);
+  int n = Achievement.inc("qr_write_generated");
+  if (n == 1) Achievement.unlock("qr_write_generated");
   render();
 }
 
@@ -118,5 +121,7 @@ void QRCodeScreen::_generateFromFile(const String& path) {
   }
 
   ShowQRCodeAction::show(path.c_str(), data.c_str(), _inverted);
+  int n = Achievement.inc("qr_file_generated");
+  if (n == 1) Achievement.unlock("qr_file_generated");
   render();
 }

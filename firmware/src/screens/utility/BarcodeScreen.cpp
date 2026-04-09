@@ -1,5 +1,6 @@
 #include "BarcodeScreen.h"
 #include "core/ScreenManager.h"
+#include "core/AchievementManager.h"
 #include "screens/utility/UtilityMenuScreen.h"
 #include "ui/actions/InputTextAction.h"
 #include "ui/actions/ShowStatusAction.h"
@@ -76,6 +77,8 @@ void BarcodeScreen::_generate() {
   String text = InputTextAction::popup("Barcode Content");
   if (text.length() == 0) { render(); return; }
   ShowBarcodeAction::show(text.c_str(), text.c_str(), _inverted);
+  int n = Achievement.inc("barcode_generated");
+  if (n == 1) Achievement.unlock("barcode_generated");
   render();
 }
 
@@ -124,6 +127,8 @@ void BarcodeScreen::_generateFromFile(const String& path) {
   }
 
   ShowBarcodeAction::show(path.c_str(), data.c_str(), _inverted);
+  int n = Achievement.inc("barcode_file_generated");
+  if (n == 1) Achievement.unlock("barcode_file_generated");
   render();
 }
 
