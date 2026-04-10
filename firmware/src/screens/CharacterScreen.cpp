@@ -382,16 +382,21 @@ void CharacterScreen::onRender()
     const uint16_t col2  = 0x0460;                    // middle: prev word (medium green)
     const uint16_t col1  = 0x01C0;                    // top: oldest word (dim green)
 
-    // Tail: filled triangle pointing left
-    const int tailW = gap * 3;
+    sp.fillRect(bubX, bubY, bubW, bubH, bubBg);
+    sp.drawRect(bubX, bubY, bubW, bubH, col3);
+
+    // Tail: drawn after the rect so it paints over the left border.
+    // Shifted 1 px right: rightmost column lands on bubX, erasing the
+    // border line there and making the tail merge seamlessly with the bubble.
+    const int tailW  = gap * 3;
     const int tailMy = bubY + bubH / 2;
     for (int i = 0; i < tailW; i++) {
       int spread = i + 1;
-      sp.drawFastVLine(bubX - tailW + i, tailMy - spread, spread * 2, bubBg);
+      int tx2    = bubX - tailW + i + 1;   // +1: shift right by 1 px
+      sp.drawFastVLine(tx2, tailMy - spread, spread * 2, bubBg);
+      sp.drawPixel(tx2, tailMy - spread,        col3);
+      sp.drawPixel(tx2, tailMy + spread - 1,    col3);
     }
-
-    sp.fillRect(bubX, bubY, bubW, bubH, bubBg);
-    sp.drawRect(bubX, bubY, bubW, bubH, col3);
 
     // Y centres for the three rows (ML_DATUM)
     const int y1 = bubY + ip + lineH / 2;
