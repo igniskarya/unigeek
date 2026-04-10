@@ -2,6 +2,7 @@
 #include "core/Device.h"
 #include "core/ScreenManager.h"
 #include "core/PinConfigManager.h"
+#include "core/AchievementManager.h"
 #include "screens/module/ModuleMenuScreen.h"
 #include "ui/actions/ShowStatusAction.h"
 #include "ui/views/ProgressView.h"
@@ -263,6 +264,10 @@ void MFRC522Screen::_callScanUid() {
   sp.setTextDatum(MC_DATUM);
 
   if (isFound) {
+    int n = Achievement.inc("nfc_uid_first");
+    if (n == 1)  Achievement.unlock("nfc_uid_first");
+    if (n == 10) Achievement.unlock("nfc_uid_10");
+
     uint8_t piccType = _module->PICC_GetType(_module->uid.sak);
     const char* piccName = (const char*)_module->PICC_GetTypeName(piccType);
     std::string uid = _uidToString(_module->uid.uidByte, _module->uid.size);
@@ -348,6 +353,7 @@ void MFRC522Screen::_callAuthenticate() {
 
   _mf1AuthKeys.fill({});
 
+  bool _keyFoundFired = false;
   for (size_t sector = 0; sector < totalSectors; sector++) {
     for (const auto& keyType : keyTypes) {
       String progress = String((int)sector) + "/" + String((int)(totalSectors - 1));
@@ -368,6 +374,11 @@ void MFRC522Screen::_callAuthenticate() {
             _mf1AuthKeys[sector].first = key;
           else
             _mf1AuthKeys[sector].second = key;
+          if (!_keyFoundFired) {
+            _keyFoundFired = true;
+            int n = Achievement.inc("nfc_key_found");
+            if (n == 1) Achievement.unlock("nfc_key_found");
+          }
           break;
         }
 
@@ -524,6 +535,8 @@ void MFRC522Screen::_callMemoryReader() {
   }
 
   _scrollView.setRows(_rows, _rowCount);
+  int nd = Achievement.inc("nfc_dump_memory");
+  if (nd == 1) Achievement.unlock("nfc_dump_memory");
   render();
 }
 
@@ -691,6 +704,10 @@ void MFRC522Screen::_callDictAttackWithFile(uint8_t fileIndex) {
     }
   }
 
+  if (recovered > 0) {
+    int n = Achievement.inc("nfc_dict_attack");
+    if (n == 1) Achievement.unlock("nfc_dict_attack");
+  }
   char msg[48];
   snprintf(msg, sizeof(msg), "Recovered %d keys", recovered);
   ShowStatusAction::show(msg);
@@ -811,6 +828,10 @@ void MFRC522Screen::_callStaticNested() {
 
   _module->PCD_Init();
 
+  if (recovered > 0) {
+    int n = Achievement.inc("nfc_static_nested");
+    if (n == 1) Achievement.unlock("nfc_static_nested");
+  }
   char msg[48];
   snprintf(msg, sizeof(msg), "Recovered %d keys", recovered);
   ShowStatusAction::show(msg);
@@ -880,6 +901,9 @@ void MFRC522Screen::_callDarksideAttack() {
     uint64_t k = result.key;
     for (int i = 5; i >= 0; i--) { kb[i] = (uint8_t)(k & 0xFF); k >>= 8; }
     _mf1AuthKeys[0].first = NFCUtility::MIFARE_Key(kb[0], kb[1], kb[2], kb[3], kb[4], kb[5]);
+
+    int n = Achievement.inc("nfc_darkside");
+    if (n == 1) Achievement.unlock("nfc_darkside");
 
     char msg[48];
     snprintf(msg, sizeof(msg), "Found key A S0:\n%02X%02X%02X%02X%02X%02X",
