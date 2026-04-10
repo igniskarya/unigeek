@@ -343,7 +343,7 @@ void CharacterScreen::onRender()
   char hpBuf[8];
   snprintf(hpBuf, sizeof(hpBuf), "%d%%", hp);
   _drawInlineBar(sp, cx, sec2Y, halfW, barH,
-                 chg ? "HP +CHG" : "HP", hpBuf, hp, TFT_RED, scale);
+                 chg ? "HP++" : "HP", hpBuf, hp, TFT_RED, scale);
 
   char brainBuf[8];
   snprintf(brainBuf, sizeof(brainBuf), "%d%%", brain);
