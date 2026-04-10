@@ -4,6 +4,7 @@
 
 #include "IRScreen.h"
 
+#include "core/AchievementManager.h"
 #include "core/Device.h"
 #include "core/IStorage.h"
 #include "core/ScreenManager.h"
@@ -47,6 +48,10 @@ void IRScreen::onUpdate() {
         _captured[_capturedCount] = sig;
         _capturedCount++;
         if (Uni.Speaker) Uni.Speaker->playNotification();
+        if (_capturedCount == 1) {
+          int n = Achievement.inc("ir_receive_first");
+          if (n == 1) Achievement.unlock("ir_receive_first");
+        }
         _showReceiveList();
       }
       _ir.resumeReceive();
@@ -173,6 +178,10 @@ void IRScreen::onItemSelected(uint8_t index) {
         _tvbCancelled = false;
         _activeInstance = this;
         _state = STATE_TVBGONE;
+        {
+          int n = Achievement.inc("ir_tvbgone");
+          if (n == 1) Achievement.unlock("ir_tvbgone");
+        }
 
         uint8_t region = (strcmp(sel, "na") == 0) ? 1 : 0;
         _ir.startTvBGone(region, _tvbProgressCb, _tvbCancelCb);
@@ -184,6 +193,8 @@ void IRScreen::onItemSelected(uint8_t index) {
           ShowStatusAction::show("Stopped", 1000);
         } else {
           ShowStatusAction::show("All codes sent!", 1500);
+          int n = Achievement.inc("ir_tvbgone_complete");
+          if (n == 1) Achievement.unlock("ir_tvbgone_complete");
         }
         _showMenu();
         break;
@@ -208,6 +219,16 @@ void IRScreen::onItemSelected(uint8_t index) {
       Uni.Storage->makeDir(kRootPath);
       if (Uni.Storage->writeFile(path.c_str(), content.c_str())) {
         ShowStatusAction::show("Saved!");
+        {
+          int n = Achievement.inc("ir_signal_saved");
+          if (n == 1)  Achievement.unlock("ir_signal_saved");
+          if (n == 5)  Achievement.unlock("ir_signal_saved_5");
+          if (n == 20) Achievement.unlock("ir_signal_saved_20");
+        }
+        if (_capturedCount >= 20) {
+          int n = Achievement.inc("ir_remote_collection");
+          if (n == 1) Achievement.unlock("ir_remote_collection");
+        }
       } else {
         ShowStatusAction::show("Save failed");
       }
@@ -240,6 +261,10 @@ void IRScreen::onItemSelected(uint8_t index) {
       ShowStatusAction::show("Sending...", 0);
       _ir.sendSignal(_sendSignals[index]);
       delay(100);
+      {
+        int n = Achievement.inc("ir_send_first");
+        if (n == 1) Achievement.unlock("ir_send_first");
+      }
       ShowStatusAction::show(("Sent: " + _sendSignals[index].name).c_str(), 800);
       render();
     }
@@ -315,6 +340,10 @@ void IRScreen::_onRecvItemAction(uint8_t index) {
       ShowStatusAction::show("Sending...", 0);
       _ir.sendSignal(_captured[index]);
       delay(100);
+      {
+        int n = Achievement.inc("ir_send_first");
+        if (n == 1) Achievement.unlock("ir_send_first");
+      }
       ShowStatusAction::show("Sent!", 800);
     }
   } else if (strcmp(sel, "rename") == 0) {
@@ -442,6 +471,10 @@ void IRScreen::_onSendItemAction(uint8_t index) {
     ShowStatusAction::show("Sending...", 0);
     _ir.sendSignal(_sendSignals[index]);
     delay(100);
+    {
+      int n = Achievement.inc("ir_send_first");
+      if (n == 1) Achievement.unlock("ir_send_first");
+    }
     ShowStatusAction::show("Sent!", 800);
   } else if (strcmp(sel, "rename") == 0) {
     String newName = InputTextAction::popup("New Name", _sendSignals[index].name);

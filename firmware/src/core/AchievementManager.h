@@ -31,7 +31,7 @@ public:
   };
 
   static constexpr uint8_t kDomainCount = 11;
-  static constexpr uint8_t kAchCount    = 143;
+  static constexpr uint8_t kAchCount    = 146;
 
   // Returns the full catalog array (143 entries)
   static const AchDef* catalog() {
@@ -128,10 +128,13 @@ public:
       { "nfc_darkside",              "Dark Art",               4, 3, "Execute a MIFARE Darkside attack" },
       // ── IR (domain 5) ─────────────────────────────────────────────────────
       { "ir_receive_first",          "Signal Catcher",         5, 0, "Capture an IR signal with the receiver" },
-      { "ir_signal_saved",           "Remote Saved",           5, 1, "Save a captured IR signal to storage" },
+      { "ir_signal_saved",           "Remote Saved",           5, 1, "Save a remote file to storage" },
+      { "ir_signal_saved_5",         "Remote Keeper",          5, 2, "Save 5 remote files to storage" },
+      { "ir_signal_saved_20",        "IR Librarian",           5, 3, "Save 20 remote files to storage" },
       { "ir_send_first",             "Zapper",                 5, 0, "Transmit an IR signal" },
       { "ir_tvbgone",                "TV-B-Gone",              5, 1, "Start TV-B-Gone power-off sweep" },
       { "ir_tvbgone_complete",       "Screen Killer",          5, 2, "Complete a full TV-B-Gone sweep" },
+      { "ir_remote_collection",      "Universal Remote",       5, 2, "Save a remote file with 20 or more signals" },
       // ── Sub-GHz (domain 6) ────────────────────────────────────────────────
       { "rf_receive_first",          "RF Listener",            6, 0, "Receive a Sub-GHz RF signal" },
       { "rf_signal_saved",           "RF Archive",             6, 1, "Save a received RF signal to storage" },
