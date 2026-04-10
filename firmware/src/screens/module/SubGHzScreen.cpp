@@ -1,4 +1,5 @@
 #include "SubGHzScreen.h"
+#include "core/AchievementManager.h"
 #include "core/ScreenManager.h"
 #include "core/Device.h"
 #include "core/PinConfigManager.h"
@@ -42,6 +43,11 @@ void SubGHzScreen::onUpdate() {
       }
     }
     _rf.stepScan();
+    if (!_rfDetectFired && _rf.getScanRssi() > CC1101Util::RSSI_THRESHOLD) {
+      _rfDetectFired = true;
+      int n = Achievement.inc("rf_detect_freq");
+      if (n == 1) Achievement.unlock("rf_detect_freq");
+    }
     render();
     return;
   }
@@ -55,6 +61,10 @@ void SubGHzScreen::onUpdate() {
         _capturedSaved[_capturedCount]   = false;
         _capturedCount++;
         if (Uni.Speaker) Uni.Speaker->playNotification();
+        if (_capturedCount == 1) {
+          int n = Achievement.inc("rf_receive_first");
+          if (n == 1) Achievement.unlock("rf_receive_first");
+        }
         if (_capturedCount >= kMaxCapture) {
           _rf.endReceive();
           snprintf(_titleBuf, sizeof(_titleBuf), "Sub-GHz Full");
@@ -345,6 +355,10 @@ void SubGHzScreen::onItemSelected(uint8_t index) {
         _state = STATE_JAMMING;
         _jamStart = millis();
         strcpy(_titleBuf, "Sub-GHz Jam");
+        {
+          int n = Achievement.inc("rf_jammer_first");
+          if (n == 1) Achievement.unlock("rf_jammer_first");
+        }
         render();
         break;
       }
@@ -397,6 +411,10 @@ void SubGHzScreen::_sendBrowseFile(uint8_t index) {
   ProgressView::show(("Sending " + _browseNames[index]).c_str(), 50);
   _rf.sendSignal(sig);
   _rf.end();
+  {
+    int n = Achievement.inc("rf_send_first");
+    if (n == 1) Achievement.unlock("rf_send_first");
+  }
   ShowStatusAction::show(("Sent: " + _browseNames[index]).c_str(), 1000);
   render();
 }
@@ -467,6 +485,7 @@ void SubGHzScreen::_startScan() {
     render();
     return;
   }
+  _rfDetectFired = false;
   _rf.beginScan();
   _state = STATE_SCANNING;
   strcpy(_titleBuf, "Detect Freq");
@@ -592,6 +611,10 @@ void SubGHzScreen::_sendCapturedSignal(uint8_t index) {
   ProgressView::show(("Replaying " + _capturedTimes[index]).c_str(), 50);
   _rf.sendSignal(_capturedSignals[index]);
   _rf.end();
+  {
+    int n = Achievement.inc("rf_send_first");
+    if (n == 1) Achievement.unlock("rf_send_first");
+  }
   ShowStatusAction::show("Replayed", 1000);
   render();
 }
@@ -611,6 +634,12 @@ void SubGHzScreen::_saveSignal(uint8_t index, const String& name) {
     int lastSlash = path.lastIndexOf('/');
     String fname = (lastSlash >= 0) ? path.substring(lastSlash + 1) : path;
     ShowStatusAction::show(fname.c_str(), 1200);
+    {
+      int n = Achievement.inc("rf_signal_saved");
+      if (n == 1)  Achievement.unlock("rf_signal_saved");
+      if (n == 5)  Achievement.unlock("rf_signal_saved_5");
+      if (n == 20) Achievement.unlock("rf_signal_saved_20");
+    }
   } else {
     ShowStatusAction::show("Save failed");
   }

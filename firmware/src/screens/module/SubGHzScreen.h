@@ -66,7 +66,10 @@ private:
   String _generateTimestampName();
 
   // Jammer state
-  uint32_t _jamStart = 0;
+  uint32_t _jamStart       = 0;
+
+  // achievement guard — resets each scan session
+  bool     _rfDetectFired  = false;
 
   // Send — file browser
   static constexpr uint8_t kMaxBrowse = 30;
