@@ -1,6 +1,7 @@
 #include "WifiKarmaCaptiveScreen.h"
 #include "core/Device.h"
 #include "core/ScreenManager.h"
+#include "core/AchievementManager.h"
 #include "screens/wifi/WifiMenuScreen.h"
 #include "ui/actions/ShowStatusAction.h"
 #include "ui/actions/InputNumberAction.h"
@@ -31,6 +32,12 @@ void WifiKarmaCaptiveScreen::_onPost(const String& data, void* ctx)
 {
   auto* self = static_cast<WifiKarmaCaptiveScreen*>(ctx);
   self->_log.addLine("[+] Credential captured!", TFT_GREEN);
+
+  int nc = Achievement.inc("wifi_karma_captive_captured");
+  if (nc == 1)  Achievement.unlock("wifi_karma_captive_captured");
+  if (nc == 10) Achievement.unlock("wifi_karma_captive_10");
+  if (nc == 25) Achievement.unlock("wifi_karma_captive_25");
+  if (nc == 50) Achievement.unlock("wifi_karma_captive_50");
 
   String ssid = (self->_currentSsid[0] != '\0') ? String(self->_currentSsid) : "unknown";
   self->_portal.saveCaptured(data, "karma_" + ssid);
@@ -330,6 +337,9 @@ void WifiKarmaCaptiveScreen::_startAttack()
     _state = STATE_MENU;
     return;
   }
+
+  int nk = Achievement.inc("wifi_karma_captive_started");
+  if (nk == 1) Achievement.unlock("wifi_karma_captive_started");
 
   _log.addLine("[*] Karma Captive started");
   _log.addLine("[*] BACK/Press to stop");

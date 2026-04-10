@@ -1,6 +1,7 @@
 #include "WifiBeaconSpamScreen.h"
 #include "core/Device.h"
 #include "core/ScreenManager.h"
+#include "core/AchievementManager.h"
 #include "screens/wifi/WifiMenuScreen.h"
 #include "utils/network/WifiAttackUtil.h"
 
@@ -113,6 +114,9 @@ void WifiBeaconSpamScreen::_refreshMenu()
 
 void WifiBeaconSpamScreen::_start()
 {
+  int n = Achievement.inc("wifi_beacon_spam_first");
+  if (n == 1) Achievement.unlock("wifi_beacon_spam_first");
+
   _attacker = new WifiAttackUtil();
   _ssidIdx  = 0;
   _spinIdx  = 0;
@@ -155,6 +159,8 @@ void WifiBeaconSpamScreen::_broadcastNext()
   }
 
   _attacker->beaconSpam(ssid, channel);
+  _rounds++;
+  if (_rounds == 100) Achievement.unlock("wifi_beacon_spam_100");
 }
 
 void WifiBeaconSpamScreen::_drawSpamming()

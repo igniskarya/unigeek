@@ -1,6 +1,7 @@
 #include "WifiEvilTwinScreen.h"
 #include "core/Device.h"
 #include "core/ScreenManager.h"
+#include "core/AchievementManager.h"
 #include "screens/wifi/WifiMenuScreen.h"
 #include "utils/network/WifiAttackUtil.h"
 #include "ui/actions/ShowStatusAction.h"
@@ -27,6 +28,12 @@ void WifiEvilTwinScreen::_onPost(const String& data, void* ctx)
   auto* self = static_cast<WifiEvilTwinScreen*>(ctx);
   self->_pwdCount++;
   self->_log.addLine("[+] Credential received", TFT_GREEN);
+
+  int nc = Achievement.inc("wifi_evil_twin_captured");
+  if (nc == 1)  Achievement.unlock("wifi_evil_twin_captured");
+  if (nc == 5)  Achievement.unlock("wifi_evil_twin_5");
+  if (nc == 20) Achievement.unlock("wifi_evil_twin_20");
+  if (nc == 50) Achievement.unlock("wifi_evil_twin_50");
 
   // Save captured data
   char bssidStr[18];
@@ -250,6 +257,9 @@ void WifiEvilTwinScreen::_startAttack()
     ShowStatusAction::show("Select a portal first!");
     return;
   }
+
+  int ne = Achievement.inc("wifi_evil_twin_started");
+  if (ne == 1) Achievement.unlock("wifi_evil_twin_started");
 
   _state     = STATE_RUNNING;
   _log.clear();

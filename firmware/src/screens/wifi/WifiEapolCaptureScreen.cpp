@@ -1,6 +1,7 @@
 #include "WifiEapolCaptureScreen.h"
 #include "core/Device.h"
 #include "core/ScreenManager.h"
+#include "core/AchievementManager.h"
 #include "screens/wifi/WifiMenuScreen.h"
 #include "ui/actions/InputNumberAction.h"
 #include "ui/actions/ShowStatusAction.h"
@@ -181,6 +182,9 @@ void WifiEapolCaptureScreen::onItemSelected(uint8_t index) {
 
       Uni.Storage->makeDir(SAVE_DIR);
       _storageOk = true;
+
+      int ne = Achievement.inc("wifi_eapol_capture_started");
+      if (ne == 1) Achievement.unlock("wifi_eapol_capture_started");
 
       _logView.addLine("Discovery scan...", TFT_DARKGREY);
 
@@ -624,6 +628,11 @@ void WifiEapolCaptureScreen::_flush() {
         }
         if (!wasValid && entry.validated) {
           _handshakes++;
+          int nh = Achievement.inc("wifi_eapol_handshake_valid");
+          if (nh == 1)  Achievement.unlock("wifi_eapol_handshake_valid");
+          if (nh == 5)  Achievement.unlock("wifi_eapol_handshake_5");
+          if (nh == 20) Achievement.unlock("wifi_eapol_handshake_20");
+          if (nh == 50) Achievement.unlock("wifi_eapol_handshake_50");
           char buf2[44];
           snprintf(buf2, sizeof(buf2), "Captured! %s", entry.ssid.c_str());
           _logView.addLine(buf2, TFT_MAGENTA);
@@ -702,6 +711,11 @@ void WifiEapolCaptureScreen::_flush() {
       // Count handshake when validation first confirms a valid pair
       if (entry.validated && !wasValid) {
         _handshakes++;
+        int nh = Achievement.inc("wifi_eapol_handshake_valid");
+        if (nh == 1)  Achievement.unlock("wifi_eapol_handshake_valid");
+        if (nh == 5)  Achievement.unlock("wifi_eapol_handshake_5");
+        if (nh == 20) Achievement.unlock("wifi_eapol_handshake_20");
+        if (nh == 50) Achievement.unlock("wifi_eapol_handshake_50");
         snprintf(buf, sizeof(buf), "Captured! %s", apName);
         _logView.addLine(buf, TFT_MAGENTA);
         // Free memory — beacon and pending no longer needed

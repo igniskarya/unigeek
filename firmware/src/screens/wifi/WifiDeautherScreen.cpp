@@ -1,6 +1,7 @@
 #include "WifiDeautherScreen.h"
 #include "core/Device.h"
 #include "core/ScreenManager.h"
+#include "core/AchievementManager.h"
 #include "screens/wifi/WifiMenuScreen.h"
 #include "utils/network/WifiAttackUtil.h"
 #include "ui/actions/ShowStatusAction.h"
@@ -158,6 +159,14 @@ void WifiDeautherScreen::_startDeauth()
 
   _state   = STATE_DEAUTHING;
   _spinIdx = 0;
+
+  int nd = Achievement.inc("wifi_deauth_first");
+  if (nd == 1)  Achievement.unlock("wifi_deauth_first");
+  if (nd == 10) Achievement.unlock("wifi_deauth_10");
+  if (_mode == MODE_ALL) {
+    int na = Achievement.inc("wifi_deauth_all_mode");
+    if (na == 1) Achievement.unlock("wifi_deauth_all_mode");
+  }
 
   _attacker = new WifiAttackUtil();
 

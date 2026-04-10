@@ -2,6 +2,7 @@
 #include "core/Device.h"
 #include "core/ScreenManager.h"
 #include "core/ConfigManager.h"
+#include "core/AchievementManager.h"
 #include "screens/wifi/WifiMenuScreen.h"
 
 // ── Promiscuous callback ───────────────────────────────────────────────────
@@ -25,6 +26,9 @@ void WifiPacketMonitorScreen::onInit()
   _firstSweep = true;
   _quitting   = false;
   _pktCounter.store(0, std::memory_order_relaxed);
+
+  int n = Achievement.inc("wifi_packet_monitor_first");
+  if (n == 1) Achievement.unlock("wifi_packet_monitor_first");
 
   WiFi.mode(WIFI_MODE_STA);
   esp_wifi_set_promiscuous(true);

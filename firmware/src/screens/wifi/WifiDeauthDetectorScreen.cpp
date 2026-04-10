@@ -1,6 +1,7 @@
 #include "WifiDeauthDetectorScreen.h"
 #include "core/Device.h"
 #include "core/ScreenManager.h"
+#include "core/AchievementManager.h"
 #include "screens/wifi/WifiMenuScreen.h"
 
 #include <vector>
@@ -91,6 +92,9 @@ void WifiDeauthDetectorScreen::onUpdate()
       if (ssidIt != _ssidMap.end()) e.ssid = ssidIt->second;
       _deauthMap.emplace(ev.mac, e);
       gotNew = true;
+
+      int nd = Achievement.inc("wifi_deauth_detected");
+      if (nd == 1) Achievement.unlock("wifi_deauth_detected");
     } else {
       if (it->second.counter < 1000) ++it->second.counter;
       it->second.timestamp = ev.timestamp;

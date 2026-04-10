@@ -1,6 +1,7 @@
 #include "WifiCiwZeroclickScreen.h"
 #include "core/Device.h"
 #include "core/ScreenManager.h"
+#include "core/AchievementManager.h"
 #include "screens/wifi/WifiMenuScreen.h"
 #include "ui/actions/InputSelectOption.h"
 #include "ui/actions/ShowStatusAction.h"
@@ -279,6 +280,9 @@ void WifiCiwZeroclickScreen::_startBroadcast()
   _alertCount = 0;
   _alertHead = 0;
   _state = STATE_BROADCASTING;
+
+  int nc = Achievement.inc("wifi_ciw_started");
+  if (nc == 1) Achievement.unlock("wifi_ciw_started");
   _lastDrawMs = 0;
   render();
 }
@@ -462,6 +466,9 @@ void WifiCiwZeroclickScreen::_onWifiEvent(WiFiEvent_t event, WiFiEventInfo_t inf
       d.connectTime = millis();
       d.payloadIdx = self->_currentIdx;
       self->_deviceCount++;
+
+      int nd = Achievement.inc("wifi_ciw_device_connected");
+      if (nd == 1) Achievement.unlock("wifi_ciw_device_connected");
     }
   } else if (event == ARDUINO_EVENT_WIFI_AP_STADISCONNECTED) {
     uint8_t* m = info.wifi_ap_stadisconnected.mac;

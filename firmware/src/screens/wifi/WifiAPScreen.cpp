@@ -2,6 +2,7 @@
 #include "core/Device.h"
 #include "core/ScreenManager.h"
 #include "core/ConfigManager.h"
+#include "core/AchievementManager.h"
 #include "screens/wifi/WifiMenuScreen.h"
 #include "ui/actions/InputTextAction.h"
 #include "ui/actions/ShowStatusAction.h"
@@ -295,6 +296,9 @@ void WifiAPScreen::_startAP()
     }
   }
 
+  int n = Achievement.inc("wifi_ap_started");
+  if (n == 1) Achievement.unlock("wifi_ap_started");
+
   _showLog();
 }
 
@@ -387,6 +391,8 @@ void WifiAPScreen::_showLog()
 
 void WifiAPScreen::logVisit(const char* msg)
 {
+  int nv = Achievement.inc("wifi_ap_client_visit");
+  if (nv == 1) Achievement.unlock("wifi_ap_client_visit");
   _log.addLine(msg);
 }
 

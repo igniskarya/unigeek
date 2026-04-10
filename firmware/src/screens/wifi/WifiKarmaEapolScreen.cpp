@@ -1,6 +1,7 @@
 #include "WifiKarmaEapolScreen.h"
 #include "core/Device.h"
 #include "core/ScreenManager.h"
+#include "core/AchievementManager.h"
 #include "screens/wifi/WifiMenuScreen.h"
 #include "ui/actions/ShowStatusAction.h"
 #include "ui/actions/InputNumberAction.h"
@@ -459,6 +460,9 @@ void WifiKarmaEapolScreen::_startAttack()
   _beaconSaved       = false;
   _handshakeCaptured = false;
 
+  int nk = Achievement.inc("wifi_karma_eapol_started");
+  if (nk == 1) Achievement.unlock("wifi_karma_eapol_started");
+
   _log.addLine("[*] Karma EAPOL started");
   _log.addLine("[*] BACK/Press to stop");
   _initEspNow();
@@ -654,6 +658,12 @@ void WifiKarmaEapolScreen::_flushEapol()
           _pcapStarted       = true;
           _handshakeCaptured = true;
           _log.addLine("[+] M1+M2 saved!", TFT_GREEN);
+
+          int nc = Achievement.inc("wifi_karma_eapol_captured");
+          if (nc == 1)  Achievement.unlock("wifi_karma_eapol_captured");
+          if (nc == 5)  Achievement.unlock("wifi_karma_eapol_5");
+          if (nc == 20) Achievement.unlock("wifi_karma_eapol_20");
+          if (nc == 50) Achievement.unlock("wifi_karma_eapol_50");
           if (Uni.Speaker) Uni.Speaker->beep();
         } else {
           _appendEapolFrame(c.data, c.len);
