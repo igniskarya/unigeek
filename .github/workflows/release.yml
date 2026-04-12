@@ -52,9 +52,6 @@ jobs:
           PLATFORMIO_BUILD_SRC_FLAGS: -DFIRMWARE_VERSION='"${{ github.ref_name }}"'
         run: pio run -e ${{ matrix.env }}
 
-      - name: Rename binary
-        run: cp unigeek-latest.bin unigeek-${{ matrix.env }}.bin
-
       - name: Upload to release
         uses: softprops/action-gh-release@v2
         env:
