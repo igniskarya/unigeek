@@ -53,6 +53,9 @@ uint8_t MainMenuScreen::_effectiveCount()
 void MainMenuScreen::_calculateLayout()
 {
   // Measure widest label — item must be at least as wide as text + 2px each side.
+  // textWidth() respects the current textSize on Uni.Lcd; force size 1 to match
+  // how the sprite draws labels (sprites start at textSize=1 by default).
+  Uni.Lcd.setTextSize(1);
   uint16_t maxTextW = 0;
   for (uint8_t i = 0; i < ITEM_COUNT; i++) {
     uint16_t tw = Uni.Lcd.textWidth(_items[i].label, 1);
