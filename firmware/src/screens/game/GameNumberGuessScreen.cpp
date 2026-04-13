@@ -64,6 +64,16 @@ void GameNumberGuessScreen::onUpdate()
   if (_state == STATE_PLAY) {
     while (Uni.Keyboard->available()) {
       char c = Uni.Keyboard->getKey();
+
+#ifdef KB_QWERT_NUM_REMAP
+      static constexpr char topRow[]   = "qwertyuiop";
+      static constexpr char topRowUp[] = "QWERTYUIOP";
+      static constexpr char topNums[]  = "1234567890";
+      for (int i = 0; i < 10; i++) {
+        if (c == topRow[i] || c == topRowUp[i]) { c = topNums[i]; break; }
+      }
+#endif
+
       if (c == '\n' || c == '\r') {
         _submitGuess();
         break;
@@ -73,6 +83,8 @@ void GameNumberGuessScreen::onUpdate()
           _inputBuf[_inputCursor]   = '\0';
           render();
         }
+      } else if (c == '\b' || c == 0x7F) {
+        _backDigit();
       }
     }
   }
