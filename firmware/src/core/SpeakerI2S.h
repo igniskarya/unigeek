@@ -16,6 +16,9 @@
 #include <math.h>
 
 class SpeakerI2S : public ISpeaker {
+protected:
+  int baseAmplitude = 32767;
+
 public:
   void begin() override {
     i2s_config_t cfg         = {};
@@ -54,7 +57,7 @@ public:
   }
 
   void setVolume(uint8_t vol) override {
-    _amplitude = (int16_t)((uint32_t)vol * 32767 / 100);
+    _amplitude = (int16_t)((uint32_t)vol * baseAmplitude / 100);
   }
 
   bool isPlaying() override { return _taskHandle != nullptr; }
@@ -130,12 +133,12 @@ private:
 #endif
   static constexpr i2s_port_t _port       = (i2s_port_t)SPK_I2S_PORT;
   static constexpr uint32_t   _sampleRate = 44100;
+  int16_t        _amplitude   = 16383;
 
   struct Note { uint16_t freq; uint32_t durationMs; uint32_t delayMs; };
 
   uint16_t       _freq        = 1000;
   uint32_t       _duration    = 50;
-  int16_t        _amplitude   = 16383;
   TaskHandle_t   _taskHandle  = nullptr;
 
   const uint8_t* _wavData       = nullptr;

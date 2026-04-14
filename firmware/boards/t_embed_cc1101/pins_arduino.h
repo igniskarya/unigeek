@@ -31,6 +31,10 @@ static const uint8_t SCL = GROVE_SCL;
 #define LCD_BL  21
 #define LCD_BL_CH  7
 
+// ─── IR ───────────────────────────────────────────────────
+#define IR_TX_PIN  2
+#define IR_RX_PIN  1
+
 // ─── CC1101 Sub-GHz ───────────────────────────────────────
 #define CC1101_CS_PIN    12
 #define CC1101_GDO0_PIN   3

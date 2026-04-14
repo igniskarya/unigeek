@@ -47,7 +47,11 @@
   #define PIN_CONFIG_IR_TX_DEFAULT    "-1"
 #endif
 
-#define PIN_CONFIG_IR_RX_DEFAULT      "-1"
+#if defined(IR_RX_PIN)
+  #define PIN_CONFIG_IR_RX_DEFAULT    String(IR_RX_PIN)
+#else
+  #define PIN_CONFIG_IR_RX_DEFAULT    "-1"
+#endif
 
 // ─── CC1101 pin config ──────────────────────────────────────────────────────
 #define PIN_CONFIG_CC1101_CS        "cc1101_cs"

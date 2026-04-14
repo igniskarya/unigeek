@@ -47,7 +47,11 @@ void IRScreen::onUpdate() {
         sig.name = "Signal " + String(_capturedCount + 1);
         _captured[_capturedCount] = sig;
         _capturedCount++;
+        #if defined(DEVICE_M5STICK_S3) && defined(IR_RX_PIN)
+        if (Uni.Speaker && _rxPin != IR_RX_PIN) Uni.Speaker->playNotification();
+        #else
         if (Uni.Speaker) Uni.Speaker->playNotification();
+        #endif
         if (_capturedCount == 1) {
           int n = Achievement.inc("ir_receive_first");
           if (n == 1) Achievement.unlock("ir_receive_first");

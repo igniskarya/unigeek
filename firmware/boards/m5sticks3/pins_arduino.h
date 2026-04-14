@@ -1,6 +1,6 @@
 //
-// M5StickS3 — ESP32-S3, 8MB flash, ST7789 135×240, NS4168 I2S speaker.
-// AXP2101 power IC via M5Unified. SD card on dedicated SPI bus.
+// M5StickS3 — ESP32-S3, 8MB flash, ST7789 135×240, ES8311 I2S codec.
+// M5PM1 (PY32) power IC at I2C 0x6E. LittleFS only (no SD card).
 //
 
 #pragma once
@@ -27,7 +27,7 @@ static const uint8_t SCK  = SPI_SCK_PIN;
 static const uint8_t SDA = GROVE_SDA;
 static const uint8_t SCL = GROVE_SCL;
 
-// ─── Internal I2C (AXP2101 + RTC) ─────────────────────────
+// ─── Internal I2C (M5PM1 power IC) ───────────────────────
 #define INTERNAL_SDA  47
 #define INTERNAL_SCL  48
 
@@ -41,10 +41,11 @@ static const uint8_t SCL = GROVE_SCL;
 #define BTN_A  11
 #define BTN_B  12
 
-// ─── IR Transmitter ──────────────────────────────────────
+// ─── IR Transmitter / Receiver ───────────────────────────
 #define IR_TX_PIN  46
+#define IR_RX_PIN  42
 
-// ─── Speaker (NS4168 I2S amp) ─────────────────────────────
+// ─── Speaker (ES8311 I2S codec) ───────────────────────────
 #define SPK_BCLK      17
 #define SPK_WCLK      15
 #define SPK_DOUT      14
@@ -76,7 +77,7 @@ static const uint8_t SCL = GROVE_SCL;
 #define SPI_READ_FREQUENCY   20000000
 
 // ─── Firmware Feature Flags ───────────────────────────────
-#define DEVICE_HAS_SOUND              // NS4168 I2S speaker
+#define DEVICE_HAS_SOUND              // ES8311 I2S codec
 #define DEVICE_HAS_VOLUME_CONTROL     // I2S amp supports setVolume()
 #define DEVICE_HAS_USB_HID            // ESP32-S3 native USB HID
-#define APP_MENU_POWER_OFF            // AXP2101 power-off via M5Unified
+#define APP_MENU_POWER_OFF            // M5PM1 power-off
