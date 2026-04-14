@@ -66,16 +66,19 @@ public:
 
   // DLDO1 backlight control (0–100%)
   // DLDO1 feeds the SY7088 boost converter which drives the LCD LEDs.
-  // SY7088 needs VIN >= ~2.7V to operate, so we clamp minimum to 3.0V (val=25).
-  // Effective dimming range: 25–28 (3.0V–3.3V). 0% disables DLDO1 entirely.
+  // Uses same formula as M5GFX Light_M5StackCoreS3: input scaled to 0–255 then
+  // mapped to DLDO1 val 20–28 (2.5V–3.3V). Below ~2.7V the SY7088 loses
+  // regulation, giving a crude dim effect at low settings.
+  // 0% disables DLDO1 entirely (backlight off).
   void setBacklight(uint8_t pct) {
     if (pct == 0) {
       _bitOff(0x90, 0x80);  // disable DLDO1
       return;
     }
     if (pct > 100) pct = 100;
-    // Map 1–100% → val 25–28 (3000–3300 mV), never below SY7088 minimum
-    uint8_t val = 25 + (uint8_t)((uint16_t)(pct - 1) * 3 / 99);
+    // Scale 1–100% → 0–255, then apply M5GFX formula: val = (m5val + 641) >> 5
+    uint8_t m5val = (uint8_t)((uint16_t)pct * 255 / 100);
+    uint8_t val   = (uint8_t)((uint16_t)(m5val + 641) >> 5);
     _write(0x99, val);
     _bitOn(0x90, 0x80);
   }
