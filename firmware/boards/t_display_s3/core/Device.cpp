@@ -1,18 +1,13 @@
 #include "core/Device.h"
-#include "core/StorageLFS.h"
 #include "core/Display.h"
 #include "core/Navigation.h"
 #include "core/Power.h"
-#include <SPI.h>
 
 static DisplayImpl displayImpl;
 static PowerImpl powerImpl;
 static NavigationImpl navImpl;
-static StorageLFS storageLFS;
 
 Device* Device::createInstance() {
-    storageLFS.begin();
-
     // Battery ADC and Backlight initialization
     pinMode(LCD_BAT_VOLT, INPUT);
 
@@ -20,16 +15,7 @@ Device* Device::createInstance() {
     ledcAttachPin(LCD_BL, LCD_BL_CH);
     ledcWrite(LCD_BL_CH, 255);
 
-    return new Device(
-        displayImpl,
-        powerImpl,
-        &navImpl,
-        nullptr, // No Keyboard
-        nullptr, // No SD
-        &storageLFS,
-        nullptr, // No SPI
-        nullptr  // No Sound
-    );
+    return new Device(displayImpl, powerImpl, &navImpl);
 }
 
 void Device::boardHook() {

@@ -1,5 +1,4 @@
 #include "core/Device.h"
-#include "core/StorageLFS.h"
 #include "Navigation.h"
 #include "Display.h"
 #include "Power.h"
@@ -7,7 +6,6 @@
 static DisplayImpl    display;
 static NavigationImpl navigation;
 static PowerImpl      power;
-static StorageLFS     storageLFS;
 
 void Device::applyNavMode() {}
 void Device::boardHook() {}
@@ -19,10 +17,7 @@ Device* Device::createInstance() {
   pinMode(LCD_BL, OUTPUT);
   digitalWrite(LCD_BL, HIGH);
 
-  storageLFS.begin();
-
-  auto* dev = new Device(display, power, &navigation, nullptr,
-                         nullptr, &storageLFS, nullptr, nullptr);
+  auto* dev = new Device(display, power, &navigation);
   dev->ExI2C = &Wire;  // free — no internal I2C on this board
   return dev;
 }

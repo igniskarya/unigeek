@@ -3,8 +3,6 @@
 //
 
 #include "core/Device.h"
-#include "core/StorageSD.h"
-#include "core/StorageLFS.h"
 #include "Navigation.h"
 #include "Display.h"
 #include "Power.h"
@@ -17,8 +15,6 @@ static DisplayImpl    display;
 static KeyboardImpl   keyboard;
 static NavigationImpl navigation(&keyboard);
 static PowerImpl      power;
-static StorageSD      storageSD;
-static StorageLFS     storageLFS;
 static ExtSpiClass    sharedSpi(HSPI);
 static SpeakerLoRa    speaker;
 
@@ -38,11 +34,8 @@ Device* Device::createInstance() {
   }
   Wire.begin(GROVE_SDA, GROVE_SCL);  // I2C: keyboard, RTC, sensor, audio
   sharedSpi.begin(SPI_SCK_PIN, SPI_MISO_PIN, SPI_MOSI_PIN, -1);
-  storageLFS.begin();
-  storageSD.begin(SD_CS, sharedSpi);
 
-  auto* dev = new Device(display, power, &navigation, &keyboard,
-                         &storageSD, &storageLFS, &sharedSpi, &speaker);
+  auto* dev = new Device(display, power, &navigation, &keyboard, &sharedSpi, &speaker);
   dev->InI2C = &Wire;   // TCA8418 + PCF85063A RTC + ES8311 (single shared bus)
   return dev;
 }

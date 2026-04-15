@@ -35,6 +35,7 @@ static const uint8_t SCL = GROVE_SCL;
 #define SDCARD_SCK   14
 #define SDCARD_MISO  12
 #define SDCARD_MOSI  13
+#define SD_CS  SDCARD_CS   // alias used by Device::initStorage()
 
 // ─── Navigation buttons (active LOW, external pull-ups) ───
 // GPIO 34/35/36/39: input-only, no internal pull-up — use INPUT mode

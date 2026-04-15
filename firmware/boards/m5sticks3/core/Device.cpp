@@ -3,7 +3,6 @@
 //
 
 #include "core/Device.h"
-#include "core/StorageLFS.h"
 #include "Navigation.h"
 #include "Display.h"
 #include "Power.h"    // pulls in <M5PM1.h>
@@ -16,7 +15,6 @@ M5PM1 pm1;
 static DisplayImpl    display;
 static NavigationImpl navigation;
 static PowerImpl      power;
-static StorageLFS     storageLFS;
 static SpeakerStickS3 speaker;
 
 void Device::applyNavMode() {}
@@ -36,10 +34,7 @@ Device* Device::createInstance() {
               M5PM1_GPIO_PULL_NONE, M5PM1_GPIO_DRIVE_PUSHPULL);
   delay(100);  // allow LCD LDO to stabilise
 
-  storageLFS.begin();
-
-  auto* dev = new Device(display, power, &navigation, nullptr,
-                         nullptr, &storageLFS, nullptr, &speaker);
+  auto* dev = new Device(display, power, &navigation, nullptr, nullptr, &speaker);
 
   dev->ExI2C = &Wire;   // Grove I2C (SDA=9, SCL=10) — free, caller must begin()
   dev->InI2C = &Wire1;  // M5PM1 power IC (SDA=47, SCL=48)

@@ -15,14 +15,8 @@
 #include "screens/setting/TouchGuideScreen.h"
 #endif
 
-void _checkStorageFallback() {
-  if (Uni.Storage && !Uni.Storage->isAvailable() && Uni.StorageLFS)
-    Uni.Storage = Uni.StorageLFS;
-}
-
 void _bootSplash() {
   // ── Pre-draw init (config needed for theme colour) ────────────────────────
-  _checkStorageFallback();
   Config.load(Uni.Storage);
   PinConfig.load(Uni.Storage);
 
@@ -85,6 +79,7 @@ void _bootSplash() {
 void setup() {
   Serial.begin(115200);
   Uni.begin();
+  Uni.initStorage();
 #ifdef DEVICE_HAS_RTC
   RtcManager::syncSystemFromRtc();
 #endif

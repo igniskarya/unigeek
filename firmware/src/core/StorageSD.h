@@ -7,57 +7,83 @@
 #include "core/IStorage.h"
 #include <SD.h>
 #include <SPI.h>
+#include <Arduino.h>
+#include <esp32-hal-spi.h>  // spiAttachMISO()
 
 class StorageSD : public IStorage
 {
 public:
-  bool begin(uint8_t csPin, SPIClass& spi, uint32_t freq = 4000000) {
+  // dcPin: shared DC/MISO pin (e.g. CoreS3 GPIO35). Pass -1 if not shared.
+  // When set, every SD operation:
+  //   _miso() — re-routes pin to SPI MISO in GPIO matrix + enables input buffer
+  //   _dc()   — switches pin back to GPIO output (HIGH = DC data signal)
+  // The re-route step is needed because M5GFX / LovyanGFX calls
+  // gpio_pad_select_gpio() on the DC pin during display init, which clears
+  // the GPIO matrix SPI routing. spiAttachMISO() restores it each call.
+  bool begin(uint8_t csPin, SPIClass& spi, uint32_t freq = 4000000, int8_t dcPin = -1) {
+    _dcPin = dcPin;
+    _spi   = (dcPin >= 0) ? &spi : nullptr;
+    _miso();
     _available = SD.begin(csPin, spi, freq);
+    _dc();
     return _available;
   }
 
   bool     isAvailable() override { return _available; }
-  uint64_t totalBytes()  override { return _available ? SD.totalBytes() : 0; }
-  uint64_t usedBytes()   override { return _available ? SD.usedBytes()  : 0; }
-  uint64_t freeBytes()   override {
+
+  uint64_t totalBytes() override {
+    if (!_available) return 0;
+    _miso(); auto r = SD.totalBytes(); _dc(); return r;
+  }
+  uint64_t usedBytes() override {
+    if (!_available) return 0;
+    _miso(); auto r = SD.usedBytes(); _dc(); return r;
+  }
+  uint64_t freeBytes() override {
     uint64_t t = totalBytes(), u = usedBytes();
     return (u < t) ? (t - u) : 0;
   }
+
   fs::File open(const char* path, const char* mode) override {
     if (!_available) return fs::File();
-    return SD.open(path, mode);
+    _miso(); auto r = SD.open(path, mode); _dc(); return r;
   }
+
   bool exists(const char* path) override {
     if (!_available) return false;
-    return SD.exists(path);
+    _miso(); auto r = SD.exists(path); _dc(); return r;
   }
 
   String readFile(const char* path) override {
     if (!_available) return "";
+    _miso();
     File f = SD.open(path, FILE_READ);
-    if (!f) return "";  // file not found is not an SD failure
+    if (!f) { _dc(); return ""; }
     String content = f.readString();
     f.close();
+    _dc();
     return content;
   }
 
   bool writeFile(const char* path, const char* content) override {
     if (!_available) return false;
+    _miso();
     File f = SD.open(path, FILE_WRITE);
-    if (!f) { _available = false; return false; }
+    if (!f) { _available = false; _dc(); return false; }
     f.print(content);
     f.close();
+    _dc();
     return true;
   }
 
   bool deleteFile(const char* path) override {
     if (!_available) return false;
-    return SD.remove(path);
+    _miso(); auto r = SD.remove(path); _dc(); return r;
   }
 
   bool makeDir(const char* path) override {
     if (!_available) return false;
-    // create recursively
+    _miso();
     String p = path;
     for (int i = 1; i < (int)p.length(); i++) {
       if (p[i] == '/') {
@@ -65,24 +91,26 @@ public:
         if (!SD.exists(sub.c_str())) SD.mkdir(sub.c_str());
       }
     }
-    if (!SD.exists(path)) return SD.mkdir(path);
-    return true;
+    bool r = SD.exists(path) ? true : SD.mkdir(path);
+    _dc();
+    return r;
   }
 
   bool renameFile(const char* from, const char* to) override {
     if (!_available) return false;
-    return SD.rename(from, to);
+    _miso(); auto r = SD.rename(from, to); _dc(); return r;
   }
 
   bool removeDir(const char* path) override {
     if (!_available) return false;
-    return SD.rmdir(path);
+    _miso(); auto r = SD.rmdir(path); _dc(); return r;
   }
 
   uint8_t listDir(const char* path, DirEntry* out, uint8_t max) override {
     if (!_available) return 0;
+    _miso();
     File dir = SD.open(path);
-    if (!dir) return 0;
+    if (!dir) { _dc(); return 0; }
     uint8_t count = 0;
     while (count < max) {
       File f = dir.openNextFile();
@@ -93,11 +121,30 @@ public:
       count++;
     }
     dir.close();
+    _dc();
     return count;
   }
 
   fs::FS& getFS() override { return SD; }
 
 private:
-  bool _available = false;
+  bool       _available = false;
+  int8_t     _dcPin     = -1;
+  SPIClass*  _spi       = nullptr;
+
+  // Re-route _dcPin to SPI MISO in the GPIO matrix (cleared by M5GFX/LGFX's
+  // gpio_pad_select_gpio call during DC pin setup), then enable input buffer.
+  void _miso() {
+    if (_dcPin < 0) return;
+    if (_spi && _spi->bus()) spiAttachMISO(_spi->bus(), _dcPin);
+    gpio_set_direction((gpio_num_t)_dcPin, GPIO_MODE_INPUT);
+  }
+
+  // Switch _dcPin back to GPIO output for TFT DC signal.
+  // Does NOT call gpio_pad_select_gpio — leaves GPIO matrix MISO routing intact.
+  void _dc() {
+    if (_dcPin < 0) return;
+    gpio_set_direction((gpio_num_t)_dcPin, GPIO_MODE_OUTPUT);
+    gpio_set_level((gpio_num_t)_dcPin, 1);
+  }
 };

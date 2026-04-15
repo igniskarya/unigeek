@@ -40,6 +40,10 @@ public:
     if (Speaker)  Speaker->begin();
   }
 
+  // Init LFS + SD (if SD_CS defined) and update Storage pointer.
+  // Shared implementation in src/core/Device.cpp — call once from setup() after begin().
+  void initStorage();
+
   void update()
   {
     boardHook();
@@ -54,7 +58,7 @@ public:
     if (active) lastActiveMs = millis();
   }
 
-  void boardHook();  // board-specific per-frame hook, defined in each Device.cpp
+  void boardHook();   // board-specific per-frame hook, defined in each Device.cpp
 
   void switchNavigation(INavigation* newNav)
   {
@@ -67,12 +71,13 @@ public:
   IDisplay& Lcd;
   IPower& Power;
   INavigation* Nav;
-  IStorage*   Storage    = nullptr;  // primary — set by board
-  IStorage*   StorageSD  = nullptr;  // direct SD access (nullable)
-  IStorage*   StorageLFS = nullptr;  // direct LFS access (nullable)
+  IStorage*   Storage    = nullptr;  // primary — set by initStorage()
+  IStorage*   StorageSD  = nullptr;  // direct SD access — set by initStorage()
+  IStorage*   StorageLFS = nullptr;  // direct LFS access — set by initStorage()
   IKeyboard*  Keyboard   = nullptr;
   ISpeaker*   Speaker    = nullptr;
   ExtSpiClass* Spi        = nullptr;  // shared SPI bus (nullable, board-specific)
+  int8_t      StorageDcPin = -1;     // shared DC/MISO GPIO — set by board before initStorage() if needed
   TwoWire*    ExI2C      = nullptr;  // external I2C — free state, caller must begin(sda,scl)/end()
   TwoWire*    InI2C      = nullptr;  // internal I2C — board-initialized, do not end()
   unsigned long lastActiveMs = 0;    // last user input timestamp — updated by update()
@@ -82,19 +87,14 @@ public:
   Device(const Device&)            = delete;
   Device& operator=(const Device&) = delete;
 private:
-  // Private constructor — takes concrete implementations
+  // Private constructor — takes concrete implementations.
+  // Storage objects are managed by initStorage() in src/core/Device.cpp.
   Device(IDisplay& lcd, IPower& power, INavigation* nav,
         IKeyboard* keyboard = nullptr,
-        IStorage* storageSD = nullptr,
-        IStorage* storageLFS = nullptr,
         ExtSpiClass* spi = nullptr,
         ISpeaker* sound = nullptr)
      : Lcd(lcd), Power(power), Nav(nav),
        Keyboard(keyboard),
-       StorageSD(storageSD), StorageLFS(storageLFS),
-       Storage(storageSD && storageSD->isAvailable()
-               ? storageSD
-               : storageLFS),
        Spi(spi),
        Speaker(sound) {}
   // Returns a heap-allocated instance — defined in Device.cpp

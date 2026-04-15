@@ -3,8 +3,7 @@
 //
 
 #include "core/Device.h"
-#include "core/StorageLFS.h"
-#include "core/ConfigManager.h"
+ #include "core/ConfigManager.h"
 #include "Navigation.h"
 #include "EncoderNavigation.h"
 #include "Display.h"
@@ -19,7 +18,6 @@ static DisplayImpl      display(&axp);
 static NavigationImpl   navigation(&axp);
 static EncoderNavigation encoderNavigation(&axp);
 static PowerImpl        power(&axp);
-static StorageLFS       storageLFS;
 static SpeakerBuzzer    speaker;
 static ExtSpiClass      extSpi(VSPI);  // Grove port SPI (display uses HSPI)
 
@@ -27,7 +25,6 @@ Device* Device::createInstance() {
   pinMode(BTN_B, INPUT_PULLUP);
   pinMode(BTN_A, INPUT_PULLUP);
   Wire1.begin(INTERNAL_SDA, INTERNAL_SCL);  // Wire1: AXP192 + BM8563 share same internal I2C bus
-  storageLFS.begin();
 
   // Grove port SPI — pins stored but NOT begun here.
   // GPIO 32/33 are shared with GPS UART2 (TX=32, RX=33).
@@ -35,8 +32,7 @@ Device* Device::createInstance() {
   // and GPS Serial2.begin() can freely claim the pins when CC1101 is idle.
   extSpi.setPins(V_SPI_SCK, V_SPI_MISO, V_SPI_MOSI, -1);
 
-  auto* dev = new Device(display, power, &navigation, nullptr,
-                         nullptr, &storageLFS, &extSpi, &speaker);
+  auto* dev = new Device(display, power, &navigation, nullptr, &extSpi, &speaker);
   dev->ExI2C = &Wire;   // free — Wire1 is used for AXP192+RTC
   dev->InI2C = &Wire1;  // AXP192 + BM8563 RTC
   return dev;
