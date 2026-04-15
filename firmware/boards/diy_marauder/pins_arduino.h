@@ -46,7 +46,7 @@ static const uint8_t SCL = GROVE_SCL;
 
 // ─── App feature flags ────────────────────────────────────
 #define APP_MENU_POWER_OFF   // deep sleep via BTN_SEL wakeup
-#define DISPLAY_NO_INVERT    // ILI9341 on this board does not need software inversion
+#define DISPLAY_INVERT    // ILI9341 on this board does not need software inversion
 
 // ─── TFT_eSPI config ──────────────────────────────────────
 #define DISABLE_ALL_LIBRARY_WARNINGS 1
