@@ -252,7 +252,7 @@ void CharacterScreen::onInit()
   _lastAnimMs    = 0;
   _lastCharMs    = 0;
   _animFrame     = 0;
-  _wordIdx       = 0;
+  _wordIdx       = (uint8_t)random(kWordCount);
   _wordPos       = 0;
   _wordState     = 0;
   _history[0][0] = '\0';
@@ -299,8 +299,10 @@ void CharacterScreen::onUpdate()
       _history[0][sizeof(_history[0]) - 1] = '\0';
       strncpy(_history[1], w, sizeof(_history[1]) - 1);
       _history[1][sizeof(_history[1]) - 1] = '\0';
-      // start next word
-      _wordIdx    = (uint8_t)((_wordIdx + 1) % kWordCount);
+      // start next word (random, no immediate repeat)
+      uint8_t next;
+      do { next = (uint8_t)random(kWordCount); } while (next == _wordIdx && kWordCount > 1);
+      _wordIdx    = next;
       _wordPos    = 0;
       _wordState  = 0;
       _lastCharMs = now;
