@@ -1,10 +1,15 @@
 //
 // M5Stack CoreS3 — Device factory.
 // Custom AXP2101 + AW9523B drivers. TFT_eSPI display. FT6336U touch.
+// SD shares GPIO35 (MISO) with TFT DC.
+// sdSpi.begin() MUST run before Lcd.begin() so TFT_eSPI finds HSPI already
+// initialised with MISO=35. If TFT_eSPI init runs first, it claims HSPI without
+// MISO and subsequent sdSpi.begin() cannot reroute GPIO35 to SPI MISO properly.
+// StorageSD dcPin=35 switches GPIO35 INPUT/OUTPUT around every SD op.
 //
 
 #include "core/Device.h"
-#include "core/StorageLFS.h"
+#include "core/ExtSpiClass.h"
 #include "Navigation.h"
 #include "Display.h"
 #include "Power.h"
@@ -20,7 +25,7 @@ static DisplayImpl    display(&axp);
 static NavigationImpl navigation;
 static PowerImpl      power(&axp);
 static SpeakerCoreS3  speaker(&aw);
-static StorageLFS     storageLFS;
+static ExtSpiClass    sdSpi(HSPI);
 
 void Device::applyNavMode() {}
 
@@ -41,12 +46,19 @@ Device* Device::createInstance() {
   // Touch INT
   pinMode(TOUCH_INT, INPUT_PULLUP);
 
-  // LCD CS high before SPI init
+  // CS pins high before SPI init
   pinMode(LCD_CS, OUTPUT);
   digitalWrite(LCD_CS, HIGH);
+  pinMode(SD_CS, OUTPUT);
+  digitalWrite(SD_CS, HIGH);
 
-  storageLFS.begin();
+  // Pre-init HSPI with MISO=35 BEFORE Lcd.begin() so TFT_eSPI finds the bus
+  // already configured. If TFT_eSPI runs first it claims HSPI without MISO,
+  // and GPIO35 cannot be re-routed to SPI MISO afterwards.
+  // StorageDcPin tells initStorage() to switch GPIO35 INPUT/OUTPUT per SD op.
+  sdSpi.begin(SPI_SCK_PIN, SPI_MISO_PIN, SPI_MOSI_PIN, -1);
 
-  return new Device(display, power, &navigation, nullptr,
-                    nullptr, &storageLFS, nullptr, &speaker);
+  auto* dev = new Device(display, power, &navigation, nullptr, &sdSpi, &speaker);
+  dev->StorageDcPin = SPI_MISO_PIN;
+  return dev;
 }

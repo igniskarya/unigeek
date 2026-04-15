@@ -33,7 +33,7 @@ static const uint8_t SCL = INTERNAL_SCL;
 #define SPI_SCK_PIN   36
 #define SPI_MISO_PIN  35
 #define SPI_MOSI_PIN  37
-#define SPI_SS_PIN    LCD_CS
+#define SPI_SS_PIN    SD_CS
 
 static const uint8_t SS   = SPI_SS_PIN;
 static const uint8_t MOSI = SPI_MOSI_PIN;
@@ -56,17 +56,17 @@ static const uint8_t SCK  = SPI_SCK_PIN;
 #define ILI9342_DRIVER
 #define TFT_INVERSION_ON
 // TFT_WIDTH/TFT_HEIGHT omitted — ILI9342 driver defaults to 320×240
-#define TFT_MOSI    37
-#define TFT_SCLK    36
-#define TFT_CS      3
-#define TFT_DC      35
+#define TFT_MOSI    SPI_MOSI_PIN
+#define TFT_SCLK    SPI_SCK_PIN
+#define TFT_CS      LCD_CS
+#define TFT_DC      SPI_MISO_PIN
 #define TFT_RST     -1
 #define TFT_MISO    -1
 #define TFT_BL      -1
 #define TFT_BACKLIGHT_ON HIGH
 #define TOUCH_CS    -1
 #define SMOOTH_FONT
-#define USE_FSPI_PORT
+#define USE_HSPI_PORT
 #define TFT_DEFAULT_ORIENTATION 6
 #define SPI_FREQUENCY        10000000
 #define SPI_READ_FREQUENCY   10000000

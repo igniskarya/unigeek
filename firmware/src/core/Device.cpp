@@ -34,13 +34,11 @@ void Device::initStorage() {
   // StorageDcPin: set by board (e.g. CoreS3) when DC and MISO share the same GPIO.
   _sd.begin(SD_CS, Spi ? *Spi : SPI, 4000000, StorageDcPin);
   StorageSD = &_sd;
-  if (_sd.isAvailable()) Storage = StorageSD;
+  if (_sd.isAvailable()) { Storage = StorageSD; return; }
 #endif
 
-  // ── LittleFS (always inited — fallback when SD absent or fails) ──────────
-  // StorageLFS must stay non-null so _checkStorageFallback() can demote SD→LFS
-  // at runtime if the card is removed or becomes unavailable after boot.
+  // ── LittleFS (only when SD not available or not present) ─────────────────
   _lfs.begin();
   StorageLFS = &_lfs;
-  if (!Storage) Storage = StorageLFS;
+  Storage = StorageLFS;
 }
