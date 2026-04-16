@@ -56,6 +56,12 @@ private:
   uint8_t _scoreCount = 0;
   int8_t  _newRank    = -1;
 
+  // Partial-redraw tracking
+  State   _prevState      = (State)0xFF;
+  int8_t  _lastMenuIdx    = -1;
+  uint8_t _lastDiff       = 0xFF;
+  uint8_t _lastHsViewDiff = 0xFF;
+
   uint8_t _maxDigits()  const;
 
   void _initGame();

@@ -26,16 +26,6 @@ void GameMemoryScreen::onInit()
 
 void GameMemoryScreen::onUpdate()
 {
-  // Periodic re-render for timer-driven states
-  if (_state == STATE_SHOW_SEQUENCE ||
-      _state == STATE_FEEDBACK_CORRECT ||
-      _state == STATE_FEEDBACK_WRONG) {
-    if (millis() - _lastRenderMs >= 80) {
-      _lastRenderMs = millis();
-      render();
-    }
-  }
-
   // Timer-driven state transitions
   if (_state == STATE_SHOW_SEQUENCE) {
     StageConfig stage = _getStage();
@@ -48,6 +38,13 @@ void GameMemoryScreen::onUpdate()
       _state    = STATE_WAITING_INPUT;
       render();
       return;
+    }
+    // Re-render only when slot or showing state actually changes
+    uint8_t slot    = (uint8_t)(elapsed / slotMs);
+    uint32_t within = elapsed % slotMs;
+    bool    showing = (within < stage.displayTimeMs) && (slot < _seqLen);
+    if ((int8_t)slot != _lastSeqSlot || showing != _lastSeqShowing) {
+      render();
     }
   }
 
@@ -391,50 +388,66 @@ void GameMemoryScreen::_saveHighScore()
 
 void GameMemoryScreen::_renderMenu()
 {
-  Sprite sp(&Uni.Lcd);
-  sp.createSprite(bodyW(), bodyH());
-  sp.fillSprite(TFT_BLACK);
-  sp.setTextDatum(MC_DATUM);
+  auto& lcd = Uni.Lcd;
+
+  bool firstTime = (_prevState != STATE_MENU);
+  if (firstTime) {
+    lcd.fillRect(bodyX(), bodyY(), bodyW(), bodyH(), TFT_BLACK);
+    _lastMenuIdx    = -1;
+    _lastDifficulty = 0xFF;
+    _prevState      = STATE_MENU;
+  }
 
   char diffLabel[12];
   snprintf(diffLabel, sizeof(diffLabel), "%s", kDiffNames[_difficulty]);
   const char* items[kMenuItems] = { "Play", diffLabel, "High Scores", "Back" };
 
-  sp.setTextSize(2);
-  const int lineH   = sp.fontHeight() + 4;
+  lcd.setTextSize(2);
+  const int lineH   = lcd.fontHeight() + 4;
   const int footerH = 10;
   const int startY  = (bodyH() - footerH - (int)kMenuItems * lineH) / 2;
 
   for (int i = 0; i < (int)kMenuItems; i++) {
-    bool sel = (i == _menuIdx);
-    sp.setTextColor(sel ? Config.getThemeColor() : TFT_WHITE, TFT_BLACK);
-    sp.drawString(items[i], bodyW() / 2, startY + i * lineH + lineH / 2);
+    bool selNow  = (i == _menuIdx);
+    bool selPrev = (i == _lastMenuIdx);
+    bool diffRow = (i == 1 && _lastDifficulty != _difficulty);
+    if (!firstTime && selNow == selPrev && !diffRow) continue;
+
+    Sprite sp(&lcd);
+    sp.createSprite(bodyW(), lineH);
+    sp.fillSprite(TFT_BLACK);
+    sp.setTextDatum(MC_DATUM);
+    sp.setTextSize(2);
+    sp.setTextColor(selNow ? Config.getThemeColor() : TFT_WHITE, TFT_BLACK);
+    sp.drawString(items[i], bodyW() / 2, lineH / 2);
+    sp.pushSprite(bodyX(), bodyY() + startY + i * lineH);
+    sp.deleteSprite();
   }
 
-  // Difficulty info hint at bottom
-  {
+  if (firstTime || _lastDifficulty != _difficulty) {
     StageConfig stage = _getStage();
     uint8_t maxM = _getMaxMistakes();
     char diffInfo[32];
     snprintf(diffInfo, sizeof(diffInfo), "Mistakes:%u  Len:%u  Time:%u.%us",
              maxM, stage.length,
              stage.displayTimeMs / 1000, (stage.displayTimeMs % 1000) / 100);
+    Sprite sp(&lcd);
+    sp.createSprite(bodyW(), footerH);
+    sp.fillSprite(TFT_BLACK);
     sp.setTextSize(1);
     sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
     sp.setTextDatum(BC_DATUM);
-    sp.drawString(diffInfo, bodyW() / 2, bodyH() - 1);
+    sp.drawString(diffInfo, bodyW() / 2, footerH - 1);
+    sp.pushSprite(bodyX(), bodyY() + bodyH() - footerH);
+    sp.deleteSprite();
   }
 
-  sp.pushSprite(bodyX(), bodyY());
-  sp.deleteSprite();
+  _lastMenuIdx    = _menuIdx;
+  _lastDifficulty = _difficulty;
 }
 
 void GameMemoryScreen::_renderShowSequence()
 {
-  Sprite sp(&Uni.Lcd);
-  sp.createSprite(bodyW(), bodyH());
-  sp.fillSprite(TFT_BLACK);
-
   StageConfig stage = _getStage();
   uint32_t slotMs  = (uint32_t)stage.displayTimeMs + 200;
   uint32_t elapsed = millis() - _stateTimer;
@@ -442,8 +455,27 @@ void GameMemoryScreen::_renderShowSequence()
   uint32_t within  = elapsed % slotMs;
   bool     showing = (within < stage.displayTimeMs) && (slot < _seqLen);
 
-  // Stats bar at top
-  {
+  bool firstTime = (_prevState != STATE_SHOW_SEQUENCE);
+  if (firstTime) {
+    Uni.Lcd.fillRect(bodyX(), bodyY(), bodyW(), bodyH(), TFT_BLACK);
+    _prevState      = STATE_SHOW_SEQUENCE;
+    _lastSeqSlot    = -1;
+    _lastSeqShowing = false;
+    _lastScoreCache = 0xFFFFFFFFu;
+    _lastRoundCache = 0xFFFF;
+  }
+
+  const int statsZoneH = 12;
+  const int dotsZoneH  = 14;
+  const int midAreaY   = statsZoneH;
+  const int midAreaH   = bodyH() - statsZoneH - dotsZoneH;
+  const int charZoneH  = 60;
+  const int charZoneY  = midAreaY + (midAreaH - charZoneH) / 2;
+
+  if (firstTime || _lastRoundCache != _round || _lastScoreCache != _score) {
+    Sprite sp(&Uni.Lcd);
+    sp.createSprite(bodyW(), statsZoneH);
+    sp.fillSprite(TFT_BLACK);
     char buf[24];
     sp.setTextSize(1);
     snprintf(buf, sizeof(buf), "R%u", _round);
@@ -460,75 +492,90 @@ void GameMemoryScreen::_renderShowSequence()
     sp.setTextDatum(TR_DATUM);
     sp.setTextColor(TFT_WHITE, TFT_BLACK);
     sp.drawString(buf, bodyW() - 1, 0);
+    sp.pushSprite(bodyX(), bodyY());
+    sp.deleteSprite();
+    _lastRoundCache = _round;
+    _lastScoreCache = _score;
   }
 
-  // Position dots at bottom
-  const uint8_t dotR   = 3;
-  const uint8_t dotGap = 8;
-  const int dotsW  = _seqLen * (dotR * 2 + dotGap) - dotGap;
-  const int dotX0  = (bodyW() - dotsW) / 2;
-  const int dotY   = bodyH() - 10;
-  for (uint8_t i = 0; i < _seqLen; i++) {
-    int dx = dotX0 + i * (dotR * 2 + dotGap) + dotR;
-    uint16_t col = (i < slot || (i == slot && showing)) ? TFT_CYAN : TFT_DARKGREY;
-    sp.fillCircle(dx, dotY, dotR, col);
+  if (firstTime || (int8_t)slot != _lastSeqSlot || showing != _lastSeqShowing) {
+    Sprite sp(&Uni.Lcd);
+    sp.createSprite(bodyW(), charZoneH);
+    sp.fillSprite(TFT_BLACK);
+    const int charCY = charZoneH / 2;
+    if (showing && slot < _seqLen) {
+      char buf[2] = {_sequence[slot], '\0'};
+      sp.setTextSize(4);
+      sp.setTextDatum(MC_DATUM);
+      sp.setTextColor(TFT_CYAN, TFT_BLACK);
+      sp.drawString(buf, bodyW() / 2, charCY);
+    } else {
+      sp.setTextSize(4);
+      sp.setTextDatum(MC_DATUM);
+      sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
+      sp.drawString("_", bodyW() / 2, charCY);
+    }
+    sp.pushSprite(bodyX(), bodyY() + charZoneY);
+    sp.deleteSprite();
+
+    Sprite dp(&Uni.Lcd);
+    dp.createSprite(bodyW(), dotsZoneH);
+    dp.fillSprite(TFT_BLACK);
+    const uint8_t dotR   = 3;
+    const uint8_t dotGap = 8;
+    const int dotsW  = _seqLen * (dotR * 2 + dotGap) - dotGap;
+    const int dotX0  = (bodyW() - dotsW) / 2;
+    const int dotY   = dotsZoneH - 4;
+    for (uint8_t i = 0; i < _seqLen; i++) {
+      int dx = dotX0 + i * (dotR * 2 + dotGap) + dotR;
+      uint16_t col = (i < slot || (i == slot && showing)) ? TFT_CYAN : TFT_DARKGREY;
+      dp.fillCircle(dx, dotY, dotR, col);
+    }
+    dp.pushSprite(bodyX(), bodyY() + bodyH() - dotsZoneH);
+    dp.deleteSprite();
+
+    _lastSeqSlot    = (int8_t)slot;
+    _lastSeqShowing = showing;
   }
-
-  // Large character — centered between stats bar and dots
-  const int charAreaTop    = 12;
-  const int charAreaBottom = dotY - 8;
-  const int charCY         = (charAreaTop + charAreaBottom) / 2;
-
-  if (showing && slot < _seqLen) {
-    char buf[2] = {_sequence[slot], '\0'};
-    sp.setTextSize(4);
-    sp.setTextDatum(MC_DATUM);
-    sp.setTextColor(TFT_CYAN, TFT_BLACK);
-    sp.drawString(buf, bodyW() / 2, charCY);
-  } else {
-    sp.setTextSize(4);
-    sp.setTextDatum(MC_DATUM);
-    sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
-    sp.drawString("_", bodyW() / 2, charCY);
-  }
-
-  sp.pushSprite(bodyX(), bodyY());
-  sp.deleteSprite();
 }
 
 void GameMemoryScreen::_renderWaitingInput()
 {
-  Sprite sp(&Uni.Lcd);
-  sp.createSprite(bodyW(), bodyH());
-  sp.fillSprite(TFT_BLACK);
-
 #ifdef DEVICE_HAS_KEYBOARD
   constexpr bool noKb = false;
 #else
   constexpr bool noKb = true;
 #endif
 
-  // Font size 2 char = 12x16px. Padding p=3 on all 4 sides, gap=p between cells.
-  // cellW=12+2*3=18  cellH=16+2*3=22  cellStep=18+3=21
-  // 7 boxes: rowW=7*21=147px, bodyW=204px -> inputX=28px (fits with margin)
+  bool firstTime = (_prevState != STATE_WAITING_INPUT);
+  if (firstTime) {
+    Uni.Lcd.fillRect(bodyX(), bodyY(), bodyW(), bodyH(), TFT_BLACK);
+    _prevState      = STATE_WAITING_INPUT;
+    _lastMistakes   = 0xFF;
+    _lastScoreCache = 0xFFFFFFFFu;
+    _lastRoundCache = 0xFFFF;
+  }
+
   const int cellW    = 18;
   const int cellH    = 22;
   const int cellStep = 21;
   const int rowW     = _seqLen * cellStep;
   const int inputX   = (bodyW() - rowW) / 2;
 
-  // Arrows height: space needed above and below boxes
   const int arrowH = noKb ? 10 : 0;
 
-  // Center the whole block (arrows + boxes + arrows) vertically
-  // leaving room for stats at top and hint at bottom
   const int statsH  = 10;
   const int hintH   = 10;
   const int blockH  = arrowH + cellH + arrowH;
-  const int inputY  = statsH + (bodyH() - statsH - hintH - blockH) / 2 + arrowH;
+  const int midAreaH = bodyH() - statsH - hintH;
+  const int midZoneY = statsH + (midAreaH - blockH) / 2;
+  const int midZoneH = blockH;
+  const int inputYLocal  = arrowH;
 
-  // Stats bar at top
-  {
+  if (firstTime || _lastRoundCache != _round || _lastScoreCache != _score || _lastMistakes != _mistakes) {
+    Sprite sp(&Uni.Lcd);
+    sp.createSprite(bodyW(), statsH);
+    sp.fillSprite(TFT_BLACK);
     char buf[24];
     sp.setTextSize(1);
     snprintf(buf, sizeof(buf), "R%u", _round);
@@ -545,96 +592,109 @@ void GameMemoryScreen::_renderWaitingInput()
     sp.setTextDatum(TR_DATUM);
     sp.setTextColor(TFT_WHITE, TFT_BLACK);
     sp.drawString(buf, bodyW() - 1, 0);
+    sp.pushSprite(bodyX(), bodyY());
+    sp.deleteSprite();
+    _lastRoundCache = _round;
+    _lastScoreCache = _score;
+    _lastMistakes   = _mistakes;
   }
 
-  // Arrows (non-keyboard only)
-  if (noKb) {
-    const int cx = inputX + _cursor * cellStep + cellW / 2;
-    sp.fillTriangle(cx, inputY - arrowH + 1,
-                    cx - 3, inputY - 3,
-                    cx + 3, inputY - 3, TFT_LIGHTGREY);
-    sp.fillTriangle(cx, inputY + cellH + arrowH - 1,
-                    cx - 3, inputY + cellH + 3,
-                    cx + 3, inputY + cellH + 3, TFT_LIGHTGREY);
-  }
+  {
+    Sprite sp(&Uni.Lcd);
+    sp.createSprite(bodyW(), midZoneH);
+    sp.fillSprite(TFT_BLACK);
 
-  // Input cells
-  sp.setTextDatum(MC_DATUM);
-  sp.setTextSize(2);
-  for (uint8_t ci = 0; ci < _seqLen; ci++) {
-    const int x      = inputX + ci * cellStep;
-    bool active      = (ci == (uint8_t)_cursor);
-    bool eraseActive = active && noKb && (_cycleIdx == kCharDBLen);
-    char c           = _current[ci];
-    if (active && noKb) c = eraseActive ? '<' : kCharDB[_cycleIdx];
-
-    uint16_t bg = eraseActive ? TFT_MAROON
-                : (active ? TFT_DARKCYAN : (_current[ci] ? TFT_DARKGREY : 0x2104));
-    sp.fillRoundRect(x, inputY, cellW, cellH, 2, bg);
-    sp.drawRoundRect(x, inputY, cellW, cellH, 2, active ? TFT_YELLOW : TFT_DARKGREY);
-    if (c != '\0') {
-      char buf[2] = {c, '\0'};
-      sp.setTextColor(TFT_WHITE, bg);
-      // +1 offset compensates for GLCD font's 1px right/bottom spacing (x2 at size 2)
-      sp.drawString(buf, x + cellW / 2 + 1, inputY + cellH / 2 + 1);
+    if (noKb) {
+      const int cx = inputX + _cursor * cellStep + cellW / 2;
+      sp.fillTriangle(cx, inputYLocal - arrowH + 1,
+                      cx - 3, inputYLocal - 3,
+                      cx + 3, inputYLocal - 3, TFT_LIGHTGREY);
+      sp.fillTriangle(cx, inputYLocal + cellH + arrowH - 1,
+                      cx - 3, inputYLocal + cellH + 3,
+                      cx + 3, inputYLocal + cellH + 3, TFT_LIGHTGREY);
     }
+
+    sp.setTextDatum(MC_DATUM);
+    sp.setTextSize(2);
+    for (uint8_t ci = 0; ci < _seqLen; ci++) {
+      const int x      = inputX + ci * cellStep;
+      bool active      = (ci == (uint8_t)_cursor);
+      bool eraseActive = active && noKb && (_cycleIdx == kCharDBLen);
+      char c           = _current[ci];
+      if (active && noKb) c = eraseActive ? '<' : kCharDB[_cycleIdx];
+
+      uint16_t bg = eraseActive ? TFT_MAROON
+                  : (active ? TFT_DARKCYAN : (_current[ci] ? TFT_DARKGREY : 0x2104));
+      sp.fillRoundRect(x, inputYLocal, cellW, cellH, 2, bg);
+      sp.drawRoundRect(x, inputYLocal, cellW, cellH, 2, active ? TFT_YELLOW : TFT_DARKGREY);
+      if (c != '\0') {
+        char buf[2] = {c, '\0'};
+        sp.setTextColor(TFT_WHITE, bg);
+        sp.drawString(buf, x + cellW / 2 + 1, inputYLocal + cellH / 2 + 1);
+      }
+    }
+    sp.pushSprite(bodyX(), bodyY() + midZoneY);
+    sp.deleteSprite();
   }
 
-  // Control hint at bottom
-  sp.setTextSize(1);
-  sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
-  sp.setTextDatum(BC_DATUM);
+  if (firstTime) {
+    Sprite sp(&Uni.Lcd);
+    sp.createSprite(bodyW(), hintH);
+    sp.fillSprite(TFT_BLACK);
+    sp.setTextSize(1);
+    sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
+    sp.setTextDatum(BC_DATUM);
 #ifdef DEVICE_HAS_KEYBOARD
-  sp.drawString("ENTER:submit  BKSP:erase", bodyW() / 2, bodyH() - 1);
+    sp.drawString("ENTER:submit  BKSP:erase", bodyW() / 2, hintH - 1);
 #else
-  sp.drawString("UP/DN:cycle  PRESS:confirm", bodyW() / 2, bodyH() - 1);
+    sp.drawString("UP/DN:cycle  PRESS:confirm", bodyW() / 2, hintH - 1);
 #endif
-
-  sp.pushSprite(bodyX(), bodyY());
-  sp.deleteSprite();
+    sp.pushSprite(bodyX(), bodyY() + bodyH() - hintH);
+    sp.deleteSprite();
+  }
 }
 
 void GameMemoryScreen::_renderFeedbackCorrect()
 {
-  Sprite sp(&Uni.Lcd);
-  sp.createSprite(bodyW(), bodyH());
-  sp.fillSprite(TFT_BLACK);
+  if (_prevState == STATE_FEEDBACK_CORRECT) return;
+  _prevState = STATE_FEEDBACK_CORRECT;
 
-  sp.setTextDatum(MC_DATUM);
-  sp.setTextSize(2);
-  sp.setTextColor(TFT_GREEN, TFT_BLACK);
-  sp.drawString("CORRECT!", bodyW() / 2, bodyH() / 2 - 24);
+  auto& lcd = Uni.Lcd;
+  lcd.fillRect(bodyX(), bodyY(), bodyW(), bodyH(), TFT_BLACK);
+
+  lcd.setTextDatum(MC_DATUM);
+  lcd.setTextSize(2);
+  lcd.setTextColor(TFT_GREEN, TFT_BLACK);
+  lcd.drawString("CORRECT!", bodyX() + bodyW() / 2, bodyY() + bodyH() / 2 - 24);
 
   char buf[24];
   snprintf(buf, sizeof(buf), "+%lu pts", (unsigned long)_lastPointsEarned);
-  sp.setTextSize(1);
-  sp.setTextColor(TFT_WHITE, TFT_BLACK);
-  sp.drawString(buf, bodyW() / 2, bodyH() / 2 - 4);
+  lcd.setTextSize(1);
+  lcd.setTextColor(TFT_WHITE, TFT_BLACK);
+  lcd.drawString(buf, bodyX() + bodyW() / 2, bodyY() + bodyH() / 2 - 4);
 
   snprintf(buf, sizeof(buf), "Streak: %u", _streak);
-  sp.setTextColor(TFT_YELLOW, TFT_BLACK);
-  sp.drawString(buf, bodyW() / 2, bodyH() / 2 + 10);
+  lcd.setTextColor(TFT_YELLOW, TFT_BLACK);
+  lcd.drawString(buf, bodyX() + bodyW() / 2, bodyY() + bodyH() / 2 + 10);
 
   snprintf(buf, sizeof(buf), "Round %u", _round - 1);
-  sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
-  sp.drawString(buf, bodyW() / 2, bodyH() / 2 + 22);
-
-  sp.pushSprite(bodyX(), bodyY());
-  sp.deleteSprite();
+  lcd.setTextColor(TFT_DARKGREY, TFT_BLACK);
+  lcd.drawString(buf, bodyX() + bodyW() / 2, bodyY() + bodyH() / 2 + 22);
 }
 
 void GameMemoryScreen::_renderFeedbackWrong()
 {
-  Sprite sp(&Uni.Lcd);
-  sp.createSprite(bodyW(), bodyH());
-  sp.fillSprite(TFT_BLACK);
+  if (_prevState == STATE_FEEDBACK_WRONG) return;
+  _prevState = STATE_FEEDBACK_WRONG;
 
-  sp.setTextDatum(MC_DATUM);
-  sp.setTextSize(2);
-  sp.setTextColor(TFT_RED, TFT_BLACK);
-  sp.drawString("WRONG!", bodyW() / 2, bodyH() / 2 - 40);
+  auto& lcd = Uni.Lcd;
+  lcd.fillRect(bodyX(), bodyY(), bodyW(), bodyH(), TFT_BLACK);
 
-  // Correct sequence boxes — same dimensions as input boxes
+  lcd.setTextDatum(MC_DATUM);
+  lcd.setTextSize(2);
+  lcd.setTextColor(TFT_RED, TFT_BLACK);
+  lcd.drawString("WRONG!", bodyX() + bodyW() / 2, bodyY() + bodyH() / 2 - 40);
+
   const int cellW    = 18;
   const int cellH    = 22;
   const int cellStep = 21;
@@ -642,117 +702,132 @@ void GameMemoryScreen::_renderFeedbackWrong()
   const int seqX     = (bodyW() - rowW) / 2;
   const int seqY     = bodyH() / 2 - 18;
 
-  sp.setTextSize(2);
-  sp.setTextDatum(MC_DATUM);
+  lcd.setTextSize(2);
+  lcd.setTextDatum(MC_DATUM);
   for (uint8_t ci = 0; ci < _seqLen; ci++) {
     const int x = seqX + ci * cellStep;
-    sp.fillRoundRect(x, seqY, cellW, cellH, 2, TFT_ORANGE);
+    lcd.fillRoundRect(bodyX() + x, bodyY() + seqY, cellW, cellH, 2, TFT_ORANGE);
     char buf[2] = {_sequence[ci], '\0'};
-    sp.setTextColor(TFT_BLACK, TFT_ORANGE);
-    sp.drawString(buf, x + cellW / 2 + 1, seqY + cellH / 2 + 1);
+    lcd.setTextColor(TFT_BLACK, TFT_ORANGE);
+    lcd.drawString(buf, bodyX() + x + cellW / 2 + 1, bodyY() + seqY + cellH / 2 + 1);
   }
 
   char buf[24];
-  sp.setTextSize(1);
+  lcd.setTextSize(1);
   if (_mistakes < _maxMistakes) {
     snprintf(buf, sizeof(buf), "%u left - retry", _maxMistakes - _mistakes);
-    sp.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
-    sp.drawString(buf, bodyW() / 2, bodyH() / 2 + 12);
+    lcd.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
+    lcd.drawString(buf, bodyX() + bodyW() / 2, bodyY() + bodyH() / 2 + 12);
   }
-
-  sp.pushSprite(bodyX(), bodyY());
-  sp.deleteSprite();
 }
 
 void GameMemoryScreen::_renderGameLoss()
 {
-  Sprite sp(&Uni.Lcd);
-  sp.createSprite(bodyW(), bodyH());
-  sp.fillSprite(TFT_BLACK);
-  sp.setTextDatum(MC_DATUM);
+  if (_prevState == STATE_GAME_LOSS) return;
+  _prevState = STATE_GAME_LOSS;
 
-  sp.setTextSize(2);
-  sp.setTextColor(TFT_RED, TFT_BLACK);
-  sp.drawString("GAME OVER", bodyW() / 2, bodyH() / 2 - 38);
+  auto& lcd = Uni.Lcd;
+  lcd.fillRect(bodyX(), bodyY(), bodyW(), bodyH(), TFT_BLACK);
+  lcd.setTextDatum(MC_DATUM);
+
+  lcd.setTextSize(2);
+  lcd.setTextColor(TFT_RED, TFT_BLACK);
+  lcd.drawString("GAME OVER", bodyX() + bodyW() / 2, bodyY() + bodyH() / 2 - 38);
 
   char buf[32];
-  sp.setTextSize(1);
+  lcd.setTextSize(1);
 
   snprintf(buf, sizeof(buf), "Score: %lu", (unsigned long)_score);
-  sp.setTextColor(TFT_WHITE, TFT_BLACK);
-  sp.drawString(buf, bodyW() / 2, bodyH() / 2 - 14);
+  lcd.setTextColor(TFT_WHITE, TFT_BLACK);
+  lcd.drawString(buf, bodyX() + bodyW() / 2, bodyY() + bodyH() / 2 - 14);
 
   uint16_t survivedRounds = _round > 1 ? _round - 1 : 0;
   snprintf(buf, sizeof(buf), "Rounds: %u", survivedRounds);
-  sp.setTextColor(TFT_WHITE, TFT_BLACK);
-  sp.drawString(buf, bodyW() / 2, bodyH() / 2);
+  lcd.setTextColor(TFT_WHITE, TFT_BLACK);
+  lcd.drawString(buf, bodyX() + bodyW() / 2, bodyY() + bodyH() / 2);
 
   snprintf(buf, sizeof(buf), "Diff: %s", _diffStr());
-  sp.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
-  sp.drawString(buf, bodyW() / 2, bodyH() / 2 + 14);
+  lcd.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
+  lcd.drawString(buf, bodyX() + bodyW() / 2, bodyY() + bodyH() / 2 + 14);
 
   if (_isNewHigh) {
-    sp.setTextColor(TFT_YELLOW, TFT_BLACK);
-    sp.drawString("* NEW BEST! *", bodyW() / 2, bodyH() / 2 + 28);
+    lcd.setTextColor(TFT_YELLOW, TFT_BLACK);
+    lcd.drawString("* NEW BEST! *", bodyX() + bodyW() / 2, bodyY() + bodyH() / 2 + 28);
   }
 
-  sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
-  sp.setTextDatum(BC_DATUM);
-  sp.drawString("Press to continue", bodyW() / 2, bodyH() - 1);
-
-  sp.pushSprite(bodyX(), bodyY());
-  sp.deleteSprite();
+  lcd.setTextColor(TFT_DARKGREY, TFT_BLACK);
+  lcd.setTextDatum(BC_DATUM);
+  lcd.drawString("Press to continue", bodyX() + bodyW() / 2, bodyY() + bodyH() - 1);
 }
 
 void GameMemoryScreen::_renderHighScores()
 {
-  Sprite sp(&Uni.Lcd);
-  sp.createSprite(bodyW(), bodyH());
-  sp.fillSprite(TFT_BLACK);
+  auto& lcd = Uni.Lcd;
+  bool firstTime = (_prevState != STATE_HIGH_SCORES);
+  if (firstTime) {
+    lcd.fillRect(bodyX(), bodyY(), bodyW(), bodyH(), TFT_BLACK);
+    _prevState      = STATE_HIGH_SCORES;
+    _lastHsViewIdx  = 0xFF;
 
-  // Difficulty name as title
-  sp.setTextSize(2);
-  sp.setTextDatum(TC_DATUM);
-  sp.setTextColor(Config.getThemeColor(), TFT_BLACK);
-  sp.drawString(kDiffNames[_hsViewIdx], bodyW() / 2, 4);
-
-  // Page indicator  1/4 · 2/4 etc.
-  char pageBuf[8];
-  snprintf(pageBuf, sizeof(pageBuf), "%u/%u", _hsViewIdx + 1, kDiffCount);
-  sp.setTextSize(1);
-  sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
-  sp.setTextDatum(TR_DATUM);
-  sp.drawString(pageBuf, bodyW() - 1, 6);
-
-  // Score content — centered in remaining space
-  const HighScore& hs = _highScores[_hsViewIdx];
-  const int contentY  = bodyH() / 2 - 14;
-
-  if (hs.round > 0) {
-    char buf[24];
-    sp.setTextSize(2);
-    sp.setTextDatum(MC_DATUM);
-    sp.setTextColor(TFT_WHITE, TFT_BLACK);
-    snprintf(buf, sizeof(buf), "Rd %u", hs.round);
-    sp.drawString(buf, bodyW() / 2, contentY);
-
-    sp.setTextSize(1);
-    sp.setTextColor(TFT_YELLOW, TFT_BLACK);
-    snprintf(buf, sizeof(buf), "Score: %lu", (unsigned long)hs.score);
-    sp.drawString(buf, bodyW() / 2, contentY + 20);
-  } else {
-    sp.setTextSize(1);
-    sp.setTextDatum(MC_DATUM);
-    sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
-    sp.drawString("no record yet", bodyW() / 2, contentY + 10);
+    // Static hint — drawn once
+    lcd.setTextSize(1);
+    lcd.setTextColor(TFT_DARKGREY, TFT_BLACK);
+    lcd.setTextDatum(BC_DATUM);
+    lcd.drawString("UP/DN: switch  BACK: return", bodyX() + bodyW() / 2, bodyY() + bodyH() - 1);
   }
 
-  // Nav arrows hint
-  sp.setTextSize(1);
-  sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
-  sp.setTextDatum(BC_DATUM);
-  sp.drawString("UP/DN: switch  BACK: return", bodyW() / 2, bodyH() - 1);
+  if (_lastHsViewIdx == _hsViewIdx) return;
+  _lastHsViewIdx = _hsViewIdx;
 
-  sp.pushSprite(bodyX(), bodyY());
-  sp.deleteSprite();
+  const int topH     = 24;
+  const int contentY = bodyH() / 2 - 14;
+  const int contentH = 40;
+
+  // Top title + page counter sprite
+  {
+    Sprite sp(&lcd);
+    sp.createSprite(bodyW(), topH);
+    sp.fillSprite(TFT_BLACK);
+    sp.setTextSize(2);
+    sp.setTextDatum(TC_DATUM);
+    sp.setTextColor(Config.getThemeColor(), TFT_BLACK);
+    sp.drawString(kDiffNames[_hsViewIdx], bodyW() / 2, 4);
+
+    char pageBuf[8];
+    snprintf(pageBuf, sizeof(pageBuf), "%u/%u", _hsViewIdx + 1, kDiffCount);
+    sp.setTextSize(1);
+    sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
+    sp.setTextDatum(TR_DATUM);
+    sp.drawString(pageBuf, bodyW() - 1, 6);
+    sp.pushSprite(bodyX(), bodyY());
+    sp.deleteSprite();
+  }
+
+  // Content sprite
+  {
+    Sprite sp(&lcd);
+    sp.createSprite(bodyW(), contentH);
+    sp.fillSprite(TFT_BLACK);
+    const HighScore& hs = _highScores[_hsViewIdx];
+    if (hs.round > 0) {
+      char buf[24];
+      sp.setTextSize(2);
+      sp.setTextDatum(MC_DATUM);
+      sp.setTextColor(TFT_WHITE, TFT_BLACK);
+      snprintf(buf, sizeof(buf), "Rd %u", hs.round);
+      sp.drawString(buf, bodyW() / 2, contentH / 2 - 8);
+
+      sp.setTextSize(1);
+      sp.setTextColor(TFT_YELLOW, TFT_BLACK);
+      snprintf(buf, sizeof(buf), "Score: %lu", (unsigned long)hs.score);
+      sp.drawString(buf, bodyW() / 2, contentH / 2 + 12);
+    } else {
+      sp.setTextSize(1);
+      sp.setTextDatum(MC_DATUM);
+      sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
+      sp.drawString("no record yet", bodyW() / 2, contentH / 2);
+    }
+    sp.pushSprite(bodyX(), bodyY() + contentY);
+    sp.deleteSprite();
+  }
 }

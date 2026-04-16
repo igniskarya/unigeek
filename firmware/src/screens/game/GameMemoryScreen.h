@@ -64,6 +64,20 @@ private:
   uint32_t _stateTimer    = 0;
   uint32_t _lastRenderMs  = 0;
 
+  // Partial-redraw tracking
+  State   _prevState       = (State)0xFF;
+  int8_t  _lastMenuIdx     = -1;
+  uint8_t _lastDifficulty  = 0xFF;
+  uint8_t _lastHsViewIdx   = 0xFF;
+  int8_t  _lastSeqSlot     = -1;
+  bool    _lastSeqShowing  = false;
+  bool    _feedbackDrawn   = false;
+  int8_t  _lastCursor      = -1;
+  int8_t  _lastCycleIdx    = -1;
+  uint8_t _lastMistakes    = 0xFF;
+  uint32_t _lastScoreCache = 0xFFFFFFFFu;
+  uint16_t _lastRoundCache = 0xFFFF;
+
   // High scores
   HighScore _highScores[kDiffCount] = {};
 

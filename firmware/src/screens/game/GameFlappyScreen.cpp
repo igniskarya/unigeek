@@ -193,129 +193,155 @@ bool GameFlappyScreen::_checkCollision()
 
 void GameFlappyScreen::_renderMenu()
 {
-  Sprite sp(&Uni.Lcd);
-  sp.createSprite(bodyW(), bodyH());
-  sp.fillSprite(TFT_BLACK);
+  auto& lcd = Uni.Lcd;
+  bool firstTime = (_prevState != STATE_MENU);
+  if (firstTime) {
+    lcd.fillRect(bodyX(), bodyY(), bodyW(), bodyH(), TFT_BLACK);
+    _prevState   = STATE_MENU;
+    _lastMenuIdx = -1;
+  }
 
   static constexpr const char* items[kMenuItems] = {"Play", "High Scores", "Exit"};
-  sp.setTextSize(2);
-  const int lineH  = sp.fontHeight() + 6;
+  lcd.setTextSize(2);
+  const int lineH  = lcd.fontHeight() + 6;
   const int startY = (bodyH() - kMenuItems * lineH) / 2 - 8;
 
   for (int i = 0; i < kMenuItems; i++) {
-    sp.setTextColor((i == _menuIdx) ? Config.getThemeColor() : TFT_WHITE, TFT_BLACK);
+    bool selNow  = (i == _menuIdx);
+    bool selPrev = (i == _lastMenuIdx);
+    if (!firstTime && selNow == selPrev) continue;
+
+    Sprite sp(&lcd);
+    sp.createSprite(bodyW(), lineH);
+    sp.fillSprite(TFT_BLACK);
     sp.setTextDatum(MC_DATUM);
-    sp.drawString(items[i], bodyW() / 2, startY + i * lineH + lineH / 2);
+    sp.setTextSize(2);
+    sp.setTextColor(selNow ? Config.getThemeColor() : TFT_WHITE, TFT_BLACK);
+    sp.drawString(items[i], bodyW() / 2, lineH / 2);
+    sp.pushSprite(bodyX(), bodyY() + startY + i * lineH);
+    sp.deleteSprite();
   }
 
-  // Last / best hint
-  sp.setTextSize(1);
-  sp.setTextDatum(BC_DATUM);
-  char buf[24];
-  if (_lastScore > 0 && _bestScore > 0) {
-    sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
-    snprintf(buf, sizeof(buf), "Last: %d", _lastScore);
-    sp.drawString(buf, bodyW() / 2, bodyH() - 12);
-    sp.setTextColor(_lastScore == _bestScore ? TFT_YELLOW : TFT_DARKGREY, TFT_BLACK);
-    snprintf(buf, sizeof(buf), "Best: %d", _bestScore);
-    sp.drawString(buf, bodyW() / 2, bodyH() - 2);
-  } else if (_bestScore > 0) {
-    sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
-    snprintf(buf, sizeof(buf), "Best: %d", _bestScore);
-    sp.drawString(buf, bodyW() / 2, bodyH() - 2);
-  }
+  _lastMenuIdx = _menuIdx;
 
-  sp.pushSprite(bodyX(), bodyY());
-  sp.deleteSprite();
+  if (firstTime) {
+    lcd.setTextSize(1);
+    lcd.setTextDatum(BC_DATUM);
+    char buf[24];
+    if (_lastScore > 0 && _bestScore > 0) {
+      lcd.setTextColor(TFT_DARKGREY, TFT_BLACK);
+      snprintf(buf, sizeof(buf), "Last: %d", _lastScore);
+      lcd.drawString(buf, bodyX() + bodyW() / 2, bodyY() + bodyH() - 12);
+      lcd.setTextColor(_lastScore == _bestScore ? TFT_YELLOW : TFT_DARKGREY, TFT_BLACK);
+      snprintf(buf, sizeof(buf), "Best: %d", _bestScore);
+      lcd.drawString(buf, bodyX() + bodyW() / 2, bodyY() + bodyH() - 2);
+    } else if (_bestScore > 0) {
+      lcd.setTextColor(TFT_DARKGREY, TFT_BLACK);
+      snprintf(buf, sizeof(buf), "Best: %d", _bestScore);
+      lcd.drawString(buf, bodyX() + bodyW() / 2, bodyY() + bodyH() - 2);
+    }
+  }
 }
 
 void GameFlappyScreen::_renderPlay()
 {
-  Sprite sp(&Uni.Lcd);
-  sp.createSprite(bodyW(), bodyH());
-  sp.fillSprite(TFT_BLACK);
+  if (_prevState != STATE_PLAY) {
+    Uni.Lcd.fillRect(bodyX(), bodyY(), bodyW(), bodyH(), TFT_BLACK);
+    _prevState = STATE_PLAY;
+  }
 
   uint16_t w = bodyW();
   uint16_t h = bodyH();
   int birdX  = 16;
+  int by     = (int)_birdY;
 
-  // Ground
-  sp.fillRect(0, h - kGroundH, w, kGroundH, TFT_BROWN);
-  for (int gx = 0; gx < w; gx += 8)
-    sp.fillRect(gx, h - kGroundH, 4, 2, TFT_OLIVE);
+  const uint8_t kBands    = 4;
+  const int     bandH     = (h + kBands - 1) / kBands;
 
-  // Pipes
-  for (uint8_t i = 0; i < _pipeCount; i++) {
-    int px     = _pipes[i].x;
-    int gapTop = _pipes[i].gapY - _gapH / 2;
-    int gapBot = _pipes[i].gapY + _gapH / 2;
+  for (uint8_t b = 0; b < kBands; b++) {
+    int yStart = b * bandH;
+    int yEnd   = yStart + bandH;
+    if (yEnd > h) yEnd = h;
+    int thisBandH = yEnd - yStart;
+    if (thisBandH <= 0) continue;
 
-    // Top pipe
-    if (gapTop > 0)
-      sp.fillRect(px, 0, kPipeW, gapTop, TFT_DARKGREEN);
-    // Pipe lip top
-    sp.fillRect(px - 1, gapTop - 3, kPipeW + 2, 3, TFT_GREEN);
+    Sprite sp(&Uni.Lcd);
+    sp.createSprite(w, thisBandH);
+    sp.fillSprite(TFT_BLACK);
 
-    // Bottom pipe
-    int botH = h - kGroundH - gapBot;
-    if (botH > 0)
-      sp.fillRect(px, gapBot, kPipeW, botH, TFT_DARKGREEN);
-    // Pipe lip bottom
-    sp.fillRect(px - 1, gapBot, kPipeW + 2, 3, TFT_GREEN);
+    int groundTop = h - kGroundH;
+    if (yEnd > groundTop) {
+      int gy = groundTop - yStart;
+      if (gy < 0) gy = 0;
+      sp.fillRect(0, gy, w, thisBandH - gy, TFT_BROWN);
+      for (int gx = 0; gx < w; gx += 8)
+        sp.fillRect(gx, gy, 4, 2, TFT_OLIVE);
+    }
+
+    for (uint8_t i = 0; i < _pipeCount; i++) {
+      int px     = _pipes[i].x;
+      int gapTop = _pipes[i].gapY - _gapH / 2;
+      int gapBot = _pipes[i].gapY + _gapH / 2;
+
+      if (gapTop > 0)
+        sp.fillRect(px, 0 - yStart, kPipeW, gapTop, TFT_DARKGREEN);
+      sp.fillRect(px - 1, gapTop - 3 - yStart, kPipeW + 2, 3, TFT_GREEN);
+
+      int botH = h - kGroundH - gapBot;
+      if (botH > 0)
+        sp.fillRect(px, gapBot - yStart, kPipeW, botH, TFT_DARKGREEN);
+      sp.fillRect(px - 1, gapBot - yStart, kPipeW + 2, 3, TFT_GREEN);
+    }
+
+    sp.fillRect(birdX, by - yStart, kBirdW, kBirdH, TFT_YELLOW);
+    sp.fillRect(birdX + kBirdW - 3, by + 1 - yStart, 2, 2, TFT_BLACK);
+    sp.fillRect(birdX + kBirdW, by + 3 - yStart, 3, 2, TFT_ORANGE);
+
+    if (b == 0) {
+      char buf[8];
+      snprintf(buf, sizeof(buf), "%d", _score);
+      sp.setTextDatum(TC_DATUM);
+      sp.setTextSize(2);
+      sp.setTextColor(TFT_WHITE);
+      sp.drawString(buf, w / 2, 2);
+    }
+
+    sp.pushSprite(bodyX(), bodyY() + yStart);
+    sp.deleteSprite();
   }
-
-  // Bird
-  int by = (int)_birdY;
-  sp.fillRect(birdX, by, kBirdW, kBirdH, TFT_YELLOW);
-  // Eye
-  sp.fillRect(birdX + kBirdW - 3, by + 1, 2, 2, TFT_BLACK);
-  // Beak
-  sp.fillRect(birdX + kBirdW, by + 3, 3, 2, TFT_ORANGE);
-
-  // Score
-  char buf[8];
-  snprintf(buf, sizeof(buf), "%d", _score);
-  sp.setTextDatum(TC_DATUM);
-  sp.setTextSize(2);
-  sp.setTextColor(TFT_WHITE, TFT_BLACK);
-  sp.drawString(buf, w / 2, 2);
-
-  sp.pushSprite(bodyX(), bodyY());
-  sp.deleteSprite();
 }
 
 void GameFlappyScreen::_renderResult()
 {
-  Sprite sp(&Uni.Lcd);
-  sp.createSprite(bodyW(), bodyH());
-  sp.fillSprite(TFT_BLACK);
-  sp.setTextDatum(MC_DATUM);
-  sp.setTextSize(2);
+  if (_prevState == STATE_RESULT) return;
+  _prevState = STATE_RESULT;
 
-  sp.setTextColor(TFT_RED, TFT_BLACK);
-  sp.drawString("Game Over!", bodyW() / 2, bodyH() / 2 - 24);
+  auto& lcd = Uni.Lcd;
+  lcd.fillRect(bodyX(), bodyY(), bodyW(), bodyH(), TFT_BLACK);
+  lcd.setTextDatum(MC_DATUM);
+  lcd.setTextSize(2);
+
+  lcd.setTextColor(TFT_RED, TFT_BLACK);
+  lcd.drawString("Game Over!", bodyX() + bodyW() / 2, bodyY() + bodyH() / 2 - 24);
 
   char buf[24];
-  sp.setTextSize(1);
-  sp.setTextColor(TFT_WHITE, TFT_BLACK);
+  lcd.setTextSize(1);
+  lcd.setTextColor(TFT_WHITE, TFT_BLACK);
   snprintf(buf, sizeof(buf), "Score: %d", _score);
-  sp.drawString(buf, bodyW() / 2, bodyH() / 2);
+  lcd.drawString(buf, bodyX() + bodyW() / 2, bodyY() + bodyH() / 2);
 
   if (_isNewHigh) {
-    sp.setTextColor(TFT_YELLOW, TFT_BLACK);
-    sp.drawString("NEW HIGH!", bodyW() / 2, bodyH() / 2 + 14);
+    lcd.setTextColor(TFT_YELLOW, TFT_BLACK);
+    lcd.drawString("NEW HIGH!", bodyX() + bodyW() / 2, bodyY() + bodyH() / 2 + 14);
   } else {
-    sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
+    lcd.setTextColor(TFT_DARKGREY, TFT_BLACK);
     snprintf(buf, sizeof(buf), "Best: %d", _bestScore);
-    sp.drawString(buf, bodyW() / 2, bodyH() / 2 + 14);
+    lcd.drawString(buf, bodyX() + bodyW() / 2, bodyY() + bodyH() / 2 + 14);
   }
 
-  sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
-  sp.setTextDatum(BC_DATUM);
-  sp.drawString("Press to continue", bodyW() / 2, bodyH());
-
-  sp.pushSprite(bodyX(), bodyY());
-  sp.deleteSprite();
+  lcd.setTextColor(TFT_DARKGREY, TFT_BLACK);
+  lcd.setTextDatum(BC_DATUM);
+  lcd.drawString("Press to continue", bodyX() + bodyW() / 2, bodyY() + bodyH());
 }
 
 // ── High Score Storage ───────────────────────────────────────────────────────
@@ -367,14 +393,16 @@ void GameFlappyScreen::_saveHighScore()
 
 void GameFlappyScreen::_renderHighScores()
 {
-  Sprite sp(&Uni.Lcd);
-  sp.createSprite(bodyW(), bodyH());
-  sp.fillSprite(TFT_BLACK);
+  if (_prevState == STATE_HIGH_SCORES) return;
+  _prevState = STATE_HIGH_SCORES;
 
-  sp.setTextSize(1);
-  sp.setTextDatum(TC_DATUM);
-  sp.setTextColor(Config.getThemeColor(), TFT_BLACK);
-  sp.drawString("Top Scores", bodyW() / 2, 2);
+  auto& lcd = Uni.Lcd;
+  lcd.fillRect(bodyX(), bodyY(), bodyW(), bodyH(), TFT_BLACK);
+
+  lcd.setTextSize(1);
+  lcd.setTextDatum(TC_DATUM);
+  lcd.setTextColor(Config.getThemeColor(), TFT_BLACK);
+  lcd.drawString("Top Scores", bodyX() + bodyW() / 2, bodyY() + 2);
 
   const int lineH  = 14;
   const int startY = 18;
@@ -382,23 +410,20 @@ void GameFlappyScreen::_renderHighScores()
   for (uint8_t i = 0; i < kTopN; i++) {
     uint16_t col = (i == 0) ? TFT_YELLOW : TFT_WHITE;
     if (_topScores[i] == 0) col = TFT_DARKGREY;
-    sp.setTextColor(col, TFT_BLACK);
-    sp.setTextDatum(TL_DATUM);
+    lcd.setTextColor(col, TFT_BLACK);
+    lcd.setTextDatum(TL_DATUM);
     snprintf(buf, sizeof(buf), "#%u", i + 1);
-    sp.drawString(buf, 8, startY + i * lineH);
-    sp.setTextDatum(TR_DATUM);
+    lcd.drawString(buf, bodyX() + 8, bodyY() + startY + i * lineH);
+    lcd.setTextDatum(TR_DATUM);
     if (_topScores[i] > 0)
       snprintf(buf, sizeof(buf), "%d", _topScores[i]);
     else
       snprintf(buf, sizeof(buf), "--");
-    sp.drawString(buf, bodyW() - 8, startY + i * lineH);
+    lcd.drawString(buf, bodyX() + bodyW() - 8, bodyY() + startY + i * lineH);
   }
 
-  sp.setTextSize(1);
-  sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
-  sp.setTextDatum(BC_DATUM);
-  sp.drawString("Press to go back", bodyW() / 2, bodyH() - 1);
-
-  sp.pushSprite(bodyX(), bodyY());
-  sp.deleteSprite();
+  lcd.setTextSize(1);
+  lcd.setTextColor(TFT_DARKGREY, TFT_BLACK);
+  lcd.setTextDatum(BC_DATUM);
+  lcd.drawString("Press to go back", bodyX() + bodyW() / 2, bodyY() + bodyH() - 1);
 }

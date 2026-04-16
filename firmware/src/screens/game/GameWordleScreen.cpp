@@ -275,39 +275,59 @@ void GameWordleScreen::_handleKeyInput(char c)
 
 void GameWordleScreen::_renderMenu()
 {
-  Sprite sp(&Uni.Lcd);
-  sp.createSprite(bodyW(), bodyH());
-  sp.fillSprite(TFT_BLACK);
+  auto& lcd = Uni.Lcd;
+  bool firstTime = (_prevState != STATE_MENU);
+  if (firstTime) {
+    lcd.fillRect(bodyX(), bodyY(), bodyW(), bodyH(), TFT_BLACK);
+    _prevState      = STATE_MENU;
+    _lastMenuIdx    = -1;
+    _lastDifficulty = 0xFF;
+    _lastUseCommon  = -1;
+  }
 
   char dbLabel[12];
   snprintf(dbLabel, sizeof(dbLabel), "DB: %s", _useCommon ? "Common" : "Full");
   const char* items[kMenuItems] = {"Play", dbLabel, _diffStr(), "High Scores", "Exit"};
 
-  sp.setTextSize(2);
-  const int lineH  = sp.fontHeight() + 6;
+  lcd.setTextSize(2);
+  const int lineH  = lcd.fontHeight() + 6;
   const int startY = (bodyH() - (int)kMenuItems * lineH) / 2;
 
   for (int i = 0; i < (int)kMenuItems; i++) {
-    sp.setTextColor((i == _menuIdx) ? Config.getThemeColor() : TFT_WHITE, TFT_BLACK);
+    bool selNow   = (i == _menuIdx);
+    bool selPrev  = (i == _lastMenuIdx);
+    bool dbRow    = (i == 1 && _lastUseCommon  != (int8_t)_useCommon);
+    bool diffRow  = (i == 2 && _lastDifficulty != _difficulty);
+    if (!firstTime && selNow == selPrev && !dbRow && !diffRow) continue;
+
+    Sprite sp(&lcd);
+    sp.createSprite(bodyW(), lineH);
+    sp.fillSprite(TFT_BLACK);
     sp.setTextDatum(MC_DATUM);
-    sp.drawString(items[i], bodyW() / 2, startY + i * lineH + lineH / 2);
+    sp.setTextSize(2);
+    sp.setTextColor(selNow ? Config.getThemeColor() : TFT_WHITE, TFT_BLACK);
+    sp.drawString(items[i], bodyW() / 2, lineH / 2);
+    sp.pushSprite(bodyX(), bodyY() + startY + i * lineH);
+    sp.deleteSprite();
   }
 
-  sp.pushSprite(bodyX(), bodyY());
-  sp.deleteSprite();
+  _lastMenuIdx    = _menuIdx;
+  _lastDifficulty = _difficulty;
+  _lastUseCommon  = (int8_t)_useCommon;
 }
 
 void GameWordleScreen::_renderPlay()
 {
-  Sprite sp(&Uni.Lcd);
-  sp.createSprite(bodyW(), bodyH());
-  sp.fillSprite(TFT_BLACK);
-
 #ifdef DEVICE_HAS_KEYBOARD
   constexpr bool noKb = false;
 #else
   constexpr bool noKb = true;
 #endif
+
+  if (_prevState != STATE_PLAY) {
+    Uni.Lcd.fillRect(bodyX(), bodyY(), bodyW(), bodyH(), TFT_BLACK);
+    _prevState = STATE_PLAY;
+  }
 
   const int arrowH   = noKb ? 8 : 0;
   const int arrowV   = noKb ? 6 : 0;
@@ -318,122 +338,138 @@ void GameWordleScreen::_renderPlay()
   const int histRowH = 16;
   const int maxAtt   = _maxAttempts();
 
-  const int visRows  = min(min((int)kMaxHistory, (bodyH() - histY0) / histRowH), maxAtt);
-  const int panelX   = inputX + kWordLen * cellStep + 4;
-  const int rightCX  = (panelX + bodyW()) / 2;
+  const int visRows   = min(min((int)kMaxHistory, (bodyH() - histY0) / histRowH), maxAtt);
+  const int panelX    = inputX + kWordLen * cellStep + 4;
+  const int rightZoneW = bodyW() - panelX;
+  const int rightCXLocal = rightZoneW / 2;
 
-  sp.setTextDatum(MC_DATUM);
-  sp.setTextSize(1);
-  const int  alphaColW  = sp.textWidth("A") + 2;
-  const int  alphaLineH = sp.fontHeight() + 2;
+  {
+    Sprite sp(&Uni.Lcd);
+    sp.createSprite(panelX, bodyH());
+    sp.fillSprite(TFT_BLACK);
 
-  if (_cursor > 0) {
-    sp.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
-    sp.drawString("<", inputX - 9, inputY + cellH / 2);
-  }
+    sp.setTextDatum(MC_DATUM);
+    sp.setTextSize(1);
 
-  // Arrows (non-keyboard only)
-  if (noKb) {
-    const int cx = inputX + _cursor * cellStep + cellW / 2;
-    sp.fillTriangle(cx, inputY - 5, cx - 2, inputY - 2, cx + 2, inputY - 2, TFT_LIGHTGREY);
-    sp.fillTriangle(cx, inputY + cellH + 4, cx - 2, inputY + cellH + 1, cx + 2, inputY + cellH + 1, TFT_LIGHTGREY);
-  }
-
-  // Input cells
-  for (uint8_t ci = 0; ci < kWordLen; ci++) {
-    const int x      = inputX + ci * cellStep;
-    bool active      = (ci == _cursor);
-    bool eraseActive = active && noKb && (_cycleIdx == kAlphaLen);
-    char c           = _current[ci];
-    if (active && noKb) c = eraseActive ? '<' : kAlphaDB[_cycleIdx];
-
-    uint16_t bg = eraseActive ? TFT_MAROON : (active ? TFT_DARKCYAN : TFT_DARKGREY);
-    sp.fillRoundRect(x, inputY, cellW, cellH, 2, bg);
-    if (c != '\0') {
-      char buf[2] = {c, '\0'};
-      sp.setTextColor(TFT_WHITE, bg);
-      sp.drawString(buf, x + cellW / 2, inputY + cellH / 2);
+    if (_cursor > 0) {
+      sp.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
+      sp.drawString("<", inputX - 9, inputY + cellH / 2);
     }
-  }
 
-  // History rows
-  for (int row = 0; row < visRows; row++) {
-    const int y      = histY0 + row * histRowH + 1;
-    bool hasEntry    = (row < _histSize);
+    if (noKb) {
+      const int cx = inputX + _cursor * cellStep + cellW / 2;
+      sp.fillTriangle(cx, inputY - 5, cx - 2, inputY - 2, cx + 2, inputY - 2, TFT_LIGHTGREY);
+      sp.fillTriangle(cx, inputY + cellH + 4, cx - 2, inputY + cellH + 1, cx + 2, inputY + cellH + 1, TFT_LIGHTGREY);
+    }
 
     for (uint8_t ci = 0; ci < kWordLen; ci++) {
-      const int x = inputX + ci * cellStep;
-      char hc     = hasEntry ? _history[row][ci] : '\0';
-      int  color  = hasEntry ? _colorGuess(ci, hc) : 0;
+      const int x      = inputX + ci * cellStep;
+      bool active      = (ci == _cursor);
+      bool eraseActive = active && noKb && (_cycleIdx == kAlphaLen);
+      char c           = _current[ci];
+      if (active && noKb) c = eraseActive ? '<' : kAlphaDB[_cycleIdx];
 
-      uint16_t bg = hasEntry ? kColors[color] : TFT_DARKGREY;
-      sp.fillRoundRect(x, y, cellW, cellH, 2, bg);
-      if (hc != '\0') {
-        char buf[2] = {hc, '\0'};
+      uint16_t bg = eraseActive ? TFT_MAROON : (active ? TFT_DARKCYAN : TFT_DARKGREY);
+      sp.fillRoundRect(x, inputY, cellW, cellH, 2, bg);
+      if (c != '\0') {
+        char buf[2] = {c, '\0'};
         sp.setTextColor(TFT_WHITE, bg);
-        sp.drawString(buf, x + cellW / 2, y + cellH / 2);
+        sp.drawString(buf, x + cellW / 2, inputY + cellH / 2);
       }
     }
-  }
 
-  // Attempt counter (right panel top)
-  char valBuf[8];
-  sp.setTextDatum(TC_DATUM);
-  sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
-  sp.drawString("Left", rightCX, 2);
-  snprintf(valBuf, sizeof(valBuf), "%d", maxAtt - _totalInputs);
-  sp.setTextSize(2);
-  sp.setTextColor(TFT_WHITE, TFT_BLACK);
-  sp.drawString(valBuf, rightCX, 12);
+    for (int row = 0; row < visRows; row++) {
+      const int y      = histY0 + row * histRowH + 1;
+      bool hasEntry    = (row < _histSize);
 
-  // Alphabet — centered in right panel, 10px below attempt counter
-  // A-M on row 0, N-Z on row 1; hard mode = all grey
-  sp.setTextSize(1);
-  sp.setTextDatum(TL_DATUM);
-  {
-    constexpr int kRowLen  = 13;  // A-M / N-Z
-    const int     rowW     = kRowLen * alphaColW;
-    const int     ax0      = rightCX - rowW / 2;
-    const int     ay0      = 12 + alphaLineH * 2 + 10;  // 10px below size-2 valBuf
-    for (uint8_t i = 0; i < kAlphaLen; i++) {
-      int x = ax0 + (i % kRowLen) * alphaColW;
-      int y = ay0 + (i / kRowLen) * alphaLineH;
-      char buf[2] = {(char)('A' + i), '\0'};
-      bool grey = (_difficulty >= 2) || _alphabetUsed[i];
-      sp.setTextColor(grey ? TFT_DARKGREY : TFT_WHITE, TFT_BLACK);
-      sp.drawString(buf, x, y);
+      for (uint8_t ci = 0; ci < kWordLen; ci++) {
+        const int x = inputX + ci * cellStep;
+        char hc     = hasEntry ? _history[row][ci] : '\0';
+        int  color  = hasEntry ? _colorGuess(ci, hc) : 0;
+
+        uint16_t bg = hasEntry ? kColors[color] : TFT_DARKGREY;
+        sp.fillRoundRect(x, y, cellW, cellH, 2, bg);
+        if (hc != '\0') {
+          char buf[2] = {hc, '\0'};
+          sp.setTextColor(TFT_WHITE, bg);
+          sp.drawString(buf, x + cellW / 2, y + cellH / 2);
+        }
+      }
     }
+
+    sp.pushSprite(bodyX(), bodyY());
+    sp.deleteSprite();
   }
 
-  sp.pushSprite(bodyX(), bodyY());
-  sp.deleteSprite();
+  const int rightPanelH = 70;
+  {
+    Sprite sp(&Uni.Lcd);
+    sp.createSprite(rightZoneW, rightPanelH);
+    sp.fillSprite(TFT_BLACK);
+
+    sp.setTextDatum(MC_DATUM);
+    sp.setTextSize(1);
+    const int alphaColW  = sp.textWidth("A") + 2;
+    const int alphaLineH = sp.fontHeight() + 2;
+
+    char valBuf[8];
+    sp.setTextDatum(TC_DATUM);
+    sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
+    sp.drawString("Left", rightCXLocal, 2);
+    snprintf(valBuf, sizeof(valBuf), "%d", maxAtt - _totalInputs);
+    sp.setTextSize(2);
+    sp.setTextColor(TFT_WHITE, TFT_BLACK);
+    sp.drawString(valBuf, rightCXLocal, 12);
+
+    sp.setTextSize(1);
+    sp.setTextDatum(TL_DATUM);
+    {
+      constexpr int kRowLen  = 13;
+      const int     rowW     = kRowLen * alphaColW;
+      const int     ax0      = rightCXLocal - rowW / 2;
+      const int     ay0      = 12 + alphaLineH * 2 + 10;
+      for (uint8_t i = 0; i < kAlphaLen; i++) {
+        int x = ax0 + (i % kRowLen) * alphaColW;
+        int y = ay0 + (i / kRowLen) * alphaLineH;
+        char buf[2] = {(char)('A' + i), '\0'};
+        bool grey = (_difficulty >= 2) || _alphabetUsed[i];
+        sp.setTextColor(grey ? TFT_DARKGREY : TFT_WHITE, TFT_BLACK);
+        sp.drawString(buf, x, y);
+      }
+    }
+
+    sp.pushSprite(bodyX() + panelX, bodyY());
+    sp.deleteSprite();
+  }
 }
 
 void GameWordleScreen::_renderResult()
 {
-  Sprite sp(&Uni.Lcd);
-  sp.createSprite(bodyW(), bodyH());
-  sp.fillSprite(TFT_BLACK);
+  if (_prevState == STATE_RESULT) return;
+  _prevState = STATE_RESULT;
 
-  const int cx = bodyW() / 2;
+  auto& lcd = Uni.Lcd;
+  lcd.fillRect(bodyX(), bodyY(), bodyW(), bodyH(), TFT_BLACK);
+
+  const int cx = bodyX() + bodyW() / 2;
   char ans[6] = {}, buf[32];
   memcpy(ans, _target, kWordLen);
 
-  sp.setTextDatum(TC_DATUM);
-  sp.setTextSize(2);
-  sp.setTextColor(_win ? Config.getThemeColor() : TFT_RED, TFT_BLACK);
-  sp.drawString(_win ? "YOU WIN!" : "GAME OVER", cx, 4);
+  lcd.setTextDatum(TC_DATUM);
+  lcd.setTextSize(2);
+  lcd.setTextColor(_win ? Config.getThemeColor() : TFT_RED, TFT_BLACK);
+  lcd.drawString(_win ? "YOU WIN!" : "GAME OVER", cx, bodyY() + 4);
 
-  sp.drawFastHLine(8, 24, bodyW() - 16, TFT_DARKGREY);
+  lcd.drawFastHLine(bodyX() + 8, bodyY() + 24, bodyW() - 16, TFT_DARKGREY);
 
-  sp.setTextSize(1);
-  sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
-  sp.drawString("Answer was", cx, 28);
-  sp.setTextSize(2);
-  sp.setTextColor(TFT_WHITE, TFT_BLACK);
-  sp.drawString(ans, cx, 38);
+  lcd.setTextSize(1);
+  lcd.setTextColor(TFT_DARKGREY, TFT_BLACK);
+  lcd.drawString("Answer was", cx, bodyY() + 28);
+  lcd.setTextSize(2);
+  lcd.setTextColor(TFT_WHITE, TFT_BLACK);
+  lcd.drawString(ans, cx, bodyY() + 38);
 
-  sp.setTextSize(1);
+  lcd.setTextSize(1);
   if (_win) {
     uint32_t ms   = (_newRank >= 0) ? _scores[_newRank].ms : (millis() - _startMs);
     uint32_t secs = ms / 1000;
@@ -443,23 +479,20 @@ void GameWordleScreen::_renderResult()
   } else {
     snprintf(buf, sizeof(buf), "%d turns used", (int)_totalInputs);
   }
-  sp.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
-  sp.drawString(buf, cx, 58);
+  lcd.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
+  lcd.drawString(buf, cx, bodyY() + 58);
 
   if (_win && _newRank >= 0) {
     snprintf(buf, sizeof(buf), "New #%d Best!", _newRank + 1);
-    sp.setTextSize(2);
-    sp.setTextColor(TFT_YELLOW, TFT_BLACK);
-    sp.drawString(buf, cx, 72);
+    lcd.setTextSize(2);
+    lcd.setTextColor(TFT_YELLOW, TFT_BLACK);
+    lcd.drawString(buf, cx, bodyY() + 72);
   }
 
-  sp.setTextSize(1);
-  sp.setTextDatum(BC_DATUM);
-  sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
-  sp.drawString("Press to continue", cx, bodyH() - 2);
-
-  sp.pushSprite(bodyX(), bodyY());
-  sp.deleteSprite();
+  lcd.setTextSize(1);
+  lcd.setTextDatum(BC_DATUM);
+  lcd.setTextColor(TFT_DARKGREY, TFT_BLACK);
+  lcd.drawString("Press to continue", cx, bodyY() + bodyH() - 2);
 }
 
 // ── Score storage ─────────────────────────────────────────────────────────────
@@ -534,54 +567,75 @@ void GameWordleScreen::_renderHighScores()
 {
   static constexpr const char* kDiffNames[3] = { "Easy", "Medium", "Hard" };
 
-  Sprite sp(&Uni.Lcd);
-  sp.createSprite(bodyW(), bodyH());
-  sp.fillSprite(TFT_BLACK);
+  auto& lcd = Uni.Lcd;
+  bool firstTime = (_prevState != STATE_HIGH_SCORES);
+  if (firstTime) {
+    lcd.fillRect(bodyX(), bodyY(), bodyW(), bodyH(), TFT_BLACK);
+    _prevState      = STATE_HIGH_SCORES;
+    _lastHsViewDiff = 0xFF;
 
-  const int cx = bodyW() / 2;
-
-  char title[24];
-  snprintf(title, sizeof(title), "Top %s", kDiffNames[_hsViewDiff]);
-  sp.setTextSize(1);
-  sp.setTextDatum(TC_DATUM);
-  sp.setTextColor(Config.getThemeColor(), TFT_BLACK);
-  sp.drawString(title, cx, 2);
-
-  char pageBuf[8];
-  snprintf(pageBuf, sizeof(pageBuf), "%u/%u", _hsViewDiff + 1, kDiffCount);
-  sp.setTextDatum(TR_DATUM);
-  sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
-  sp.drawString(pageBuf, bodyW() - 1, 2);
-
-  const int lineH  = 14;
-  const int startY = 18;
-  char buf[24];
-  for (uint8_t i = 0; i < kMaxScores; i++) {
-    bool     has = (i < _scoreCount);
-    uint16_t col = has ? (i == 0 ? TFT_YELLOW : TFT_WHITE) : TFT_DARKGREY;
-    sp.setTextColor(col, TFT_BLACK);
-
-    sp.setTextDatum(TL_DATUM);
-    snprintf(buf, sizeof(buf), "#%u", i + 1);
-    sp.drawString(buf, 8, startY + i * lineH);
-
-    sp.setTextDatum(TR_DATUM);
-    if (has) {
-      uint32_t secs = _scores[i].ms / 1000;
-      uint32_t mins = secs / 60;
-      secs %= 60;
-      snprintf(buf, sizeof(buf), "%dt  %um%02us", _scores[i].turns, (unsigned)mins, (unsigned)secs);
-    } else {
-      snprintf(buf, sizeof(buf), "--");
-    }
-    sp.drawString(buf, bodyW() - 8, startY + i * lineH);
+    lcd.setTextSize(1);
+    lcd.setTextColor(TFT_DARKGREY, TFT_BLACK);
+    lcd.setTextDatum(BC_DATUM);
+    lcd.drawString("UP/DN:switch diff  BACK:return", bodyX() + bodyW() / 2, bodyY() + bodyH() - 1);
   }
 
-  sp.setTextSize(1);
-  sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
-  sp.setTextDatum(BC_DATUM);
-  sp.drawString("UP/DN:switch diff  BACK:return", cx, bodyH() - 1);
+  if (_lastHsViewDiff == _hsViewDiff) return;
+  _lastHsViewDiff = _hsViewDiff;
 
-  sp.pushSprite(bodyX(), bodyY());
-  sp.deleteSprite();
+  const int headerH = 14;
+  const int lineH   = 14;
+  const int startY  = 18;
+  const int listH   = lineH * kMaxScores + 4;
+
+  {
+    Sprite sp(&lcd);
+    sp.createSprite(bodyW(), headerH);
+    sp.fillSprite(TFT_BLACK);
+    sp.setTextSize(1);
+    sp.setTextDatum(TC_DATUM);
+    sp.setTextColor(Config.getThemeColor(), TFT_BLACK);
+    char title[24];
+    snprintf(title, sizeof(title), "Top %s", kDiffNames[_hsViewDiff]);
+    sp.drawString(title, bodyW() / 2, 2);
+
+    char pageBuf[8];
+    snprintf(pageBuf, sizeof(pageBuf), "%u/%u", _hsViewDiff + 1, kDiffCount);
+    sp.setTextDatum(TR_DATUM);
+    sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
+    sp.drawString(pageBuf, bodyW() - 1, 2);
+    sp.pushSprite(bodyX(), bodyY());
+    sp.deleteSprite();
+  }
+
+  {
+    Sprite sp(&lcd);
+    sp.createSprite(bodyW(), listH);
+    sp.fillSprite(TFT_BLACK);
+    sp.setTextSize(1);
+
+    char buf[24];
+    for (uint8_t i = 0; i < kMaxScores; i++) {
+      bool     has = (i < _scoreCount);
+      uint16_t col = has ? (i == 0 ? TFT_YELLOW : TFT_WHITE) : TFT_DARKGREY;
+      sp.setTextColor(col, TFT_BLACK);
+
+      sp.setTextDatum(TL_DATUM);
+      snprintf(buf, sizeof(buf), "#%u", i + 1);
+      sp.drawString(buf, 8, i * lineH);
+
+      sp.setTextDatum(TR_DATUM);
+      if (has) {
+        uint32_t secs = _scores[i].ms / 1000;
+        uint32_t mins = secs / 60;
+        secs %= 60;
+        snprintf(buf, sizeof(buf), "%dt  %um%02us", _scores[i].turns, (unsigned)mins, (unsigned)secs);
+      } else {
+        snprintf(buf, sizeof(buf), "--");
+      }
+      sp.drawString(buf, bodyW() - 8, i * lineH);
+    }
+    sp.pushSprite(bodyX(), bodyY() + startY);
+    sp.deleteSprite();
+  }
 }

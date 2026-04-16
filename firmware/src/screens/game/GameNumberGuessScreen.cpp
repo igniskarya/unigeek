@@ -372,10 +372,14 @@ void GameNumberGuessScreen::onRender()
 
 void GameNumberGuessScreen::_renderMenu()
 {
-  Sprite sp(&Uni.Lcd);
-  sp.createSprite(bodyW(), bodyH());
-  sp.fillSprite(TFT_BLACK);
-  sp.setTextDatum(MC_DATUM);
+  auto& lcd = Uni.Lcd;
+  bool firstTime = (_prevState != STATE_MENU);
+  if (firstTime) {
+    lcd.fillRect(bodyX(), bodyY(), bodyW(), bodyH(), TFT_BLACK);
+    _prevState      = STATE_MENU;
+    _lastMenuIdx    = -1;
+    _lastDiff       = 0xFF;
+  }
 
   const int cx = bodyW() / 2;
 
@@ -383,73 +387,71 @@ void GameNumberGuessScreen::_renderMenu()
   snprintf(diffLabel, sizeof(diffLabel), "%s", kDiffNames[_diff]);
   const char* items[kMenuItems] = { "Play", diffLabel, "High Scores", "Back" };
 
-  sp.setTextSize(2);
-  const int lineH  = sp.fontHeight() + 4;
+  lcd.setTextSize(2);
+  const int lineH  = lcd.fontHeight() + 4;
   const int footH  = 10;
   const int startY = (bodyH() - footH - (int)kMenuItems * lineH) / 2;
 
   for (int i = 0; i < (int)kMenuItems; i++) {
-    bool sel = (i == _menuIdx);
+    bool sel        = (i == _menuIdx);
+    bool wasSel     = (i == _lastMenuIdx);
+    bool diffRow    = (i == 1);
+    bool diffChange = diffRow && (_lastDiff != _diff);
+    if (!firstTime && sel == wasSel && !diffChange) continue;
+
+    Sprite sp(&Uni.Lcd);
+    sp.createSprite(bodyW(), lineH);
+    sp.fillSprite(TFT_BLACK);
+    sp.setTextSize(2);
+    sp.setTextDatum(MC_DATUM);
     sp.setTextColor(sel ? Config.getThemeColor() : TFT_WHITE, TFT_BLACK);
-    sp.drawString(items[i], cx, startY + i * lineH + lineH / 2);
+    sp.drawString(items[i], cx, lineH / 2);
+    sp.pushSprite(bodyX(), bodyY() + startY + i * lineH);
+    sp.deleteSprite();
   }
 
-  // Diff info at bottom
-  char info[40];
-  if (kDiffTrials[_diff] > 0)
-    snprintf(info, sizeof(info), "0-%d  limit:%d guesses", kDiffMaxVal[_diff], kDiffTrials[_diff]);
-  else
-    snprintf(info, sizeof(info), "0-%d  unlimited", kDiffMaxVal[_diff]);
-  sp.setTextSize(1);
-  sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
-  sp.setTextDatum(BC_DATUM);
-  sp.drawString(info, cx, bodyH() - 1);
+  if (firstTime || _lastDiff != _diff) {
+    char info[40];
+    if (kDiffTrials[_diff] > 0)
+      snprintf(info, sizeof(info), "0-%d  limit:%d guesses", kDiffMaxVal[_diff], kDiffTrials[_diff]);
+    else
+      snprintf(info, sizeof(info), "0-%d  unlimited", kDiffMaxVal[_diff]);
 
-  sp.pushSprite(bodyX(), bodyY());
-  sp.deleteSprite();
+    Sprite sp(&Uni.Lcd);
+    sp.createSprite(bodyW(), footH);
+    sp.fillSprite(TFT_BLACK);
+    sp.setTextSize(1);
+    sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
+    sp.setTextDatum(BC_DATUM);
+    sp.drawString(info, cx, footH - 1);
+    sp.pushSprite(bodyX(), bodyY() + bodyH() - footH);
+    sp.deleteSprite();
+  }
+
+  _lastMenuIdx = _menuIdx;
+  _lastDiff    = _diff;
 }
 
 // ── _renderPlay ───────────────────────────────────────────────────────────────
 
 void GameNumberGuessScreen::_renderPlay()
 {
-  Sprite sp(&Uni.Lcd);
-  sp.createSprite(bodyW(), bodyH());
-  sp.fillSprite(TFT_BLACK);
-
 #ifdef DEVICE_HAS_KEYBOARD
   constexpr bool noKb = false;
 #else
   constexpr bool noKb = true;
 #endif
 
+  bool firstTime = (_prevState != STATE_PLAY);
+  if (firstTime) {
+    Uni.Lcd.fillRect(bodyX(), bodyY(), bodyW(), bodyH(), TFT_BLACK);
+    _prevState = STATE_PLAY;
+  }
+
   const int cx     = bodyW() / 2;
   const int statsH = 10;
   const int hintH  = 10;
 
-  // ── Compact stats bar at top ──────────────────────────────────
-  sp.setTextSize(1);
-  // Left: attempt counter
-  {
-    char buf[24];
-    if (kDiffTrials[_diff] > 0)
-      snprintf(buf, sizeof(buf), "Att:%d Left:%d", _guesses, _trialsLeft);
-    else
-      snprintf(buf, sizeof(buf), "Att:%d", _guesses);
-    sp.setTextDatum(TL_DATUM);
-    sp.setTextColor(kDiffTrials[_diff] > 0 ? TFT_YELLOW : TFT_LIGHTGREY, TFT_BLACK);
-    sp.drawString(buf, 2, 1);
-  }
-  // Right: range
-  {
-    char buf[20];
-    snprintf(buf, sizeof(buf), "0-%d", kDiffMaxVal[_diff]);
-    sp.setTextDatum(TR_DATUM);
-    sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
-    sp.drawString(buf, bodyW() - 2, 1);
-  }
-
-  // ── Last guess + hint (centered vertically in middle area) ────
   const int cellW    = 18;
   const int cellH    = 22;
   const int cellStep = 21;
@@ -459,78 +461,119 @@ void GameNumberGuessScreen::_renderPlay()
   const uint8_t md   = _maxDigits();
   const int     rowW = md * cellStep;
   const int     inputX = (bodyW() - rowW) / 2;
-  const int     inputY = statsH + (bodyH() - statsH - hintH - blockH) / 2 + arrowH;
+  const int     midAreaH = bodyH() - statsH - hintH;
+  const int     hintRowH = 14;
+  const int     midH     = blockH + hintRowH;
+  const int     midY     = statsH + (midAreaH - midH) / 2;
+  const int     inputYLocal = hintRowH + arrowH;
 
-  // Hint text: single line centered between stats bar and input cells
-  const int hintAreaCY = statsH + (inputY - arrowH - statsH) / 2;
-  sp.setTextDatum(MC_DATUM);
-  if (_hasGuessed) {
-    sp.setTextColor(TFT_CYAN, TFT_BLACK);
-    sp.drawString(_cmp == 1 ? "HIGHER" : "LOWER", cx, hintAreaCY);
-  } else {
-    sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
-    sp.drawString("Make your first guess", cx, hintAreaCY);
-  }
+  Uni.Lcd.fillRect(bodyX(), bodyY() + statsH, bodyW(), midY - statsH, TFT_BLACK);
+  Uni.Lcd.fillRect(bodyX(), bodyY() + midY + midH, bodyW(), bodyH() - hintH - (midY + midH), TFT_BLACK);
 
-  // ── Arrows above/below active cell (non-keyboard) ────────────
-  if (noKb) {
-    const int ax = inputX + _inputCursor * cellStep + cellW / 2;
-    sp.fillTriangle(ax, inputY - arrowH + 1,
-                    ax - 3, inputY - 3,
-                    ax + 3, inputY - 3, TFT_LIGHTGREY);
-    sp.fillTriangle(ax, inputY + cellH + arrowH - 1,
-                    ax - 3, inputY + cellH + 3,
-                    ax + 3, inputY + cellH + 3, TFT_LIGHTGREY);
-  }
-
-  // ── Digit input cells ─────────────────────────────────────────
-  sp.setTextDatum(MC_DATUM);
-  for (uint8_t i = 0; i < md; i++) {
-    const int x      = inputX + i * cellStep;
-    bool active      = (i == _inputCursor);
-    // position 10 = backspace '<' slot (same as Memory kCharDBLen slot)
-    bool eraseActive = active && noKb && (_cycleDigit == 10);
-
-    char c = _inputBuf[i];
-    if (active && noKb) c = eraseActive ? '<' : ('0' + _cycleDigit);
-
-    uint16_t bg = eraseActive   ? TFT_MAROON
-                : active        ? TFT_DARKCYAN
-                : (_inputBuf[i] ? TFT_DARKGREY : 0x2104);
-
-    sp.fillRoundRect(x, inputY, cellW, cellH, 2, bg);
-    sp.drawRoundRect(x, inputY, cellW, cellH, 2, active ? TFT_YELLOW : TFT_DARKGREY);
-
-    if (c != '\0') {
-      char buf[2] = { c, '\0' };
-      sp.setTextSize(2);
-      sp.setTextColor(TFT_WHITE, bg);
-      sp.drawString(buf, x + cellW / 2 + 1, inputY + cellH / 2 + 1);
-    }
-  }
-
-  // ── Bottom hint ───────────────────────────────────────────────
-  sp.setTextSize(1);
-  sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
-  sp.setTextDatum(BC_DATUM);
-#ifdef DEVICE_HAS_KEYBOARD
-  sp.drawString("ENTER:guess  BKSP:erase", cx, bodyH() - 1);
-#else
   {
-    bool _needHold = true;
-#ifdef DEVICE_HAS_NAV_MODE_SWITCH
-    if (Config.get(APP_CONFIG_NAV_MODE, APP_CONFIG_NAV_MODE_DEFAULT) == "encoder")
-      _needHold = false;
-#endif
-    if (_needHold)
-      sp.drawString("UP/DN:digit  OK:confirm  HOLD:menu", cx, bodyH() - 1);
-    else
-      sp.drawString("UP/DN:digit  OK:confirm  BACK:menu", cx, bodyH() - 1);
+    Sprite sp(&Uni.Lcd);
+    sp.createSprite(bodyW(), statsH);
+    sp.fillSprite(TFT_BLACK);
+    sp.setTextSize(1);
+    {
+      char buf[24];
+      if (kDiffTrials[_diff] > 0)
+        snprintf(buf, sizeof(buf), "Att:%d Left:%d", _guesses, _trialsLeft);
+      else
+        snprintf(buf, sizeof(buf), "Att:%d", _guesses);
+      sp.setTextDatum(TL_DATUM);
+      sp.setTextColor(kDiffTrials[_diff] > 0 ? TFT_YELLOW : TFT_LIGHTGREY, TFT_BLACK);
+      sp.drawString(buf, 2, 1);
+    }
+    {
+      char buf[20];
+      snprintf(buf, sizeof(buf), "0-%d", kDiffMaxVal[_diff]);
+      sp.setTextDatum(TR_DATUM);
+      sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
+      sp.drawString(buf, bodyW() - 2, 1);
+    }
+    sp.pushSprite(bodyX(), bodyY());
+    sp.deleteSprite();
   }
-#endif
 
-  sp.pushSprite(bodyX(), bodyY());
-  sp.deleteSprite();
+  {
+    Sprite sp(&Uni.Lcd);
+    sp.createSprite(bodyW(), midH);
+    sp.fillSprite(TFT_BLACK);
+    sp.setTextSize(1);
+    const int hintAreaCY = (inputYLocal - arrowH) / 2;
+    sp.setTextDatum(MC_DATUM);
+    if (_hasGuessed) {
+      sp.setTextColor(TFT_CYAN, TFT_BLACK);
+      sp.drawString(_cmp == 1 ? "HIGHER" : "LOWER", cx, hintAreaCY);
+    } else {
+      sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
+      sp.drawString("Make your first guess", cx, hintAreaCY);
+    }
+
+    if (noKb) {
+      const int ax = inputX + _inputCursor * cellStep + cellW / 2;
+      sp.fillTriangle(ax, inputYLocal - arrowH + 1,
+                      ax - 3, inputYLocal - 3,
+                      ax + 3, inputYLocal - 3, TFT_LIGHTGREY);
+      sp.fillTriangle(ax, inputYLocal + cellH + arrowH - 1,
+                      ax - 3, inputYLocal + cellH + 3,
+                      ax + 3, inputYLocal + cellH + 3, TFT_LIGHTGREY);
+    }
+
+    sp.setTextDatum(MC_DATUM);
+    for (uint8_t i = 0; i < md; i++) {
+      const int x      = inputX + i * cellStep;
+      bool active      = (i == _inputCursor);
+      bool eraseActive = active && noKb && (_cycleDigit == 10);
+
+      char c = _inputBuf[i];
+      if (active && noKb) c = eraseActive ? '<' : ('0' + _cycleDigit);
+
+      uint16_t bg = eraseActive   ? TFT_MAROON
+                  : active        ? TFT_DARKCYAN
+                  : (_inputBuf[i] ? TFT_DARKGREY : 0x2104);
+
+      sp.fillRoundRect(x, inputYLocal, cellW, cellH, 2, bg);
+      sp.drawRoundRect(x, inputYLocal, cellW, cellH, 2, active ? TFT_YELLOW : TFT_DARKGREY);
+
+      if (c != '\0') {
+        char buf[2] = { c, '\0' };
+        sp.setTextSize(2);
+        sp.setTextColor(TFT_WHITE, bg);
+        sp.drawString(buf, x + cellW / 2 + 1, inputYLocal + cellH / 2 + 1);
+      }
+      sp.setTextSize(1);
+    }
+    sp.pushSprite(bodyX(), bodyY() + midY);
+    sp.deleteSprite();
+  }
+
+  {
+    Sprite sp(&Uni.Lcd);
+    sp.createSprite(bodyW(), hintH);
+    sp.fillSprite(TFT_BLACK);
+    sp.setTextSize(1);
+    sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
+    sp.setTextDatum(BC_DATUM);
+#ifdef DEVICE_HAS_KEYBOARD
+    sp.drawString("ENTER:guess  BKSP:erase", cx, hintH - 1);
+#else
+    {
+      bool _needHold = true;
+#ifdef DEVICE_HAS_NAV_MODE_SWITCH
+      if (Config.get(APP_CONFIG_NAV_MODE, APP_CONFIG_NAV_MODE_DEFAULT) == "encoder")
+        _needHold = false;
+#endif
+      if (_needHold)
+        sp.drawString("UP/DN:digit  OK:confirm  HOLD:menu", cx, hintH - 1);
+      else
+        sp.drawString("UP/DN:digit  OK:confirm  BACK:menu", cx, hintH - 1);
+    }
+#endif
+    sp.pushSprite(bodyX(), bodyY() + bodyH() - hintH);
+    sp.deleteSprite();
+  }
 }
 
 // ── _renderResult (win + lose) ────────────────────────────────────────────────
@@ -539,34 +582,33 @@ void GameNumberGuessScreen::_renderResult()
 {
   const bool won = (_state == STATE_WIN);
 
-  Sprite sp(&Uni.Lcd);
-  sp.createSprite(bodyW(), bodyH());
-  sp.fillSprite(TFT_BLACK);
+  if (_prevState == _state) return;
+  _prevState = _state;
 
-  const int cx = bodyW() / 2;
+  auto& lcd = Uni.Lcd;
+  lcd.fillRect(bodyX(), bodyY(), bodyW(), bodyH(), TFT_BLACK);
+
+  const int cx = bodyX() + bodyW() / 2;
   char buf[32];
 
-  sp.setTextDatum(TC_DATUM);
+  lcd.setTextDatum(TC_DATUM);
 
-  // ── Title ─────────────────────────────────────────────────────
-  sp.setTextSize(2);
-  sp.setTextColor(won ? Config.getThemeColor() : TFT_RED, TFT_BLACK);
-  sp.drawString(won ? "YOU WIN!" : "GAME OVER", cx, 4);
+  lcd.setTextSize(2);
+  lcd.setTextColor(won ? Config.getThemeColor() : TFT_RED, TFT_BLACK);
+  lcd.drawString(won ? "YOU WIN!" : "GAME OVER", cx, bodyY() + 4);
 
-  sp.drawFastHLine(8, 24, bodyW() - 16, TFT_DARKGREY);
+  lcd.drawFastHLine(bodyX() + 8, bodyY() + 24, bodyW() - 16, TFT_DARKGREY);
 
-  // ── Answer number (prominent) ──────────────────────────────────
-  sp.setTextSize(1);
-  sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
-  sp.drawString("The answer was", cx, 28);
+  lcd.setTextSize(1);
+  lcd.setTextColor(TFT_DARKGREY, TFT_BLACK);
+  lcd.drawString("The answer was", cx, bodyY() + 28);
 
   snprintf(buf, sizeof(buf), "%d", _target);
-  sp.setTextSize(2);
-  sp.setTextColor(TFT_WHITE, TFT_BLACK);
-  sp.drawString(buf, cx, 38);
+  lcd.setTextSize(2);
+  lcd.setTextColor(TFT_WHITE, TFT_BLACK);
+  lcd.drawString(buf, cx, bodyY() + 38);
 
-  // ── Stats row ─────────────────────────────────────────────────
-  sp.setTextSize(1);
+  lcd.setTextSize(1);
   if (won) {
     uint32_t ms   = _newRank >= 0 ? _scores[_newRank].ms : (millis() - _startMs);
     uint32_t secs = ms / 1000;
@@ -576,82 +618,101 @@ void GameNumberGuessScreen::_renderResult()
   } else {
     snprintf(buf, sizeof(buf), "%d guesses used", _guesses);
   }
-  sp.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
-  sp.drawString(buf, cx, 58);
+  lcd.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
+  lcd.drawString(buf, cx, bodyY() + 58);
 
-  // ── New record banner ─────────────────────────────────────────
   if (won && _newRank >= 0) {
     snprintf(buf, sizeof(buf), "New #%d Best!", _newRank + 1);
-    sp.setTextSize(2);
-    sp.setTextColor(TFT_YELLOW, TFT_BLACK);
-    sp.drawString(buf, cx, 72);
+    lcd.setTextSize(2);
+    lcd.setTextColor(TFT_YELLOW, TFT_BLACK);
+    lcd.drawString(buf, cx, bodyY() + 72);
   }
 
-  // ── Press to continue ─────────────────────────────────────────
-  sp.setTextSize(1);
-  sp.setTextDatum(BC_DATUM);
-  sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
-  sp.drawString("Press to continue", cx, bodyH() - 2);
-
-  sp.pushSprite(bodyX(), bodyY());
-  sp.deleteSprite();
+  lcd.setTextSize(1);
+  lcd.setTextDatum(BC_DATUM);
+  lcd.setTextColor(TFT_DARKGREY, TFT_BLACK);
+  lcd.drawString("Press to continue", cx, bodyY() + bodyH() - 2);
 }
 
 // ── _renderHighScores ─────────────────────────────────────────────────────────
 
 void GameNumberGuessScreen::_renderHighScores()
 {
-  Sprite sp(&Uni.Lcd);
-  sp.createSprite(bodyW(), bodyH());
-  sp.fillSprite(TFT_BLACK);
+  auto& lcd = Uni.Lcd;
+  bool firstTime = (_prevState != STATE_HIGH_SCORES);
+  if (firstTime) {
+    lcd.fillRect(bodyX(), bodyY(), bodyW(), bodyH(), TFT_BLACK);
+    _prevState      = STATE_HIGH_SCORES;
+    _lastHsViewDiff = 0xFF;
 
-  const int cx = bodyW() / 2;
-
-  // Title: "Top Easy" / "Top Medium" etc. — same style as Flappy "Top Scores"
-  char title[20];
-  snprintf(title, sizeof(title), "Top %s", kDiffNames[_hsViewDiff]);
-  sp.setTextSize(1);
-  sp.setTextDatum(TC_DATUM);
-  sp.setTextColor(Config.getThemeColor(), TFT_BLACK);
-  sp.drawString(title, cx, 2);
-
-  // Page indicator top-right
-  char pageBuf[8];
-  snprintf(pageBuf, sizeof(pageBuf), "%u/%u", _hsViewDiff + 1, kDiffCount);
-  sp.setTextDatum(TR_DATUM);
-  sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
-  sp.drawString(pageBuf, bodyW() - 1, 2);
-
-  // Score rows — Flappy style: #N left, value right, yellow #1, -- for empty
-  const int lineH  = 14;
-  const int startY = 18;
-  char buf[24];
-  for (uint8_t i = 0; i < kMaxScores; i++) {
-    bool     hasScore = (i < _scoreCount);
-    uint16_t col      = hasScore ? (i == 0 ? TFT_YELLOW : TFT_WHITE) : TFT_DARKGREY;
-    sp.setTextColor(col, TFT_BLACK);
-
-    sp.setTextDatum(TL_DATUM);
-    snprintf(buf, sizeof(buf), "#%u", i + 1);
-    sp.drawString(buf, 8, startY + i * lineH);
-
-    sp.setTextDatum(TR_DATUM);
-    if (hasScore) {
-      uint32_t secs = _scores[i].ms / 1000;
-      uint32_t mins = secs / 60;
-      secs %= 60;
-      snprintf(buf, sizeof(buf), "%dg  %um%02us", _scores[i].guesses, (unsigned)mins, (unsigned)secs);
-    } else {
-      snprintf(buf, sizeof(buf), "--");
-    }
-    sp.drawString(buf, bodyW() - 8, startY + i * lineH);
+    const int cx = bodyW() / 2;
+    Sprite sp(&Uni.Lcd);
+    sp.createSprite(bodyW(), 10);
+    sp.fillSprite(TFT_BLACK);
+    sp.setTextSize(1);
+    sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
+    sp.setTextDatum(BC_DATUM);
+    sp.drawString("UP/DN:switch diff  BACK:return", cx, 9);
+    sp.pushSprite(bodyX(), bodyY() + bodyH() - 10);
+    sp.deleteSprite();
   }
 
-  sp.setTextSize(1);
-  sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
-  sp.setTextDatum(BC_DATUM);
-  sp.drawString("UP/DN:switch diff  BACK:return", cx, bodyH() - 1);
+  if (!firstTime && _lastHsViewDiff == _hsViewDiff) return;
+  _lastHsViewDiff = _hsViewDiff;
 
-  sp.pushSprite(bodyX(), bodyY());
-  sp.deleteSprite();
+  const int headerH = 16;
+  {
+    Sprite sp(&Uni.Lcd);
+    sp.createSprite(bodyW(), headerH);
+    sp.fillSprite(TFT_BLACK);
+    sp.setTextSize(1);
+
+    char title[20];
+    snprintf(title, sizeof(title), "Top %s", kDiffNames[_hsViewDiff]);
+    sp.setTextDatum(TC_DATUM);
+    sp.setTextColor(Config.getThemeColor(), TFT_BLACK);
+    sp.drawString(title, bodyW() / 2, 2);
+
+    char pageBuf[8];
+    snprintf(pageBuf, sizeof(pageBuf), "%u/%u", _hsViewDiff + 1, kDiffCount);
+    sp.setTextDatum(TR_DATUM);
+    sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
+    sp.drawString(pageBuf, bodyW() - 1, 2);
+
+    sp.pushSprite(bodyX(), bodyY());
+    sp.deleteSprite();
+  }
+
+  const int lineH  = 14;
+  const int startY = 18;
+  const int listH  = kMaxScores * lineH;
+  {
+    Sprite sp(&Uni.Lcd);
+    sp.createSprite(bodyW(), listH);
+    sp.fillSprite(TFT_BLACK);
+    sp.setTextSize(1);
+    char buf[24];
+    for (uint8_t i = 0; i < kMaxScores; i++) {
+      bool     hasScore = (i < _scoreCount);
+      uint16_t col      = hasScore ? (i == 0 ? TFT_YELLOW : TFT_WHITE) : TFT_DARKGREY;
+      sp.setTextColor(col, TFT_BLACK);
+
+      sp.setTextDatum(TL_DATUM);
+      snprintf(buf, sizeof(buf), "#%u", i + 1);
+      sp.drawString(buf, 8, i * lineH);
+
+      sp.setTextDatum(TR_DATUM);
+      if (hasScore) {
+        uint32_t secs = _scores[i].ms / 1000;
+        uint32_t mins = secs / 60;
+        secs %= 60;
+        snprintf(buf, sizeof(buf), "%dg  %um%02us", _scores[i].guesses, (unsigned)mins, (unsigned)secs);
+      } else {
+        snprintf(buf, sizeof(buf), "--");
+      }
+      sp.drawString(buf, bodyW() - 8, i * lineH);
+    }
+    sp.pushSprite(bodyX(), bodyY() + startY);
+    sp.deleteSprite();
+  }
 }

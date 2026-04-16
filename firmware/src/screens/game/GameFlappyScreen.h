@@ -50,6 +50,10 @@ private:
   // High scores
   int _topScores[kTopN] = {};
 
+  // Partial-redraw tracking
+  State   _prevState   = (State)0xFF;
+  int8_t  _lastMenuIdx = -1;
+
   // Derived from screen size
   uint8_t _gapH      = 0;
   uint8_t _pipeSpeed = 0;

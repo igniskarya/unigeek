@@ -245,175 +245,213 @@ void GameDecoderScreen::_handleKeyInput(char c)
 
 void GameDecoderScreen::_renderMenu()
 {
-  Sprite sp(&Uni.Lcd);
-  sp.createSprite(bodyW(), bodyH());
-  sp.fillSprite(TFT_BLACK);
+  auto& lcd = Uni.Lcd;
+  bool firstTime = (_prevState != STATE_MENU);
+  if (firstTime) {
+    lcd.fillRect(bodyX(), bodyY(), bodyW(), bodyH(), TFT_BLACK);
+    _prevState      = STATE_MENU;
+    _lastMenuIdx    = -1;
+    _lastDifficulty = 0xFF;
+  }
 
   const char* items[kMenuItems] = {"Play", _diffStr(), "High Scores", "Exit"};
-  sp.setTextSize(2);
-  const int lineH  = sp.fontHeight() + 6;
+  lcd.setTextSize(2);
+  const int lineH  = lcd.fontHeight() + 6;
   const int startY = (bodyH() - (int)kMenuItems * lineH) / 2;
 
   for (int i = 0; i < (int)kMenuItems; i++) {
-    sp.setTextColor((i == _menuIdx) ? Config.getThemeColor() : TFT_WHITE, TFT_BLACK);
+    bool selNow  = (i == _menuIdx);
+    bool selPrev = (i == _lastMenuIdx);
+    bool diffRow = (i == 1 && _lastDifficulty != _difficulty);
+    if (!firstTime && selNow == selPrev && !diffRow) continue;
+
+    Sprite sp(&lcd);
+    sp.createSprite(bodyW(), lineH);
+    sp.fillSprite(TFT_BLACK);
     sp.setTextDatum(MC_DATUM);
-    sp.drawString(items[i], bodyW() / 2, startY + i * lineH + lineH / 2);
+    sp.setTextSize(2);
+    sp.setTextColor(selNow ? Config.getThemeColor() : TFT_WHITE, TFT_BLACK);
+    sp.drawString(items[i], bodyW() / 2, lineH / 2);
+    sp.pushSprite(bodyX(), bodyY() + startY + i * lineH);
+    sp.deleteSprite();
   }
 
-  sp.pushSprite(bodyX(), bodyY());
-  sp.deleteSprite();
+  _lastMenuIdx    = _menuIdx;
+  _lastDifficulty = _difficulty;
 }
 
 void GameDecoderScreen::_renderPlay()
 {
-  Sprite sp(&Uni.Lcd);
-  sp.createSprite(bodyW(), bodyH());
-  sp.fillSprite(TFT_BLACK);
-
 #ifdef DEVICE_HAS_KEYBOARD
   constexpr bool noKb = false;
 #else
   constexpr bool noKb = true;
 #endif
 
+  bool firstTime = (_prevState != STATE_PLAY);
+  if (firstTime) {
+    Uni.Lcd.fillRect(bodyX(), bodyY(), bodyW(), bodyH(), TFT_BLACK);
+    _prevState       = STATE_PLAY;
+    _lastTotalInputs = 0xFF;
+    _lastTimerSec    = -1;
+  }
+
   const int arrowH   = noKb ? 8 : 0;
   const int arrowV   = noKb ? 6 : 0;
   const int cellW    = 14, cellH = 14, cellStep = 16;
   const int inputX   = 16;
-  const int inputY   = noKb ? arrowH - 2 : 2;           // keyboard boards: small top margin
+  const int inputY   = noKb ? arrowH - 2 : 2;
   const int histY0   = inputY + cellH + (noKb ? arrowV : 3);
-  const int histRowH = 16;                               // fixed row height — taller screen = more rows
+  const int histRowH = 16;
   const int maxAtt   = _maxAttempts();
   const int attCap   = (maxAtt == -1) ? (int)kMaxHistory : maxAtt;
   const int visRows  = min(min((int)kMaxHistory, (bodyH() - histY0) / histRowH), attCap);
-  const int rightCX  = (inputX + kInputLen * cellStep + 4 + bodyW()) / 2;
+  const int leftZoneW = inputX + kInputLen * cellStep + 4;
+  const int rightZoneW = bodyW() - leftZoneW;
+  const int rightCXLocal = rightZoneW / 2;
 
-  sp.setTextDatum(MC_DATUM);
-  sp.setTextSize(1);
+  {
+    Sprite sp(&Uni.Lcd);
+    sp.createSprite(leftZoneW, bodyH());
+    sp.fillSprite(TFT_BLACK);
 
-  // Back indicator on blocks 1 and 2 only
-  if (_cursor > 0) {
-    sp.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
-    sp.drawString("<", 7, inputY + cellH / 2);
-  }
+    sp.setTextDatum(MC_DATUM);
+    sp.setTextSize(1);
 
-  // Pass 1: arrows (rendered before cells so cells never overdraw them)
-  if (noKb) {
-    const int cx = inputX + _cursor * cellStep + cellW / 2;
-    // ^ above input: base 1px above cell top, tip 3px higher
-    sp.fillTriangle(cx, inputY - 5, cx - 2, inputY - 2, cx + 2, inputY - 2, TFT_LIGHTGREY);
-    // v below input: base 1px below cell bottom, tip 3px lower
-    sp.fillTriangle(cx, inputY + cellH + 4, cx - 2, inputY + cellH + 1, cx + 2, inputY + cellH + 1, TFT_LIGHTGREY);
-  }
-
-  // Pass 2: input cells
-  for (uint8_t ci = 0; ci < kInputLen; ci++) {
-    const int x      = inputX + ci * cellStep;
-    bool active      = (ci == _cursor);
-    bool eraseActive = active && noKb && (_cycleIdx == kCharDBLen);
-    char c           = _current[ci];
-    if (active && noKb) c = eraseActive ? '<' : kCharDB[_cycleIdx];
-
-    uint16_t bg = eraseActive ? TFT_MAROON : (active ? TFT_DARKCYAN : TFT_DARKGREY);
-    sp.fillRoundRect(x, inputY, cellW, cellH, 2, bg);
-    if (c != '\0') {
-      char buf[2] = {c, '\0'};
-      sp.setTextColor(TFT_WHITE, bg);
-      sp.drawString(buf, x + cellW / 2, inputY + cellH / 2);
+    if (_cursor > 0) {
+      sp.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
+      sp.drawString("<", 7, inputY + cellH / 2);
     }
-  }
 
-  // History rows
-  bool showColors = (_difficulty < 2);
-  for (int row = 0; row < visRows; row++) {
-    const int y   = histY0 + row * histRowH + 1;
-    bool hasEntry = (row < _histSize);
-    int  hints[4] = {};
+    if (noKb) {
+      const int cx = inputX + _cursor * cellStep + cellW / 2;
+      sp.fillTriangle(cx, inputY - 5, cx - 2, inputY - 2, cx + 2, inputY - 2, TFT_LIGHTGREY);
+      sp.fillTriangle(cx, inputY + cellH + 4, cx - 2, inputY + cellH + 1, cx + 2, inputY + cellH + 1, TFT_LIGHTGREY);
+    }
 
     for (uint8_t ci = 0; ci < kInputLen; ci++) {
-      const int x = inputX + ci * cellStep;
-      char hc     = hasEntry ? _history[row][ci] : '\0';
-      int  color  = hasEntry ? _colorGuess(ci, hc) : 0;
-      hints[ci]   = color;
+      const int x      = inputX + ci * cellStep;
+      bool active      = (ci == _cursor);
+      bool eraseActive = active && noKb && (_cycleIdx == kCharDBLen);
+      char c           = _current[ci];
+      if (active && noKb) c = eraseActive ? '<' : kCharDB[_cycleIdx];
 
-      uint16_t bg = showColors ? kColors[color] : TFT_DARKGREY;
-      sp.fillRoundRect(x, y, cellW, cellH, 2, bg);
-      if (hc != '\0') {
-        char buf[2] = {hc, '\0'};
+      uint16_t bg = eraseActive ? TFT_MAROON : (active ? TFT_DARKCYAN : TFT_DARKGREY);
+      sp.fillRoundRect(x, inputY, cellW, cellH, 2, bg);
+      if (c != '\0') {
+        char buf[2] = {c, '\0'};
         sp.setTextColor(TFT_WHITE, bg);
-        sp.drawString(buf, x + cellW / 2, y + cellH / 2);
+        sp.drawString(buf, x + cellW / 2, inputY + cellH / 2);
       }
     }
 
-    if (hasEntry) {
-      for (int a = 0; a < 3; a++)
-        for (int b = a + 1; b < 4; b++)
-          if (hints[a] > hints[b]) { int t = hints[a]; hints[a] = hints[b]; hints[b] = t; }
-      uint8_t k = 0;
-      for (uint8_t dy = 0; dy < 2; dy++)
-        for (uint8_t dx = 0; dx < 2; dx++)
-          sp.fillRoundRect(dx * 7 + 1, y + dy * 6 + 1, 5, 5, 1, kColors[hints[k++]]);
+    bool showColors = (_difficulty < 2);
+    for (int row = 0; row < visRows; row++) {
+      const int y   = histY0 + row * histRowH + 1;
+      bool hasEntry = (row < _histSize);
+      int  hints[4] = {};
+
+      for (uint8_t ci = 0; ci < kInputLen; ci++) {
+        const int x = inputX + ci * cellStep;
+        char hc     = hasEntry ? _history[row][ci] : '\0';
+        int  color  = hasEntry ? _colorGuess(ci, hc) : 0;
+        hints[ci]   = color;
+
+        uint16_t bg = showColors ? kColors[color] : TFT_DARKGREY;
+        sp.fillRoundRect(x, y, cellW, cellH, 2, bg);
+        if (hc != '\0') {
+          char buf[2] = {hc, '\0'};
+          sp.setTextColor(TFT_WHITE, bg);
+          sp.drawString(buf, x + cellW / 2, y + cellH / 2);
+        }
+      }
+
+      if (hasEntry) {
+        for (int a = 0; a < 3; a++)
+          for (int b = a + 1; b < 4; b++)
+            if (hints[a] > hints[b]) { int t = hints[a]; hints[a] = hints[b]; hints[b] = t; }
+        uint8_t k = 0;
+        for (uint8_t dy = 0; dy < 2; dy++)
+          for (uint8_t dx = 0; dx < 2; dx++)
+            sp.fillRoundRect(dx * 7 + 1, y + dy * 6 + 1, 5, 5, 1, kColors[hints[k++]]);
+      }
     }
+
+    sp.pushSprite(bodyX(), bodyY());
+    sp.deleteSprite();
   }
 
-  // Turn counter
-  char valBuf[8];
-  sp.setTextDatum(TC_DATUM);
-  sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
-  if (_maxAttempts() == -1) {
-    sp.drawString("Turn", rightCX, 2);
-    snprintf(valBuf, sizeof(valBuf), "%d", _totalInputs);
-  } else {
-    sp.drawString("Left", rightCX, 2);
-    snprintf(valBuf, sizeof(valBuf), "%d", _maxAttempts() - _totalInputs);
-  }
-  sp.setTextSize(2);
-  sp.setTextColor(TFT_WHITE, TFT_BLACK);
-  sp.drawString(valBuf, rightCX, 12);
-
-  // Countdown timer
+  const int rightPanelH = 70;
   int rem = (_endMs > millis()) ? (int)((_endMs - millis()) / 1000) : 0;
-  char timerBuf[8];
-  if (rem >= 60) snprintf(timerBuf, sizeof(timerBuf), "%d:%02d", rem / 60, rem % 60);
-  else           snprintf(timerBuf, sizeof(timerBuf), "%ds",     rem);
-  sp.setTextSize(1);
-  sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
-  sp.drawString("Time", rightCX, bodyH() - 26);
-  sp.setTextSize(2);
-  sp.setTextColor(TFT_WHITE, TFT_BLACK);
-  sp.drawString(timerBuf, rightCX, bodyH() - 16);
 
-  sp.pushSprite(bodyX(), bodyY());
-  sp.deleteSprite();
+  if (firstTime || _lastTotalInputs != _totalInputs || _lastTimerSec != rem) {
+    Sprite sp(&Uni.Lcd);
+    sp.createSprite(rightZoneW, rightPanelH);
+    sp.fillSprite(TFT_BLACK);
+
+    sp.setTextDatum(TC_DATUM);
+    sp.setTextSize(1);
+    sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
+
+    char valBuf[8];
+    if (_maxAttempts() == -1) {
+      sp.drawString("Turn", rightCXLocal, 2);
+      snprintf(valBuf, sizeof(valBuf), "%d", _totalInputs);
+    } else {
+      sp.drawString("Left", rightCXLocal, 2);
+      snprintf(valBuf, sizeof(valBuf), "%d", _maxAttempts() - _totalInputs);
+    }
+    sp.setTextSize(2);
+    sp.setTextColor(TFT_WHITE, TFT_BLACK);
+    sp.drawString(valBuf, rightCXLocal, 12);
+
+    char timerBuf[8];
+    if (rem >= 60) snprintf(timerBuf, sizeof(timerBuf), "%d:%02d", rem / 60, rem % 60);
+    else           snprintf(timerBuf, sizeof(timerBuf), "%ds",     rem);
+    sp.setTextSize(1);
+    sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
+    sp.drawString("Time", rightCXLocal, 38);
+    sp.setTextSize(2);
+    sp.setTextColor(TFT_WHITE, TFT_BLACK);
+    sp.drawString(timerBuf, rightCXLocal, 48);
+
+    sp.pushSprite(bodyX() + leftZoneW, bodyY());
+    sp.deleteSprite();
+
+    _lastTotalInputs = _totalInputs;
+    _lastTimerSec    = rem;
+  }
 }
 
 void GameDecoderScreen::_renderResult()
 {
+  if (_prevState == STATE_RESULT) return;
+  _prevState = STATE_RESULT;
+
   const bool won = _win;
 
-  Sprite sp(&Uni.Lcd);
-  sp.createSprite(bodyW(), bodyH());
-  sp.fillSprite(TFT_BLACK);
+  auto& lcd = Uni.Lcd;
+  lcd.fillRect(bodyX(), bodyY(), bodyW(), bodyH(), TFT_BLACK);
 
-  const int cx = bodyW() / 2;
+  const int cx = bodyX() + bodyW() / 2;
   char ans[5] = {}, buf[32];
   memcpy(ans, _target, kInputLen);
 
-  sp.setTextDatum(TC_DATUM);
-  sp.setTextSize(2);
-  sp.setTextColor(won ? Config.getThemeColor() : TFT_RED, TFT_BLACK);
-  sp.drawString(won ? "YOU WIN!" : "GAME OVER", cx, 4);
+  lcd.setTextDatum(TC_DATUM);
+  lcd.setTextSize(2);
+  lcd.setTextColor(won ? Config.getThemeColor() : TFT_RED, TFT_BLACK);
+  lcd.drawString(won ? "YOU WIN!" : "GAME OVER", cx, bodyY() + 4);
 
-  sp.drawFastHLine(8, 24, bodyW() - 16, TFT_DARKGREY);
+  lcd.drawFastHLine(bodyX() + 8, bodyY() + 24, bodyW() - 16, TFT_DARKGREY);
 
-  sp.setTextSize(1);
-  sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
-  sp.drawString("Answer was", cx, 28);
-  sp.setTextSize(2);
-  sp.setTextColor(TFT_WHITE, TFT_BLACK);
-  sp.drawString(ans, cx, 38);
+  lcd.setTextSize(1);
+  lcd.setTextColor(TFT_DARKGREY, TFT_BLACK);
+  lcd.drawString("Answer was", cx, bodyY() + 28);
+  lcd.setTextSize(2);
+  lcd.setTextColor(TFT_WHITE, TFT_BLACK);
+  lcd.drawString(ans, cx, bodyY() + 38);
 
-  sp.setTextSize(1);
+  lcd.setTextSize(1);
   if (won) {
     uint32_t ms   = (_newRank >= 0) ? _scores[_newRank].ms : (millis() - _startMs);
     uint32_t secs = ms / 1000;
@@ -423,23 +461,20 @@ void GameDecoderScreen::_renderResult()
   } else {
     snprintf(buf, sizeof(buf), "%d turns used", (int)_totalInputs);
   }
-  sp.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
-  sp.drawString(buf, cx, 58);
+  lcd.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
+  lcd.drawString(buf, cx, bodyY() + 58);
 
   if (won && _newRank >= 0) {
     snprintf(buf, sizeof(buf), "New #%d Best!", _newRank + 1);
-    sp.setTextSize(2);
-    sp.setTextColor(TFT_YELLOW, TFT_BLACK);
-    sp.drawString(buf, cx, 72);
+    lcd.setTextSize(2);
+    lcd.setTextColor(TFT_YELLOW, TFT_BLACK);
+    lcd.drawString(buf, cx, bodyY() + 72);
   }
 
-  sp.setTextSize(1);
-  sp.setTextDatum(BC_DATUM);
-  sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
-  sp.drawString("Press to continue", cx, bodyH() - 2);
-
-  sp.pushSprite(bodyX(), bodyY());
-  sp.deleteSprite();
+  lcd.setTextSize(1);
+  lcd.setTextDatum(BC_DATUM);
+  lcd.setTextColor(TFT_DARKGREY, TFT_BLACK);
+  lcd.drawString("Press to continue", cx, bodyY() + bodyH() - 2);
 }
 
 // ── Score storage ─────────────────────────────────────────────────────────────
@@ -510,54 +545,78 @@ void GameDecoderScreen::_renderHighScores()
 {
   static constexpr const char* kDiffNames[4] = { "Easy", "Medium", "Hard", "Extreme" };
 
-  Sprite sp(&Uni.Lcd);
-  sp.createSprite(bodyW(), bodyH());
-  sp.fillSprite(TFT_BLACK);
+  auto& lcd = Uni.Lcd;
+  bool firstTime = (_prevState != STATE_HIGH_SCORES);
+  if (firstTime) {
+    lcd.fillRect(bodyX(), bodyY(), bodyW(), bodyH(), TFT_BLACK);
+    _prevState      = STATE_HIGH_SCORES;
+    _lastHsViewDiff = 0xFF;
 
-  const int cx = bodyW() / 2;
-
-  char title[20];
-  snprintf(title, sizeof(title), "Top %s", kDiffNames[_hsViewDiff]);
-  sp.setTextSize(1);
-  sp.setTextDatum(TC_DATUM);
-  sp.setTextColor(Config.getThemeColor(), TFT_BLACK);
-  sp.drawString(title, cx, 2);
-
-  char pageBuf[8];
-  snprintf(pageBuf, sizeof(pageBuf), "%u/%u", _hsViewDiff + 1, kDiffCount);
-  sp.setTextDatum(TR_DATUM);
-  sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
-  sp.drawString(pageBuf, bodyW() - 1, 2);
-
-  const int lineH  = 14;
-  const int startY = 18;
-  char buf[24];
-  for (uint8_t i = 0; i < kMaxScores; i++) {
-    bool     has = (i < _scoreCount);
-    uint16_t col = has ? (i == 0 ? TFT_YELLOW : TFT_WHITE) : TFT_DARKGREY;
-    sp.setTextColor(col, TFT_BLACK);
-
-    sp.setTextDatum(TL_DATUM);
-    snprintf(buf, sizeof(buf), "#%u", i + 1);
-    sp.drawString(buf, 8, startY + i * lineH);
-
-    sp.setTextDatum(TR_DATUM);
-    if (has) {
-      uint32_t secs = _scores[i].ms / 1000;
-      uint32_t mins = secs / 60;
-      secs %= 60;
-      snprintf(buf, sizeof(buf), "%dt  %um%02us", _scores[i].turns, (unsigned)mins, (unsigned)secs);
-    } else {
-      snprintf(buf, sizeof(buf), "--");
-    }
-    sp.drawString(buf, bodyW() - 8, startY + i * lineH);
+    // Static hint — drawn once
+    lcd.setTextSize(1);
+    lcd.setTextColor(TFT_DARKGREY, TFT_BLACK);
+    lcd.setTextDatum(BC_DATUM);
+    lcd.drawString("UP/DN:switch diff  BACK:return", bodyX() + bodyW() / 2, bodyY() + bodyH() - 1);
   }
 
-  sp.setTextSize(1);
-  sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
-  sp.setTextDatum(BC_DATUM);
-  sp.drawString("UP/DN:switch diff  BACK:return", cx, bodyH() - 1);
+  if (_lastHsViewDiff == _hsViewDiff) return;
+  _lastHsViewDiff = _hsViewDiff;
 
-  sp.pushSprite(bodyX(), bodyY());
-  sp.deleteSprite();
+  const int headerH  = 14;
+  const int lineH    = 14;
+  const int startY   = 18;
+  const int listH    = lineH * kMaxScores + 4;
+
+  // Header sprite
+  {
+    Sprite sp(&lcd);
+    sp.createSprite(bodyW(), headerH);
+    sp.fillSprite(TFT_BLACK);
+    sp.setTextSize(1);
+    sp.setTextDatum(TC_DATUM);
+    sp.setTextColor(Config.getThemeColor(), TFT_BLACK);
+    char title[20];
+    snprintf(title, sizeof(title), "Top %s", kDiffNames[_hsViewDiff]);
+    sp.drawString(title, bodyW() / 2, 2);
+
+    char pageBuf[8];
+    snprintf(pageBuf, sizeof(pageBuf), "%u/%u", _hsViewDiff + 1, kDiffCount);
+    sp.setTextDatum(TR_DATUM);
+    sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
+    sp.drawString(pageBuf, bodyW() - 1, 2);
+    sp.pushSprite(bodyX(), bodyY());
+    sp.deleteSprite();
+  }
+
+  // List sprite
+  {
+    Sprite sp(&lcd);
+    sp.createSprite(bodyW(), listH);
+    sp.fillSprite(TFT_BLACK);
+    sp.setTextSize(1);
+
+    char buf[24];
+    for (uint8_t i = 0; i < kMaxScores; i++) {
+      bool     has = (i < _scoreCount);
+      uint16_t col = has ? (i == 0 ? TFT_YELLOW : TFT_WHITE) : TFT_DARKGREY;
+      sp.setTextColor(col, TFT_BLACK);
+
+      sp.setTextDatum(TL_DATUM);
+      snprintf(buf, sizeof(buf), "#%u", i + 1);
+      sp.drawString(buf, 8, i * lineH);
+
+      sp.setTextDatum(TR_DATUM);
+      if (has) {
+        uint32_t secs = _scores[i].ms / 1000;
+        uint32_t mins = secs / 60;
+        secs %= 60;
+        snprintf(buf, sizeof(buf), "%dt  %um%02us", _scores[i].turns, (unsigned)mins, (unsigned)secs);
+      } else {
+        snprintf(buf, sizeof(buf), "--");
+      }
+      sp.drawString(buf, bodyW() - 8, i * lineH);
+    }
+    sp.pushSprite(bodyX(), bodyY() + startY);
+    sp.deleteSprite();
+  }
 }
