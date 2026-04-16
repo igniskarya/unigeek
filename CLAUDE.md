@@ -210,6 +210,7 @@ Rule: every new screen with meaningful actions must have achievements. See `docs
 - Prefer index-based onItemSelected switch over string comparison
 - Use new for screen allocation — ScreenManager handles deletion
 - pins_arduino.h is auto-included, never include it explicitly
+- Always use `Sprite` (not `TFT_eSprite` or `LGFX_Sprite`) — IDisplay.h aliases it for both backends
 - Always call deleteSprite() after createSprite() + pushSprite()
 - Body sprites ALWAYS use bodyW() × bodyH() pushed at (bodyX(), bodyY())
   bodyW/bodyH already exclude the 4px screen padding — never subtract extra padding inside a sprite
@@ -238,7 +239,7 @@ Rule: every new screen with meaningful actions must have achievements. See `docs
   Fix: define them as static constexpr locals inside methods
 - TFT_eSPI cannot render unicode characters — only ASCII printable chars work
 - IRAM_ATTR inline functions cause Xtensa literal pool errors — always put in .cpp
-- TFT_eSprite leaks heap if deleteSprite() is never called
+- Sprite (TFT_eSprite/LGFX_Sprite) leaks heap if deleteSprite() is never called
 - Full-body sprites can OOM on boards with large displays but small RAM (e.g. 320×240 @ 16-bit = ~150 KB)
   ALWAYS use per-block sprites (per-row, per-line, per-cell) sized to the smallest region needed
 - powerOff() only works when USB is disconnected (hardware limitation)

@@ -13,7 +13,7 @@
 // Touch-zone proportions (must match NavigationImpl exactly)
 static constexpr int16_t SCREEN_W = 320;
 static constexpr int16_t SCREEN_H = 240;
-static constexpr int16_t BACK_END = SCREEN_W / 3;   // 107
+static constexpr int16_t BACK_END = SCREEN_W / 4;   //  80
 static constexpr int16_t ZONE_H   = SCREEN_H / 3;   //  80
 
 // Zone layout: { x, y, w, h, label }

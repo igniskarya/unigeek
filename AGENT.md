@@ -118,7 +118,8 @@ sdcard/ directory contains sample SD card data (portals, duckyscript, passwords,
 - Do NOT declare static constexpr const char*[] as class members — define inside methods
 - Do NOT call setItems() after toggling an option — update sublabels on the array then call render()
 - Do NOT use string comparison in onItemSelected — use index switch
-- Do NOT draw StatusBar or ListScreen body directly to LCD — both use TFT_eSprite
+- Do NOT draw StatusBar or ListScreen body directly to LCD — both use Sprite
+- Do NOT use `TFT_eSprite` or `LGFX_Sprite` directly — always use `Sprite` (aliased in IDisplay.h for both backends)
 - Do NOT forget deleteSprite() after every createSprite() + pushSprite()
 - Do NOT modify Device.h constructor without updating ALL board Device.cpp files
 - Do NOT use unqualified File type without SD.h — use fs::File (from <FS.h>)

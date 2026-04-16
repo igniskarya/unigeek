@@ -22,11 +22,14 @@
 class NavigationImpl : public INavigation
 {
 public:
-  void begin()       override {}
-  void update()      override;
-  void drawOverlay() override;
+  void begin()             override {}
+  void update()            override;
+  void drawOverlay()       override;
+  void invalidateOverlay() override { _overlayDirty = true; }
 
 private:
-  Direction _curDir     = DIR_NONE;
-  uint8_t   _noTouchCnt = 0;
+  Direction _curDir          = DIR_NONE;
+  Direction _prevOverlayDir  = DIR_LEFT; // sentinel — forces first paint
+  bool      _overlayDirty    = true;
+  uint8_t   _noTouchCnt      = 0;
 };

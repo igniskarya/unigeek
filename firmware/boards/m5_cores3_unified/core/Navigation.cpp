@@ -4,10 +4,10 @@
 // so M5.Touch state is always fresh when we read it here.
 //
 // Touch zones (landscape 320×240):
-//   Left 1/3  (x < 107):                 BACK
-//   Right 2/3 (x >= 107), top 1/3:       UP
-//   Right 2/3 (x >= 107), middle 1/3:    SELECT (PRESS)
-//   Right 2/3 (x >= 107), bottom 1/3:    DOWN
+//   Left 1/4  (x < 80):                  BACK
+//   Right 3/4 (x >= 80), top 1/3:        UP
+//   Right 3/4 (x >= 80), middle 1/3:     SELECT (PRESS)
+//   Right 3/4 (x >= 80), bottom 1/3:     DOWN
 //
 
 #include "Navigation.h"
@@ -18,8 +18,8 @@
 
 static constexpr int16_t SCREEN_W = 320;
 static constexpr int16_t SCREEN_H = 240;
-static constexpr int16_t BACK_END = SCREEN_W / 3;   // 107 — left 1/3 = BACK
-static constexpr int16_t ZONE_H   = SCREEN_H / 3;   //  80 — right 2/3 split top-to-bottom
+static constexpr int16_t BACK_END = SCREEN_W / 4;   //  80 — left 1/4 = BACK
+static constexpr int16_t ZONE_H   = SCREEN_H / 3;   //  80 — right 3/4 split top-to-bottom
 
 // Consecutive no-touch polls required to confirm a release (~60 ms at 20 ms poll rate)
 static constexpr uint8_t NO_TOUCH_THRESHOLD = 3;
@@ -73,6 +73,10 @@ void NavigationImpl::update() {
 // Each bar sits at dim theme (~25 %) as a constant map of the zones, and
 // lights up to full theme on the zone currently being held.
 void NavigationImpl::drawOverlay() {
+  if (!_overlayDirty && _curDir == _prevOverlayDir) return;
+  _prevOverlayDir = _curDir;
+  _overlayDirty = false;
+
   // Per-zone fixed colours: dark when idle, bright when held
   static constexpr uint16_t DIM_RED   = 0x4000;  // dark red
   static constexpr uint16_t LIT_RED   = 0xF800;  // bright red

@@ -12,8 +12,8 @@
 
 static constexpr int16_t SCREEN_W = 320;
 static constexpr int16_t SCREEN_H = 240;
-static constexpr int16_t BACK_END = SCREEN_W / 3;   // 107 — left 1/3 = BACK
-static constexpr int16_t ZONE_H   = SCREEN_H / 3;   //  80 — right 2/3 split top-to-bottom
+static constexpr int16_t BACK_END = SCREEN_W / 4;   //  80 — left 1/4 = BACK
+static constexpr int16_t ZONE_H   = SCREEN_H / 3;   //  80 — right 3/4 split top-to-bottom
 
 // Consecutive no-touch polls required to confirm release (~60 ms at 20 ms poll rate)
 static constexpr uint8_t NO_TOUCH_THRESHOLD = 3;
@@ -74,6 +74,10 @@ void NavigationImpl::update() {
 //   DOWN → right edge (x=318..319), bottom third
 // Dim when idle, bright when that zone is held.
 void NavigationImpl::drawOverlay() {
+  if (!_overlayDirty && _curDir == _prevOverlayDir) return;
+  _prevOverlayDir = _curDir;
+  _overlayDirty = false;
+
   static constexpr uint16_t DIM_RED   = 0x4000;
   static constexpr uint16_t LIT_RED   = 0xF800;
   static constexpr uint16_t DIM_GREEN = 0x0200;
