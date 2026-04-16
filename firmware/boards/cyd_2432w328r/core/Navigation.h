@@ -7,8 +7,8 @@
 //   Right 2/3 (x >= 107), middle 1/3:   SELECT (PRESS)
 //   Right 2/3 (x >= 107), bottom 1/3:   DOWN
 //
-// drawOverlay() paints 2 px edge bars on left (BACK) and right (UP/SEL/DOWN),
-// dim when idle, bright when the zone is held.
+// drawOverlay() paints a single 2 px bar on the edge matching the zone
+// currently being held; at rest no overlay pixels are drawn.
 //
 
 #pragma once
@@ -18,14 +18,14 @@
 class NavigationImpl : public INavigation
 {
 public:
-  void begin()             override;
-  void update()            override;
-  void drawOverlay()       override;
-  void invalidateOverlay() override { _overlayDirty = true; }
+  void begin()       override;
+  void update()      override;
+  void drawOverlay() override;
 
 private:
-  Direction _curDir          = DIR_NONE;
-  Direction _prevOverlayDir  = DIR_LEFT; // sentinel — forces first paint
-  bool      _overlayDirty    = true;
-  uint8_t   _noTouchCnt      = 0;
+  Direction _curDir     = DIR_NONE;
+  Direction _lastDir    = DIR_NONE;
+  uint8_t   _noTouchCnt = 0;
+
+  void _paintZone(Direction d, bool lit);
 };

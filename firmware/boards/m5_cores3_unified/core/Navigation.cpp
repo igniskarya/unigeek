@@ -65,34 +65,53 @@ void NavigationImpl::update() {
   updateState(_curDir);
 }
 
-// Always-on 2 px edge bars mapping the touch zones to the screen edge:
+// Touch-only overlay: at rest nothing is drawn. When a zone is held a
+// single 2 px bar lights up on the matching screen edge; on release (or
+// zone change) it is cleared back to black. drawOverlay() only emits
+// SPI traffic on state transitions, so there is no redraw-per-frame
+// flicker and no invalidate coupling with chrome refresh.
 //   BACK  → left  edge (x=0..1),       full height
 //   UP    → right edge (x=318..319), top    third
 //   SEL   → right edge (x=318..319), middle third
 //   DOWN  → right edge (x=318..319), bottom third
-// Each bar sits at dim theme (~25 %) as a constant map of the zones, and
-// lights up to full theme on the zone currently being held.
+void NavigationImpl::_paintZone(Direction d, bool lit) {
+  static constexpr uint16_t LIT_RED   = 0xF800;
+  static constexpr uint16_t LIT_GREEN = 0x07E0;
+  static constexpr uint16_t LIT_BLUE  = 0x001F;
+
+  auto& lcd = Uni.Lcd;
+  Sprite bar(&lcd);
+
+  switch (d) {
+    case DIR_BACK:
+      bar.createSprite(2, SCREEN_H);
+      bar.fillSprite(lit ? LIT_RED : TFT_BLACK);
+      bar.pushSprite(0, 0);
+      break;
+    case DIR_UP:
+      bar.createSprite(2, ZONE_H - 1);
+      bar.fillSprite(lit ? LIT_GREEN : TFT_BLACK);
+      bar.pushSprite(SCREEN_W - 2, 0);
+      break;
+    case DIR_PRESS:
+      bar.createSprite(2, ZONE_H - 1);
+      bar.fillSprite(lit ? LIT_BLUE : TFT_BLACK);
+      bar.pushSprite(SCREEN_W - 2, ZONE_H);
+      break;
+    case DIR_DOWN:
+      bar.createSprite(2, SCREEN_H - ZONE_H * 2);
+      bar.fillSprite(lit ? LIT_GREEN : TFT_BLACK);
+      bar.pushSprite(SCREEN_W - 2, ZONE_H * 2);
+      break;
+    default:
+      return;
+  }
+  bar.deleteSprite();
+}
+
 void NavigationImpl::drawOverlay() {
-  if (!_overlayDirty && _curDir == _prevOverlayDir) return;
-  _prevOverlayDir = _curDir;
-  _overlayDirty = false;
-
-  // Per-zone fixed colours: dark when idle, bright when held
-  static constexpr uint16_t DIM_RED   = 0x4000;  // dark red
-  static constexpr uint16_t LIT_RED   = 0xF800;  // bright red
-  static constexpr uint16_t DIM_GREEN = 0x0200;  // dark green
-  static constexpr uint16_t LIT_GREEN = 0x07E0;  // bright green
-  static constexpr uint16_t DIM_BLUE  = 0x0008;  // dark blue
-  static constexpr uint16_t LIT_BLUE  = 0x001F;  // bright blue
-
-  auto col = [&](Direction d, uint16_t dim, uint16_t lit) -> uint16_t {
-    return (_curDir == d) ? lit : dim;
-  };
-
-  Uni.Lcd.fillRect(0,            0,              2, SCREEN_H,              col(DIR_BACK,  DIM_RED,   LIT_RED));
-  Uni.Lcd.fillRect(SCREEN_W - 2, 0,              2, ZONE_H - 1,            col(DIR_UP,    DIM_GREEN, LIT_GREEN));
-  Uni.Lcd.fillRect(SCREEN_W - 2, ZONE_H - 1,     2, 1,                     TFT_BLACK);
-  Uni.Lcd.fillRect(SCREEN_W - 2, ZONE_H,         2, ZONE_H - 1,            col(DIR_PRESS, DIM_BLUE,  LIT_BLUE));
-  Uni.Lcd.fillRect(SCREEN_W - 2, ZONE_H * 2 - 1, 2, 1,                     TFT_BLACK);
-  Uni.Lcd.fillRect(SCREEN_W - 2, ZONE_H * 2,     2, SCREEN_H - ZONE_H * 2, col(DIR_DOWN,  DIM_GREEN, LIT_GREEN));
+  if (_curDir == _lastDir) return;
+  if (_lastDir != DIR_NONE) _paintZone(_lastDir, false);  // clear old
+  if (_curDir  != DIR_NONE) _paintZone(_curDir,  true);   // light new
+  _lastDir = _curDir;
 }
