@@ -23,10 +23,9 @@ private:
 
   const char* _message;
   int32_t     _duration;
-  Sprite _overlay;
 
   explicit ShowStatusAction(const char* message, int32_t duration)
-    : _message(message), _duration(duration), _overlay(&Uni.Lcd)
+    : _message(message), _duration(duration)
   {}
 
   void _wipe(int x, int y, int w, int h) {
@@ -81,18 +80,14 @@ private:
     int x = (lcd.width()  - w) / 2;
     int y = (lcd.height() - h) / 2;
 
-    _overlay.createSprite(w, h);
-    _overlay.fillSprite(TFT_BLACK);
-    _overlay.drawRoundRect(0, 0, w, h, 4, TFT_WHITE);
-    _overlay.setTextColor(TFT_WHITE);
-    _overlay.setTextDatum(MC_DATUM);
-    _overlay.setTextSize(1);
+    lcd.fillRect(x, y, w, h, TFT_BLACK);
+    lcd.drawRoundRect(x, y, w, h, 4, TFT_WHITE);
+    lcd.setTextColor(TFT_WHITE);
+    lcd.setTextDatum(MC_DATUM);
+    lcd.setTextSize(1);
 
     for (int i = 0; i < lineCount; i++)
-      _overlay.drawString(lines[i].c_str(), w / 2, PAD + i * LINE_H + LINE_H / 2);
-
-    _overlay.pushSprite(x, y);
-    _overlay.deleteSprite();
+      lcd.drawString(lines[i].c_str(), x + w / 2, y + PAD + i * LINE_H + LINE_H / 2);
 
     if (_duration > 0) {
       delay(_duration);

@@ -37,14 +37,10 @@ private:
   bool          _done          = false;
   const char*   _result        = nullptr;
 
-  Sprite   _overlay;
-
   explicit InputSelectAction(const char* title, const Option* options, uint8_t count, const char* defaultValue)
   : _title(title), _options(options),
-    _count(count), _totalCount(count + 1),
-    _overlay(&Uni.Lcd)
+    _count(count), _totalCount(count + 1)
   {
-    // find index matching defaultValue
     if (defaultValue != nullptr) {
       for (int i = 0; i < _count; i++) {
         if (strcmp(_options[i].value, defaultValue) == 0) {
@@ -79,30 +75,36 @@ private:
     return min((int)_totalCount, fitCount);
   }
 
+  int _overlayW() { return Uni.Lcd.width() - (PAD * 2 + 8); }
   int _overlayH() {
-    return PAD
-         + TITLE_H
-         + PAD
+    return PAD + TITLE_H + PAD
          + (_visibleCount() * (ITEM_H + PAD))
-         + HINT_H
-         + PAD;
+         + HINT_H + PAD;
   }
+  int _overlayX() { return PAD + 4; }
+  int _overlayY() { return (Uni.Lcd.height() - _overlayH()) / 2; }
+  int _listY()    { return PAD + TITLE_H + PAD; }
 
-  void _scrollToSelected() {
+  bool _scrollToSelected() {
     int visible = _visibleCount();
+    int prev    = _scrollOffset;
     if (_selectedIdx < _scrollOffset) {
       _scrollOffset = _selectedIdx;
     } else if (_selectedIdx >= _scrollOffset + visible) {
       _scrollOffset = _selectedIdx - visible + 1;
     }
-  }
-
-  void _wipe(int x, int y, int w, int h) {
-    Uni.Lcd.fillRect(x, y, w, h, TFT_BLACK);
+    return prev != _scrollOffset;
   }
 
   const char* _run() {
-    _drawOverlay();
+    _drawChrome();
+    _drawCounter();
+    int visible = _visibleCount();
+    for (int i = 0; i < visible && (_scrollOffset + i) < _totalCount; i++)
+      _drawRow(_scrollOffset + i);
+
+    int lastSelected = _selectedIdx;
+
     while (!_done) {
       Uni.update();
 
@@ -110,14 +112,14 @@ private:
         switch (Uni.Nav->readDirection()) {
           case INavigation::DIR_UP:
             _selectedIdx = (_selectedIdx - 1 + _totalCount) % _totalCount;
-            _scrollToSelected();
-            _drawOverlay();
+            _onSelectionChanged(lastSelected);
+            lastSelected = _selectedIdx;
             break;
 
           case INavigation::DIR_DOWN:
             _selectedIdx = (_selectedIdx + 1) % _totalCount;
-            _scrollToSelected();
-            _drawOverlay();
+            _onSelectionChanged(lastSelected);
+            lastSelected = _selectedIdx;
             break;
 
           case INavigation::DIR_PRESS:
@@ -136,77 +138,101 @@ private:
       delay(10);
     }
 
-    auto& lcd = Uni.Lcd;
-    int w = lcd.width() - (PAD * 2 + 8);
-    int h = _overlayH();
-    int x = PAD + 4;
-    int y = (lcd.height() - h) / 2;
-    _wipe(x, y, w, h);
-    _overlay.deleteSprite();
+    Uni.Lcd.fillRect(_overlayX(), _overlayY(), _overlayW(), _overlayH(), TFT_BLACK);
     return _result;
   }
 
-  void _drawOverlay() {
-    auto&    lcd        = Uni.Lcd;
-    uint16_t themeColor = Config.getThemeColor();
+  void _onSelectionChanged(int lastSelected) {
+    bool scrolled = _scrollToSelected();
+    _drawCounter();
+    if (scrolled) {
+      int visible = _visibleCount();
+      for (int i = 0; i < visible && (_scrollOffset + i) < _totalCount; i++)
+        _drawRow(_scrollOffset + i);
+    } else {
+      if (lastSelected != _selectedIdx) _drawRow(lastSelected);
+      _drawRow(_selectedIdx);
+    }
+  }
 
-    int w       = lcd.width() - (PAD * 2 + 8);
-    int h       = _overlayH();
-    int x       = PAD + 4;
-    int y       = (lcd.height() - h) / 2;
-    int innerW  = w - PAD * 2;
+  void _drawChrome() {
+    auto& lcd = Uni.Lcd;
+    int w = _overlayW();
+    int h = _overlayH();
+    int x = _overlayX();
+    int y = _overlayY();
+
+    lcd.fillRect(x, y, w, h, TFT_BLACK);
+    lcd.drawRoundRect(x, y, w, h, 4, TFT_WHITE);
+
+    lcd.setTextColor(TFT_YELLOW);
+    lcd.setTextSize(1);
+    lcd.setTextDatum(TL_DATUM);
+    lcd.setCursor(x + PAD, y + PAD);
+    lcd.print(_title);
+
+    lcd.setTextDatum(TL_DATUM);
+    lcd.setTextColor(TFT_DARKGREY);
+    lcd.drawString("UP/DN:select  PRESS:confirm", x + PAD, y + h - PAD - HINT_H);
+  }
+
+  void _drawCounter() {
+    auto& lcd = Uni.Lcd;
+    int w = _overlayW();
+    int x = _overlayX();
+    int y = _overlayY();
     int visible = _visibleCount();
-    int listY   = PAD + TITLE_H + PAD;
 
-    _overlay.deleteSprite();
-    _overlay.createSprite(w, h);
-    _overlay.fillSprite(TFT_BLACK);
-    _overlay.drawRoundRect(0, 0, w, h, 4, TFT_WHITE);
+    // Clear counter area whether or not we need it.
+    int cw = 40;
+    lcd.fillRect(x + w - PAD - cw, y + PAD, cw, TITLE_H, TFT_BLACK);
 
-    // title
-    _overlay.setTextColor(TFT_YELLOW);
-    _overlay.setTextSize(1);
-    _overlay.setTextDatum(TL_DATUM);
-    _overlay.setCursor(PAD, PAD);
-    _overlay.print(_title);
-
-    // scroll counter (excludes Cancel, caps at _count when on Cancel)
     if (_totalCount > visible) {
       char buf[8];
       int displayIdx = min((int)_selectedIdx + 1, (int)_count);
       snprintf(buf, sizeof(buf), "%d/%d", displayIdx, _count);
-      _overlay.setTextColor(TFT_DARKGREY);
-      _overlay.setTextDatum(TR_DATUM);
-      _overlay.drawString(buf, w - PAD, PAD);
+      lcd.setTextColor(TFT_DARKGREY);
+      lcd.setTextDatum(TR_DATUM);
+      lcd.drawString(buf, x + w - PAD, y + PAD);
+    }
+  }
+
+  void _drawRow(int idx) {
+    if (idx < _scrollOffset) return;
+    int visible = _visibleCount();
+    int slot    = idx - _scrollOffset;
+    if (slot >= visible) return;
+    if (idx >= _totalCount) return;
+
+    auto&    lcd        = Uni.Lcd;
+    uint16_t themeColor = Config.getThemeColor();
+    int w      = _overlayW();
+    int x      = _overlayX();
+    int y      = _overlayY();
+    int innerW = w - PAD * 2;
+
+    int itemY    = _listY() + slot * (ITEM_H + PAD);
+    bool isSel   = (idx == _selectedIdx);
+    bool isCancel = _isCancel(idx);
+
+    Sprite sp(&lcd);
+    sp.createSprite(innerW, ITEM_H);
+    sp.fillSprite(TFT_BLACK);
+    sp.setTextSize(1);
+
+    if (isSel) {
+      uint16_t boxColor = isCancel ? TFT_RED : themeColor;
+      sp.fillRoundRect(0, 0, innerW, ITEM_H, 3, boxColor);
+      sp.drawRoundRect(0, 0, innerW, ITEM_H, 3, TFT_WHITE);
+      sp.setTextColor(TFT_WHITE);
+    } else {
+      sp.setTextColor(isCancel ? TFT_RED : TFT_LIGHTGREY);
     }
 
-    // list items
-    for (int i = 0; i < visible; i++) {
-      int  idx      = _scrollOffset + i;
-      if (idx >= _totalCount) break;
+    sp.setTextDatum(ML_DATUM);
+    sp.drawString(_labelAt(idx), 4, ITEM_H / 2);
 
-      int  itemY    = listY + i * (ITEM_H + PAD);
-      bool isSel    = (idx == _selectedIdx);
-      bool isCancel = _isCancel(idx);
-
-      if (isSel) {
-        uint16_t boxColor = isCancel ? TFT_RED : themeColor;
-        _overlay.fillRoundRect(PAD, itemY, innerW, ITEM_H, 3, boxColor);
-        _overlay.drawRoundRect(PAD, itemY, innerW, ITEM_H, 3, TFT_WHITE);
-        _overlay.setTextColor(TFT_WHITE);
-      } else {
-        _overlay.setTextColor(isCancel ? TFT_RED : TFT_LIGHTGREY);
-      }
-
-      _overlay.setTextDatum(ML_DATUM);
-      _overlay.drawString(_labelAt(idx), PAD + 4, itemY + ITEM_H / 2);
-    }
-
-    // hint
-    _overlay.setTextDatum(TL_DATUM);
-    _overlay.setTextColor(TFT_DARKGREY);
-    _overlay.drawString("UP/DN:select  PRESS:confirm", PAD, h - PAD - HINT_H);
-
-    _overlay.pushSprite(x, y);
+    sp.pushSprite(x + PAD, y + itemY);
+    sp.deleteSprite();
   }
 };

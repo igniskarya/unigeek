@@ -20,6 +20,10 @@ public:
 private:
   static constexpr uint32_t BLINK_MS = 500;
   static constexpr int      PAD      = 4;
+  static constexpr int      INP_H    = 16;
+  static constexpr int      ROW_H    = 18;
+  static constexpr int      ERR_H    = 10;
+  static constexpr int      RANGE_H  = 10;
 
   const char* _title;
   int         _minValidator;
@@ -29,17 +33,15 @@ private:
 
   String      _input;
   String      _error;
+  String      _lastError;
 
   bool        _done        = false;
   bool        _cancelled   = false;
   bool        _cursorVisible  = true;
   uint32_t    _lastBlinkTime  = 0;
 
-  // scroll mode
-  static constexpr int DIGIT_COUNT = 12; // 0-9 + DEL + SAVE + CANCEL
+  static constexpr int DIGIT_COUNT = 12;
   int         _scrollPos   = 0;
-
-  Sprite _overlay;
 
   struct DigitSet {
     const char* label;
@@ -55,8 +57,7 @@ private:
     _minValidator(min),
     _maxValidator(max),
     _hasMin(min != INT_MIN), _hasMax(max != INT_MAX),
-    _input(defaultValue != 0 ? String(defaultValue) : ""),
-    _overlay(&Uni.Lcd)
+    _input(defaultValue != 0 ? String(defaultValue) : "")
   {}
 
   void _buildSets() {
@@ -90,10 +91,6 @@ private:
     return true;
   }
 
-  void _wipe(int x, int y, int w, int h) {
-    Uni.Lcd.fillRect(x, y, w, h, TFT_BLACK);
-  }
-
   int _run() {
 #ifdef DEVICE_HAS_KEYBOARD
     return _runKeyboard();
@@ -102,9 +99,27 @@ private:
 #endif
   }
 
+  int _overlayH() {
+    int h = 12 + 22 + 10 + 22 + 10 + 16 + PAD * 4;
+    if (!_hasMin && !_hasMax) h -= 10;
+    return h;
+  }
+  int _overlayW() { return Uni.Lcd.width() - (PAD * 2 + 8); }
+  int _overlayX() { return PAD + 4; }
+  int _overlayY() { return (Uni.Lcd.height() - _overlayH()) / 2; }
+
+  int _inputY()  { return PAD + 12; }
+  int _rangeY()  { return _inputY() + INP_H + PAD; }
+  int _rowY()    { return _rangeY() + (_hasMin || _hasMax ? RANGE_H : 0) + PAD; }
+  int _errorY()  { return _rowY()   + ROW_H + PAD; }
+  int _hintY()   { return _overlayH() - PAD - 8; }
+
   // ── keyboard mode ──────────────────────────────────────
   int _runKeyboard() {
-    _drawKeyboard(true);
+    _drawChrome();
+    _drawInput(true);
+    if (_error.length() > 0) _drawError();
+    _lastError = _error;
     uint32_t lastBlink = millis();
     bool cursorOn = true;
 
@@ -114,15 +129,15 @@ private:
       if (millis() - lastBlink >= BLINK_MS) {
         cursorOn  = !cursorOn;
         lastBlink = millis();
-        _drawCursorKeyboard(cursorOn);
+        _drawInput(cursorOn);
       }
 
       if (Uni.Keyboard && Uni.Keyboard->available()) {
         char c = Uni.Keyboard->getKey();
-        _error = "";  // clear error on any keypress
+        String prevErr = _error;
+        _error = "";
 
 #ifdef KB_QWERT_NUM_REMAP
-        // T-Lora Pager: remap top row letters to digits (q=1 w=2 e=3 r=4 t=5 y=6 u=7 i=8 o=9 p=0)
         static constexpr char topRow[]   = "qwertyuiop";
         static constexpr char topRowUp[] = "QWERTYUIOP";
         static constexpr char topNums[]  = "1234567890";
@@ -133,95 +148,36 @@ private:
 
         if (c == '\n') {
           if (_validate()) _done = true;
-          else _drawKeyboard(true);
+          else { _drawError(); }
         } else if (isdigit(c)) {
           _input += c;
           cursorOn  = true;
           lastBlink = millis();
-          _drawKeyboard(true);
+          _drawInput(true);
         }
-        // ignore non-digit, non-control chars
+        if (prevErr != _error) _drawError();
       }
 
       if (Uni.Nav->wasPressed()) {
         auto dir = Uni.Nav->readDirection();
         if (dir == INavigation::DIR_PRESS) {
+          String prevErr = _error;
           if (_validate()) _done = true;
-          else _drawKeyboard(true);
+          if (prevErr != _error) _drawError();
         } else if (dir == INavigation::DIR_BACK) {
           if (_input.length() > 0) {
             _input.remove(_input.length() - 1);
             cursorOn  = true;
             lastBlink = millis();
-            _drawKeyboard(true);
+            _drawInput(true);
           }
         }
       }
       delay(10);
     }
 
-    _wipe(PAD + 4, (Uni.Lcd.height() - _overlayH()) / 2,
-          Uni.Lcd.width() - (PAD * 2 + 8), _overlayH());
-    _overlay.deleteSprite();
+    Uni.Lcd.fillRect(_overlayX(), _overlayY(), _overlayW(), _overlayH(), TFT_BLACK);
     return _cancelled ? 0 : _input.toInt();
-  }
-
-  void _drawKeyboard(bool cursorOn) {
-    auto& lcd  = Uni.Lcd;
-    int w      = lcd.width() - (PAD * 2 + 8);
-    int h      = _overlayH();
-    int x      = PAD + 4;
-    int y      = (lcd.height() - h) / 2;
-    int innerW = w - PAD * 2;
-
-    int titleY  = PAD;
-    int inputY  = titleY + 12;
-    int rangeY  = inputY + 22;
-    int errorY  = rangeY + (_hasMin || _hasMax ? 10 : 0) + 2;
-    int hintY   = h - PAD - 8;
-
-    _overlay.createSprite(w, h);
-    _overlay.fillSprite(TFT_BLACK);
-    _overlay.drawRoundRect(0, 0, w, h, 4, TFT_WHITE);
-
-    // title
-    _overlay.setTextColor(TFT_YELLOW);
-    _overlay.setTextSize(1);
-    _overlay.setCursor(PAD, titleY);
-    _overlay.print(_title);
-
-    // input box
-    _overlay.drawRoundRect(PAD, inputY, innerW, 16, 3, TFT_DARKGREY);
-    _overlay.setTextColor(TFT_WHITE);
-    _overlay.setCursor(PAD + 2, inputY + 4);
-    String display = _input;
-    if (cursorOn) display += '_';
-    _overlay.print(display.length() > 0 ? display.c_str() : (cursorOn ? "_" : " "));
-
-    // range info
-    if (_hasMin || _hasMax) {
-      _overlay.setTextColor(TFT_DARKGREY);
-      _overlay.setCursor(PAD, rangeY);
-      String rangeStr = "";
-      if (_hasMin && _hasMax) rangeStr = "Range: " + String(_minValidator) + " - " + String(_maxValidator);
-      else if (_hasMin)       rangeStr = "Min: " + String(_minValidator);
-      else                    rangeStr = "Max: " + String(_maxValidator);
-      _overlay.print(rangeStr);
-    }
-
-    // error
-    if (_error.length() > 0) {
-      _overlay.setTextColor(TFT_RED);
-      _overlay.setCursor(PAD, errorY);
-      _overlay.print(_error);
-    }
-
-    // hint
-    _overlay.setTextColor(TFT_DARKGREY);
-    _overlay.setCursor(PAD, hintY);
-    _overlay.print("Numbers only + ENTER to confirm");
-
-    _overlay.pushSprite(x, y);
   }
 
   // ── scroll mode ────────────────────────────────────────
@@ -229,43 +185,55 @@ private:
     _buildSets();
     _lastBlinkTime = millis();
     _cursorVisible = true;
-    _drawScroll();
+    _drawChrome();
+    _drawInput(true);
+    _drawRow();
+    _lastError = _error;
 
     while (!_done && !_cancelled) {
       Uni.update();
 
-      if (_tapCount == 0 && (millis() - _lastBlinkTime >= BLINK_MS)) {
+      if (millis() - _lastBlinkTime >= BLINK_MS) {
         _cursorVisible = !_cursorVisible;
         _lastBlinkTime = millis();
-        _drawCursorOnly(_cursorVisible);
+        _drawInput(_cursorVisible);
       }
 
       if (Uni.Nav->wasPressed()) {
         switch (Uni.Nav->readDirection()) {
-          case INavigation::DIR_UP:
+          case INavigation::DIR_UP: {
+            String prevErr = _error;
             _scrollPos     = (_scrollPos - 1 + _setCount) % _setCount;
             _error         = "";
             _cursorVisible = true;
             _lastBlinkTime = millis();
-            _drawScroll();
+            _drawRow();
+            if (prevErr != _error) _drawError();
             break;
+          }
 
-          case INavigation::DIR_DOWN:
+          case INavigation::DIR_DOWN: {
+            String prevErr = _error;
             _scrollPos     = (_scrollPos + 1) % _setCount;
             _error         = "";
             _cursorVisible = true;
             _lastBlinkTime = millis();
-            _drawScroll();
+            _drawRow();
+            if (prevErr != _error) _drawError();
             break;
+          }
 
-          case INavigation::DIR_PRESS:
+          case INavigation::DIR_PRESS: {
+            String prevErr = _error;
             _handleSelect();
             if (!_done && !_cancelled) {
               _cursorVisible = true;
               _lastBlinkTime = millis();
-              _drawScroll();
+              _drawInput(true);
+              if (prevErr != _error) _drawError();
             }
             break;
+          }
 
           default: break;
         }
@@ -273,9 +241,7 @@ private:
       delay(10);
     }
 
-    _wipe(PAD + 4, (Uni.Lcd.height() - _overlayH()) / 2,
-          Uni.Lcd.width() - (PAD * 2 + 8), _overlayH());
-    _overlay.deleteSprite();
+    Uni.Lcd.fillRect(_overlayX(), _overlayY(), _overlayW(), _overlayH(), TFT_BLACK);
     return _cancelled ? 0 : _input.toInt();
   }
 
@@ -301,56 +267,70 @@ private:
     }
   }
 
-  void _drawScroll() {
-    auto&    lcd        = Uni.Lcd;
-    uint16_t themeColor = Config.getThemeColor();
-
-    int w = lcd.width() - (PAD * 2 + 8);
+  void _drawChrome() {
+    auto& lcd = Uni.Lcd;
+    int w = _overlayW();
     int h = _overlayH();
-    int x = PAD + 4;
-    int y = (lcd.height() - h) / 2;
+    int x = _overlayX();
+    int y = _overlayY();
 
-    int innerW = w - PAD * 2;
-    int titleY = PAD;
-    int inputY = titleY + 12;
-    int inputH = 16;
-    int rangeY = inputY + inputH + PAD;
-    int rowY   = rangeY + (_hasMin || _hasMax ? 10 : 0) + PAD;
-    int rowH   = 18;
-    int errorY = rowY + rowH + PAD;
-    int hintY  = h - PAD - 8;
-    int midX   = w / 2;
+    lcd.fillRect(x, y, w, h, TFT_BLACK);
+    lcd.drawRoundRect(x, y, w, h, 4, TFT_WHITE);
 
-    _overlay.createSprite(w, h);
-    _overlay.fillSprite(TFT_BLACK);
-    _overlay.drawRoundRect(0, 0, w, h, 4, TFT_WHITE);
+    lcd.setTextColor(TFT_YELLOW);
+    lcd.setTextSize(1);
+    lcd.setTextDatum(TL_DATUM);
+    lcd.setCursor(x + PAD, y + PAD);
+    lcd.print(_title);
 
-    // title
-    _overlay.setTextColor(TFT_YELLOW);
-    _overlay.setTextSize(1);
-    _overlay.setCursor(PAD, titleY);
-    _overlay.print(_title);
-
-    // input box
-    String displayInput = _input;
-    if (_cursorVisible) displayInput += '_';
-    _overlay.drawRoundRect(PAD, inputY, innerW, inputH, 3, TFT_DARKGREY);
-    _overlay.setTextColor(TFT_WHITE);
-    _overlay.setCursor(PAD + 2, inputY + 3);
-    _overlay.print(displayInput.length() > 0 ? displayInput.c_str() : (_cursorVisible ? "_" : " "));
-
-    // range info
     if (_hasMin || _hasMax) {
-      _overlay.setTextColor(TFT_DARKGREY);
-      _overlay.setCursor(PAD, rangeY);
+      lcd.setTextColor(TFT_DARKGREY);
+      lcd.setCursor(x + PAD, y + _rangeY());
       String rangeStr = "";
       if (_hasMin && _hasMax) rangeStr = "Range: " + String(_minValidator) + " - " + String(_maxValidator);
-      else if (_hasMin)       rangeStr = "Min: "   + String(_minValidator);
-      else                    rangeStr = "Max: "   + String(_maxValidator);
-      _overlay.print(rangeStr);
+      else if (_hasMin)       rangeStr = "Min: " + String(_minValidator);
+      else                    rangeStr = "Max: " + String(_maxValidator);
+      lcd.print(rangeStr);
     }
 
-    // scroll row
+    lcd.setTextColor(TFT_DARKGREY);
+    lcd.setCursor(x + PAD, y + _hintY());
+#ifdef DEVICE_HAS_KEYBOARD
+    lcd.print("Numbers only + ENTER to confirm");
+#else
+    lcd.print("UP/DN:digit  PRESS:select");
+#endif
+  }
+
+  void _drawInput(bool cursorOn) {
+    auto& lcd  = Uni.Lcd;
+    int w      = _overlayW();
+    int x      = _overlayX();
+    int y      = _overlayY();
+    int innerW = w - PAD * 2;
+
+    Sprite sp(&lcd);
+    sp.createSprite(innerW, INP_H);
+    sp.fillSprite(TFT_BLACK);
+    sp.drawRoundRect(0, 0, innerW, INP_H, 3, TFT_DARKGREY);
+    sp.setTextColor(TFT_WHITE);
+    sp.setTextDatum(TL_DATUM);
+    String display = _input;
+    if (cursorOn) display += '_';
+    sp.drawString(display.length() > 0 ? display.c_str() : (cursorOn ? "_" : " "), 3, 4);
+    sp.pushSprite(x + PAD, y + _inputY());
+    sp.deleteSprite();
+  }
+
+  void _drawRow() {
+    auto& lcd = Uni.Lcd;
+    uint16_t themeColor = Config.getThemeColor();
+    int w      = _overlayW();
+    int x      = _overlayX();
+    int y      = _overlayY();
+    int innerW = w - PAD * 2;
+    int midX   = innerW / 2;
+
     int prev = (_scrollPos - 1 + _setCount) % _setCount;
     int curr =  _scrollPos;
     int next = (_scrollPos + 1) % _setCount;
@@ -361,86 +341,45 @@ private:
 
     int currW = max(20, (int)(strlen(currLabel) * 6) + 10);
 
-    _overlay.setTextDatum(MC_DATUM);
-    _overlay.setTextColor(TFT_DARKGREY);
-    _overlay.setTextSize(1);
-    _overlay.drawString(prevLabel, midX - currW / 2 - 24, rowY + 9);
+    Sprite sp(&lcd);
+    sp.createSprite(innerW, ROW_H);
+    sp.fillSprite(TFT_BLACK);
+    sp.setTextSize(1);
+    sp.setTextDatum(MC_DATUM);
 
-    _overlay.fillRoundRect(midX - currW / 2, rowY, currW, rowH, 3, themeColor);
-    _overlay.drawRoundRect(midX - currW / 2, rowY, currW, rowH, 3, TFT_WHITE);
-    _overlay.setTextColor(TFT_WHITE);
-    _overlay.drawString(currLabel, midX, rowY + 9);
+    sp.setTextColor(TFT_DARKGREY);
+    sp.drawString(prevLabel, midX - currW / 2 - 24, ROW_H / 2);
 
-    _overlay.setTextColor(TFT_DARKGREY);
-    _overlay.drawString(nextLabel, midX + currW / 2 + 24, rowY + 9);
+    sp.fillRoundRect(midX - currW / 2, 0, currW, ROW_H, 3, themeColor);
+    sp.drawRoundRect(midX - currW / 2, 0, currW, ROW_H, 3, TFT_WHITE);
+    sp.setTextColor(TFT_WHITE);
+    sp.drawString(currLabel, midX, ROW_H / 2);
 
-    // error
+    sp.setTextColor(TFT_DARKGREY);
+    sp.drawString(nextLabel, midX + currW / 2 + 24, ROW_H / 2);
+
+    sp.pushSprite(x + PAD, y + _rowY());
+    sp.deleteSprite();
+  }
+
+  void _drawError() {
+    auto& lcd = Uni.Lcd;
+    int w      = _overlayW();
+    int x      = _overlayX();
+    int y      = _overlayY();
+    int innerW = w - PAD * 2;
+
+    Sprite sp(&lcd);
+    sp.createSprite(innerW, ERR_H);
+    sp.fillSprite(TFT_BLACK);
+    sp.setTextSize(1);
+    sp.setTextDatum(TL_DATUM);
     if (_error.length() > 0) {
-      _overlay.setTextDatum(TL_DATUM);
-      _overlay.setTextColor(TFT_RED);
-      _overlay.drawString(_error.c_str(), PAD, errorY);
+      sp.setTextColor(TFT_RED);
+      sp.drawString(_error.c_str(), 0, 0);
     }
-
-    // hint
-    _overlay.setTextDatum(TL_DATUM);
-    _overlay.setTextColor(TFT_DARKGREY);
-    _overlay.drawString("UP/DN:digit  PRESS:select", PAD, hintY);
-
-    _overlay.pushSprite(x, y);
+    sp.pushSprite(x + PAD, y + _errorY());
+    sp.deleteSprite();
+    _lastError = _error;
   }
-
-  // ── dynamic overlay height based on content ────────────
-  int _overlayH() {
-    int h = 12         // title
-          + 22         // input box + gap
-          + 10         // range info row (even if empty, reserve when shown)
-          + 22         // scroll row + gap
-          + 10         // error row (reserved)
-          + 16         // hint
-          + PAD * 4;
-    if (!_hasMin && !_hasMax) h -= 10;
-    return h;
-  }
-
-  void _drawCursorKeyboard(bool visible) {
-    auto& lcd    = Uni.Lcd;
-    int   w      = lcd.width() - (PAD * 2 + 8);
-    int   h      = _overlayH();
-    int   ox     = PAD + 4;
-    int   oy     = (lcd.height() - h) / 2;
-    int   innerW = w - PAD * 2;
-    int   inputY = PAD + 12;
-
-    int bx = ox + PAD + 1;
-    int by = oy + inputY + 1;
-    lcd.fillRect(bx, by, innerW - 2, 14, TFT_BLACK);
-    lcd.setTextColor(TFT_WHITE, TFT_BLACK);
-    lcd.setTextDatum(TL_DATUM);
-    String display = _input;
-    if (visible) display += '_';
-    lcd.drawString(display.length() > 0 ? display.c_str() : (visible ? "_" : " "), bx + 1, by + 3);
-  }
-
-  void _drawCursorOnly(bool visible) {
-    auto& lcd   = Uni.Lcd;
-    int   w     = lcd.width() - (PAD * 2 + 8);
-    int   h     = _overlayH();
-    int   ox    = PAD + 4;
-    int   oy    = (lcd.height() - h) / 2;
-    int   innerW = w - PAD * 2;
-    int   inputY = PAD + 12;
-    int   inputH = 16;
-
-    int bx = ox + PAD + 1;
-    int by = oy + inputY + 1;
-    lcd.fillRect(bx, by, innerW - 2, inputH - 2, TFT_BLACK);
-    lcd.setTextColor(TFT_WHITE, TFT_BLACK);
-    lcd.setTextDatum(TL_DATUM);
-    String display = _input;
-    if (visible) display += '_';
-    lcd.drawString(display.length() > 0 ? display.c_str() : (visible ? "_" : " "), bx + 1, by + 2);
-  }
-
-  // unused in number mode but needed to compile scroll loop reference
-  int _tapCount = 0;
 };
