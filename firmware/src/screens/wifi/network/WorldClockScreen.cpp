@@ -49,13 +49,8 @@ void WorldClockScreen::onRender() {
   if (!getLocalTime(&timeInfo, 0)) return;
 
   auto& lcd = Uni.Lcd;
-
-  Sprite sprite(&lcd);
-  sprite.createSprite(bodyW(), bodyH());
-  sprite.fillSprite(TFT_BLACK);
-
-  int cx = bodyW() / 2;
-  int cy = bodyH() / 2;
+  int cx = bodyX() + bodyW() / 2;
+  int cy = bodyY() + bodyH() / 2;
 
   if (!_synced) {
     _synced = true;
@@ -72,35 +67,48 @@ void WorldClockScreen::onRender() {
     if (Uni.Speaker) Uni.Speaker->playNotification();
   }
 
+  // Static chrome: paint the hint once; body is already black from init().
+  if (!_chromeDrawn) {
+    lcd.fillRect(bodyX(), bodyY(), bodyW(), bodyH(), TFT_BLACK);
+    lcd.setTextSize(1);
+    lcd.setTextDatum(MC_DATUM);
+    lcd.setTextColor(TFT_DARKGREY, TFT_BLACK);
+#ifdef DEVICE_HAS_KEYBOARD
+    lcd.drawString("BACK:back  UP/DN:offset", cx, bodyY() + bodyH() - 8);
+#else
+    lcd.drawString("UP/DN:offset  PRESS:back", cx, bodyY() + bodyH() - 8);
+#endif
+    _chromeDrawn = true;
+  }
+
   // apply offset
   timeInfo.tm_min += _offsetMinutes;
   mktime(&timeInfo);
 
-  // UTC label
+  // Dynamic region (offset label + ticking clock) — composited in a sprite
+  // and pushed atomically so the user never sees the fillRect/drawString
+  // intermediate state.
+  static constexpr int16_t SP_W = 200;
+  static constexpr int16_t SP_H = 40;
+  Sprite spr(&lcd);
+  spr.createSprite(SP_W, SP_H);
+  spr.fillSprite(TFT_BLACK);
+  spr.setTextDatum(MC_DATUM);
+
   char offsetStr[12];
   snprintf(offsetStr, sizeof(offsetStr), "UTC %+d:%02d",
            _offsetMinutes / 60, abs(_offsetMinutes % 60));
-  sprite.setTextDatum(MC_DATUM);
-  sprite.setTextColor(TFT_DARKGREY);
-  sprite.setTextSize(1);
-  sprite.drawString(offsetStr, cx, cy - 14);
+  spr.setTextSize(1);
+  spr.setTextColor(TFT_DARKGREY, TFT_BLACK);
+  spr.drawString(offsetStr, SP_W / 2, 6);
 
-  // time
   char timeStr[12];
   strftime(timeStr, sizeof(timeStr), "%H:%M:%S", &timeInfo);
-  sprite.setTextColor(TFT_WHITE);
-  sprite.setTextSize(2);
-  sprite.drawString(timeStr, cx, cy);
+  spr.setTextSize(2);
+  spr.setTextColor(TFT_WHITE, TFT_BLACK);
+  spr.drawString(timeStr, SP_W / 2, 24);
 
-  // hint
-  sprite.setTextSize(1);
-  sprite.setTextColor(TFT_DARKGREY);
-#ifdef DEVICE_HAS_KEYBOARD
-  sprite.drawString("BACK:back  UP/DN:offset", cx, bodyH() - 8);
-#else
-  sprite.drawString("UP/DN:offset  PRESS:back", cx, bodyH() - 8);
-#endif
-
-  sprite.pushSprite(bodyX(), bodyY());
-  sprite.deleteSprite();
+  // Center sprite around cy-4 so offset sits at ~cy-14 and clock at ~cy
+  spr.pushSprite(cx - SP_W / 2, cy - 4 - SP_H / 2);
+  spr.deleteSprite();
 }

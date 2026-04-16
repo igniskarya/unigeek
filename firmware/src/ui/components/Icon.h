@@ -74,13 +74,8 @@ public:
   template<typename T>
   static void drawWifiStatus(T& lcd, int16_t x, int16_t y, uint16_t color) {
     lcd.fillCircle(x + 8, y + 14, 2, color);
-#ifndef DISPLAY_BACKEND_M5GFX
-    lcd.drawArc(x + 8, y + 14, 6, 5, 230, 310, color, TFT_BLACK);
-    lcd.drawArc(x + 8, y + 14, 9, 8, 230, 310, color, TFT_BLACK);
-#else
     lcd.drawArc(x + 8, y + 14, 6, 5, 230, 310, color);
     lcd.drawArc(x + 8, y + 14, 9, 8, 230, 310, color);
-#endif
   }
 
   template<typename T>

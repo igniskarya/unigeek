@@ -27,6 +27,7 @@ private:
   int      _offsetMinutes  = 0;
   uint32_t _lastRenderTime = 0;
   bool     _synced         = false;
+  bool     _chromeDrawn    = false;
 
   void _adjustOffset(int delta) {
     _offsetMinutes += delta;
