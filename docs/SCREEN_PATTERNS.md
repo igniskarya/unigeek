@@ -225,14 +225,14 @@ Catalog lives in `static const AchDef* catalog()` as a static constexpr local (a
 
 ## Body Sprite Rule
 
-    TFT_eSprite sp(&Uni.Lcd);
+    Sprite sp(&Uni.Lcd);                 // ALWAYS use Sprite — not TFT_eSprite or LGFX_Sprite
     sp.createSprite(bodyW(), bodyH());   // ALWAYS bodyW x bodyH — never lcd.width/height
     // ...draw...
     sp.pushSprite(bodyX(), bodyY());     // ALWAYS push at bodyX, bodyY
     sp.deleteSprite();
 
     bodyW/bodyH already subtract 4px padding — do NOT subtract more inside the sprite.
-    Always call deleteSprite() after createSprite() + pushSprite() — TFT_eSprite leaks heap otherwise.
+    Always call deleteSprite() after createSprite() + pushSprite() — Sprite leaks heap otherwise.
     Only bypass body bounds when user explicitly says to ignore body boundaries.
 
 ---
