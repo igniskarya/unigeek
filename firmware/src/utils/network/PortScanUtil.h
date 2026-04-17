@@ -49,7 +49,7 @@ public:
     for (uint8_t i = 0; i < kPortCount && count < maxResults; i++) {
       uint8_t pct = (uint8_t)(i * 100 / kPortCount);
       if (pct != lastPct) {
-        ProgressView::show(msg, pct);
+        ProgressView::progress(msg, pct);
         lastPct = pct;
       }
       yield();
@@ -62,7 +62,7 @@ public:
         count++;
       }
     }
-    ProgressView::show(msg, 100);
+    ProgressView::progress(msg, 100);
     return count;
   }
 };

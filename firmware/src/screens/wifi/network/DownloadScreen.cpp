@@ -96,7 +96,8 @@ void DownloadScreen::_downloadWebPage() {
   HTTPClient http;
 
   // Fetch latest commit SHA
-  ProgressView::show("Fetching version...", 0);
+  ProgressView::init();
+  ProgressView::progress("Fetching version...", 0);
   String sha = "";
   http.begin(client,
     "https://api.github.com/repos/lshaf/puteros-file-manager/git/ref/heads/main");
@@ -142,7 +143,7 @@ void DownloadScreen::_downloadWebPage() {
   Uni.Storage->makeDir(base.c_str());
 
   for (uint8_t i = 0; i < kFileCount; i++) {
-    ProgressView::show("Downloading...", 10 + i * 28);
+    ProgressView::progress("Downloading...", 10 + i * 28);
 
     http.begin(client, kFiles[i].url);
     http.addHeader("User-Agent", "ESP32");
@@ -165,11 +166,11 @@ void DownloadScreen::_downloadWebPage() {
   }
 
   // Write version.txt
-  ProgressView::show("Saving version...", 95);
+  ProgressView::progress("Saving version...", 95);
   String ver = sha.length() > 0 ? sha : "installed";
   Uni.Storage->writeFile((base + "/version.txt").c_str(), ver.c_str());
 
-  ProgressView::show("Done!", 100);
+  ProgressView::progress("Done!", 100);
   String msg = sha.length() >= 7
     ? ("Done! v" + sha.substring(0, 7))
     : "Done!";
@@ -215,7 +216,8 @@ void DownloadScreen::_downloadSampleData() {
   HTTPClient http;
 
   // Download manifest
-  ProgressView::show("Fetching file list...", 0);
+  ProgressView::init();
+  ProgressView::progress("Fetching file list...", 0);
   String manifestUrl = String(REPO_BASE) + "/manifest/sdcard.txt";
   http.begin(client, manifestUrl);
   http.addHeader("User-Agent", "ESP32");
@@ -266,7 +268,7 @@ void DownloadScreen::_downloadSampleData() {
     uint8_t pct = (uint8_t)((idx * 100) / fileCount);
     char label[32];
     snprintf(label, sizeof(label), "[%02d/%02d] Downloading...", idx, fileCount);
-    ProgressView::show(label, pct);
+    ProgressView::progress(label, pct);
 
     String url  = String(REPO_BASE) + "/" + line;
     String path = "/" + line;
@@ -302,7 +304,8 @@ void DownloadScreen::_showIRCategories() {
   client.setInsecure();
   HTTPClient http;
 
-  ProgressView::show("Fetching categories...", 0);
+  ProgressView::init();
+  ProgressView::progress("Fetching categories...", 0);
   String url = String(REPO_BASE) + "/manifest/ir/categories.txt";
   http.begin(client, url);
   http.addHeader("User-Agent", "ESP32");
@@ -357,7 +360,8 @@ void DownloadScreen::_downloadIRCategory(uint8_t index) {
   HTTPClient http;
 
   // Fetch category manifest
-  ProgressView::show("Fetching file list...", 0);
+  ProgressView::init();
+  ProgressView::progress("Fetching file list...", 0);
   String manifestUrl = String(REPO_BASE) + "/manifest/ir/cat_" + _catFolders[index] + ".txt";
   http.begin(client, manifestUrl);
   http.addHeader("User-Agent", "ESP32");
@@ -408,7 +412,7 @@ void DownloadScreen::_downloadIRCategory(uint8_t index) {
     uint8_t pct = (uint8_t)((idx * 100) / fileCount);
     char label[32];
     snprintf(label, sizeof(label), "[%d/%d] Downloading...", idx, fileCount);
-    ProgressView::show(label, pct);
+    ProgressView::progress(label, pct);
 
     // Source: Flipper-IRDB repo, path as-is (e.g. "TVs/Samsung/Samsung_TV.ir")
     String fileUrl = String(IR_REPO_BASE) + "/" + line;
@@ -483,7 +487,8 @@ void DownloadScreen::_showBadUSBOS() {
   HTTPClient http;
 
   // Fetch root manifest.txt from badusb-collection repo — lists category folders
-  ProgressView::show("Fetching categories...", 0);
+  ProgressView::init();
+  ProgressView::progress("Fetching categories...", 0);
   http.begin(client, String(BADUSB_REPO_BASE) + "/manifest.txt");
   http.addHeader("User-Agent", "ESP32");
   int code = http.GET();
@@ -594,7 +599,8 @@ void DownloadScreen::_downloadBadUSBCategory(uint8_t index) {
 
   // Each category folder in badusb-collection has its own manifest.txt
   // Lines are full relative paths: "windows/recon/windows_sysinfo.txt"
-  ProgressView::show("Fetching file list...", 0);
+  ProgressView::init();
+  ProgressView::progress("Fetching file list...", 0);
   String folder = _badusbFolders[index];
   http.begin(client, String(BADUSB_REPO_BASE) + "/" + folder + "/manifest.txt");
   http.addHeader("User-Agent", "ESP32");
@@ -646,7 +652,7 @@ void DownloadScreen::_downloadBadUSBCategory(uint8_t index) {
     uint8_t pct = (uint8_t)((idx * 100) / fileCount);
     char label[32];
     snprintf(label, sizeof(label), "[%d/%d] Downloading...", idx, fileCount);
-    ProgressView::show(label, pct);
+    ProgressView::progress(label, pct);
 
     // line = "windows/recon/windows_sysinfo.txt" — full path from repo root
     String fileUrl  = String(BADUSB_REPO_BASE) + "/" + line;

@@ -64,6 +64,7 @@ void PortScannerScreen::_scan() {
   int nps = Achievement.inc("wifi_port_scan_started");
   if (nps == 1) Achievement.unlock("wifi_port_scan_started");
 
+  ProgressView::init();
   _resultCount = PortScanUtil::scan(_targetIp.c_str(), _results, PortScanUtil::MAX_RESULTS);
 
   if (_resultCount == 0) {

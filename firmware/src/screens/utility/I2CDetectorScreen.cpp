@@ -12,7 +12,7 @@ void I2CDetectorScreen::onInit() {
   // If only InI2C exists (no ExI2C), start on internal
   if (!Uni.ExI2C && Uni.InI2C) _wireIndex = 1;
 
-  _scan();
+  _scanning = true;
 }
 
 void I2CDetectorScreen::_scan() {
@@ -50,11 +50,18 @@ void I2CDetectorScreen::_scan() {
 }
 
 void I2CDetectorScreen::onUpdate() {
+  if (_scanning) {
+    _scan();
+    _scanning = false;
+    render();
+    return;
+  }
+
   if (!Uni.Nav->wasPressed()) return;
   auto dir = Uni.Nav->readDirection();
   if (_hasBoth && (dir == INavigation::DIR_UP || dir == INavigation::DIR_DOWN)) {
     _wireIndex ^= 1;
-    _scan();
+    _scanning = true;
     render();
   } else if (dir == INavigation::DIR_PRESS || dir == INavigation::DIR_BACK) {
     Screen.setScreen(new UtilityMenuScreen());
@@ -62,26 +69,33 @@ void I2CDetectorScreen::onUpdate() {
 }
 
 void I2CDetectorScreen::onRender() {
-  Sprite spr(&Uni.Lcd);
-  spr.createSprite(bodyW(), bodyH());
-  spr.fillSprite(TFT_BLACK);
+  auto& lcd = Uni.Lcd;
+  lcd.fillRect(bodyX(), bodyY(), bodyW(), bodyH(), TFT_BLACK);
+
+  if (_scanning) {
+    lcd.setTextColor(TFT_YELLOW, TFT_BLACK);
+    lcd.setTextSize(1);
+    lcd.setTextDatum(MC_DATUM);
+    lcd.drawString("Scanning...", bodyX() + bodyW() / 2, bodyY() + bodyH() / 2);
+    return;
+  }
 
   // Bus label row
-  spr.setTextColor(TFT_YELLOW, TFT_BLACK);
-  spr.setTextSize(1);
-  spr.setCursor(2, 2);
+  lcd.setTextColor(TFT_YELLOW, TFT_BLACK);
+  lcd.setTextSize(1);
+  lcd.setCursor(bodyX() + 2, bodyY() + 2);
   if (_hasBoth) {
     if (_wireIndex == 0) {
       int sda = PinConfig.getInt(PIN_CONFIG_EXT_SDA, PIN_CONFIG_EXT_SDA_DEFAULT);
       int scl = PinConfig.getInt(PIN_CONFIG_EXT_SCL, PIN_CONFIG_EXT_SCL_DEFAULT);
       char label[32];
       snprintf(label, sizeof(label), "External (SDA:%d SCL:%d)", sda, scl);
-      spr.print(label);
+      lcd.print(label);
     } else {
-      spr.print("Internal");
+      lcd.print("Internal");
     }
   } else {
-    spr.print("I2C Bus");
+    lcd.print("I2C Bus");
   }
 
   const uint16_t labelH = 12;
@@ -105,25 +119,22 @@ void I2CDetectorScreen::onRender() {
       bool found = (addr >= 0x08 && addr < 0x78) ? _found[addr] : false;
       uint16_t bg = found ? TFT_DARKGREEN : 0x2104; // dark grey
 
-      spr.fillRect(x, y, cellW - 1, cellH - 1, bg);
+      lcd.fillRect(bodyX() + x, bodyY() + y, cellW - 1, cellH - 1, bg);
 
       if (found) {
-        spr.setTextColor(TFT_WHITE, TFT_DARKGREEN);
-        spr.setTextSize(1);
+        lcd.setTextColor(TFT_WHITE, TFT_DARKGREEN);
+        lcd.setTextSize(1);
         char buf[3];
         snprintf(buf, sizeof(buf), "%02X", addr);
-        spr.setCursor(x + 1, y + (cellH - 8) / 2);
-        spr.print(buf);
+        lcd.setCursor(bodyX() + x + 1, bodyY() + y + (cellH - 8) / 2);
+        lcd.print(buf);
       }
     }
   }
 
   // Bottom hint
-  spr.setTextColor(TFT_DARKGREY, TFT_BLACK);
-  spr.setTextSize(1);
-  spr.setCursor(2, bodyH() - hintH);
-  spr.print(_hasBoth ? "UP/DN:bus  OK:exit" : "OK:exit");
-
-  spr.pushSprite(bodyX(), bodyY());
-  spr.deleteSprite();
+  lcd.setTextColor(TFT_DARKGREY, TFT_BLACK);
+  lcd.setTextSize(1);
+  lcd.setCursor(bodyX() + 2, bodyY() + bodyH() - hintH);
+  lcd.print(_hasBoth ? "UP/DN:bus  OK:exit" : "OK:exit");
 }

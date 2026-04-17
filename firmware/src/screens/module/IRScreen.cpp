@@ -188,6 +188,7 @@ void IRScreen::onItemSelected(uint8_t index) {
         }
 
         uint8_t region = (strcmp(sel, "na") == 0) ? 1 : 0;
+        ProgressView::init();
         _ir.startTvBGone(region, _tvbProgressCb, _tvbCancelCb);
 
         _ir.end();
@@ -515,7 +516,7 @@ void IRScreen::_tvbProgressCb(uint8_t current, uint8_t total) {
   int pct = (int)((uint32_t)current * 100 / total);
   char msg[32];
   snprintf(msg, sizeof(msg), "Sending %u / %u", current, total);
-  ProgressView::show(msg, pct);
+  ProgressView::progress(msg, pct);
 }
 
 bool IRScreen::_tvbCancelCb() {

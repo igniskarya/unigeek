@@ -92,7 +92,7 @@
     #include "ui/actions/ShowBarcodeAction.h"
     #include "ui/views/ScrollListView.h"
     #include "ui/views/LogView.h"
-    #include "ui/views/ProgressView.h"          // ProgressView::show("msg", pct) — non-blocking
+    #include "ui/views/ProgressView.h"          // ProgressView::init/progress/finish — 3-stage non-blocking
 
 ---
 
@@ -123,7 +123,9 @@
 
 ## ProgressView
 
-    ProgressView::show("Message", pct)   non-blocking progress bar (0-100%), auto word-wrap, max 2 lines
+    ProgressView::init()                   clears body, draws bar border (call once per sequence)
+    ProgressView::progress("msg", pct)     updates text (sprite) + bar fill (incremental), no flicker
+    ProgressView::finish()                 fills bar to 100%, resets state for next usage
 
 ---
 

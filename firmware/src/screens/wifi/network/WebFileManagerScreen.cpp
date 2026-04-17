@@ -60,24 +60,20 @@ void WebFileManagerScreen::onRender() {
 }
 
 void WebFileManagerScreen::_drawRunning() {
-  Sprite sp(&Uni.Lcd);
-  sp.createSprite(bodyW(), bodyH());
-  sp.fillSprite(TFT_BLACK);
+  auto& lcd = Uni.Lcd;
+  lcd.fillRect(bodyX(), bodyY(), bodyW(), bodyH(), TFT_BLACK);
 
-  int cx   = bodyW() / 2;
-  int midY = bodyH() / 2;
+  int cx   = bodyX() + bodyW() / 2;
+  int midY = bodyY() + bodyH() / 2;
 
-  sp.setTextFont(1);
-  sp.setTextDatum(TC_DATUM);
-  sp.setTextColor(TFT_GREEN, TFT_BLACK);
-  sp.drawString(_ipUrl,   cx, midY - 10);
-  sp.drawString(_mdnsUrl, cx, midY + 4);
+  lcd.setTextFont(1);
+  lcd.setTextDatum(TC_DATUM);
+  lcd.setTextColor(TFT_GREEN, TFT_BLACK);
+  lcd.drawString(_ipUrl,   cx, midY - 10);
+  lcd.drawString(_mdnsUrl, cx, midY + 4);
 
-  sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
-  sp.drawString("BACK to stop", cx, bodyH() - 14);
-
-  sp.pushSprite(bodyX(), bodyY());
-  sp.deleteSprite();
+  lcd.setTextColor(TFT_DARKGREY, TFT_BLACK);
+  lcd.drawString("BACK to stop", cx, bodyY() + bodyH() - 14);
 }
 
 void WebFileManagerScreen::_start() {
