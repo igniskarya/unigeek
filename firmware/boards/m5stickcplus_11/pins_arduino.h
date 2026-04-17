@@ -68,6 +68,10 @@ static const uint8_t SCL = GROVE_SCL;
 #define CC1101_CS_PIN    26
 #define CC1101_GDO0_PIN  25
 
+// ─── NRF24L01+ ────────────────────────────────────────────
+#define NRF24_CSN_PIN    26
+#define NRF24_CE_PIN     25
+
 // ─── Speaker (buzzer, LEDC PWM) ───────────────────────────
 #define SPK_PIN  2
 

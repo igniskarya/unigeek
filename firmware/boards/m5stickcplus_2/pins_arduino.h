@@ -76,6 +76,10 @@ static const uint8_t SCL = GROVE_SCL;
 #define CC1101_CS_PIN    26
 #define CC1101_GDO0_PIN  25
 
+// ─── NRF24L01+ ────────────────────────────────────────────
+#define NRF24_CSN_PIN    26
+#define NRF24_CE_PIN     25
+
 // ─── Internal I2C (BM8563 RTC) ───────────────────────────
 #define INTERNAL_SDA  21
 #define INTERNAL_SCL  22

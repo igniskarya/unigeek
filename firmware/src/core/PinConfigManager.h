@@ -69,6 +69,22 @@
   #define PIN_CONFIG_CC1101_GDO0_DEFAULT "-1"
 #endif
 
+// ─── NRF24L01 pin config ────────────────────────────────────────────────────
+#define PIN_CONFIG_NRF24_CE         "nrf24_ce"
+#define PIN_CONFIG_NRF24_CSN        "nrf24_csn"
+
+#ifdef NRF24_CE_PIN
+  #define PIN_CONFIG_NRF24_CE_DEFAULT  String(NRF24_CE_PIN)
+#else
+  #define PIN_CONFIG_NRF24_CE_DEFAULT  "-1"
+#endif
+
+#ifdef NRF24_CSN_PIN
+  #define PIN_CONFIG_NRF24_CSN_DEFAULT String(NRF24_CSN_PIN)
+#else
+  #define PIN_CONFIG_NRF24_CSN_DEFAULT "-1"
+#endif
+
 // ─── GPS pin config ─────────────────────────────────────────────────────────
 #define PIN_CONFIG_GPS_TX           "gps_tx"
 #define PIN_CONFIG_GPS_RX           "gps_rx"

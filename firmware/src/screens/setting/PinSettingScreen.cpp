@@ -42,6 +42,14 @@ void PinSettingScreen::onInit() {
   _map[_itemCount] = PIN_CC1101_GDO0;
   _itemCount++;
 
+  _items[_itemCount] = {"NRF24 CE Pin", ""};
+  _map[_itemCount] = PIN_NRF24_CE;
+  _itemCount++;
+
+  _items[_itemCount] = {"NRF24 CSN Pin", ""};
+  _map[_itemCount] = PIN_NRF24_CSN;
+  _itemCount++;
+
   setItems(_items, _itemCount);
   _refresh();
 }
@@ -54,16 +62,20 @@ void PinSettingScreen::_refresh() {
   _sclSub = PinConfig.get(PIN_CONFIG_EXT_SCL, PIN_CONFIG_EXT_SCL_DEFAULT);
   _cc1101CsSub = PinConfig.get(PIN_CONFIG_CC1101_CS, PIN_CONFIG_CC1101_CS_DEFAULT);
   _cc1101Gdo0Sub = PinConfig.get(PIN_CONFIG_CC1101_GDO0, PIN_CONFIG_CC1101_GDO0_DEFAULT);
+  _nrf24CeSub = PinConfig.get(PIN_CONFIG_NRF24_CE, PIN_CONFIG_NRF24_CE_DEFAULT);
+  _nrf24CsnSub = PinConfig.get(PIN_CONFIG_NRF24_CSN, PIN_CONFIG_NRF24_CSN_DEFAULT);
 
   for (uint8_t i = 0; i < _itemCount; i++) {
     switch (_map[i]) {
-      case PIN_GPS_TX:     _items[i].sublabel = _gpsTxSub.c_str(); break;
-      case PIN_GPS_RX:     _items[i].sublabel = _gpsRxSub.c_str(); break;
-      case PIN_GPS_BAUD:   _items[i].sublabel = _gpsBaudSub.c_str(); break;
-      case PIN_EXT_SDA:    _items[i].sublabel = _sdaSub.c_str(); break;
-      case PIN_EXT_SCL:    _items[i].sublabel = _sclSub.c_str(); break;
-      case PIN_CC1101_CS:  _items[i].sublabel = _cc1101CsSub.c_str(); break;
+      case PIN_GPS_TX:      _items[i].sublabel = _gpsTxSub.c_str(); break;
+      case PIN_GPS_RX:      _items[i].sublabel = _gpsRxSub.c_str(); break;
+      case PIN_GPS_BAUD:    _items[i].sublabel = _gpsBaudSub.c_str(); break;
+      case PIN_EXT_SDA:     _items[i].sublabel = _sdaSub.c_str(); break;
+      case PIN_EXT_SCL:     _items[i].sublabel = _sclSub.c_str(); break;
+      case PIN_CC1101_CS:   _items[i].sublabel = _cc1101CsSub.c_str(); break;
       case PIN_CC1101_GDO0: _items[i].sublabel = _cc1101Gdo0Sub.c_str(); break;
+      case PIN_NRF24_CE:    _items[i].sublabel = _nrf24CeSub.c_str(); break;
+      case PIN_NRF24_CSN:   _items[i].sublabel = _nrf24CsnSub.c_str(); break;
     }
   }
 
@@ -125,6 +137,24 @@ void PinSettingScreen::onItemSelected(uint8_t index) {
       int val = InputNumberAction::popup("CC1101 GDO0 Pin", 0, 48, cur);
       if (val >= 0) {
         PinConfig.set(PIN_CONFIG_CC1101_GDO0, String(val));
+        PinConfig.save(Uni.Storage);
+      }
+      break;
+    }
+    case PIN_NRF24_CE: {
+      int cur = PinConfig.getInt(PIN_CONFIG_NRF24_CE, PIN_CONFIG_NRF24_CE_DEFAULT);
+      int val = InputNumberAction::popup("NRF24 CE Pin", 0, 48, cur);
+      if (val >= 0) {
+        PinConfig.set(PIN_CONFIG_NRF24_CE, String(val));
+        PinConfig.save(Uni.Storage);
+      }
+      break;
+    }
+    case PIN_NRF24_CSN: {
+      int cur = PinConfig.getInt(PIN_CONFIG_NRF24_CSN, PIN_CONFIG_NRF24_CSN_DEFAULT);
+      int val = InputNumberAction::popup("NRF24 CSN Pin", 0, 48, cur);
+      if (val >= 0) {
+        PinConfig.set(PIN_CONFIG_NRF24_CSN, String(val));
         PinConfig.save(Uni.Storage);
       }
       break;

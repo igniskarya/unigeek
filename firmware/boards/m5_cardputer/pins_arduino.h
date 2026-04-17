@@ -41,6 +41,10 @@ static const uint8_t SCL = 15;
 #define CC1101_CS_PIN   1   // GROVE_SCL
 #define CC1101_GDO0_PIN 2   // GROVE_SDA
 
+// ─── NRF24L01+ ────────────────────────────────────────────
+#define NRF24_CSN_PIN   1   // GROVE_SCL
+#define NRF24_CE_PIN    2   // GROVE_SDA
+
 // ─── RGB LED (SK6812) ─────────────────────────────────────
 #define RGB_LED  21
 

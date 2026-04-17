@@ -63,6 +63,10 @@ static const uint8_t SCL = GROVE_SCL;
 #define CC1101_CS_PIN   44
 #define CC1101_GDO0_PIN 43
 
+// ─── NRF24L01+ (GPIO expansion header) ───────────────────
+#define NRF24_CE_PIN    43
+#define NRF24_CSN_PIN   44
+
 // ─── GPS (MIA-M10Q) ───────────────────────────────────────
 #define GPS_TX    12
 #define GPS_RX     4

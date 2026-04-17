@@ -22,13 +22,14 @@ private:
 
   BackFactory _backFn = nullptr;
 
-  static const uint8_t MAX_ITEMS = 8;
+  static const uint8_t MAX_ITEMS = 10;
   ListItem _items[MAX_ITEMS];
   uint8_t _itemCount = 0;
 
   // track which config each index maps to
   enum PinType { PIN_GPS_TX, PIN_GPS_RX, PIN_GPS_BAUD, PIN_EXT_SDA, PIN_EXT_SCL,
-                 PIN_CC1101_CS, PIN_CC1101_GDO0 };
+                 PIN_CC1101_CS, PIN_CC1101_GDO0,
+                 PIN_NRF24_CE, PIN_NRF24_CSN };
   PinType _map[MAX_ITEMS];
 
   String _gpsTxSub;
@@ -38,4 +39,6 @@ private:
   String _sclSub;
   String _cc1101CsSub;
   String _cc1101Gdo0Sub;
+  String _nrf24CeSub;
+  String _nrf24CsnSub;
 };

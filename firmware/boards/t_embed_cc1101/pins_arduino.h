@@ -39,6 +39,10 @@ static const uint8_t SCL = GROVE_SCL;
 #define CC1101_CS_PIN    12
 #define CC1101_GDO0_PIN   3
 
+// ─── NRF24L01+ (QWIIC port) ──────────────────────────────
+#define NRF24_CE_PIN     43
+#define NRF24_CSN_PIN    44
+
 // ─── Rotary Encoder ───────────────────────────────────────
 #define ENCODER_A    4
 #define ENCODER_B    5
