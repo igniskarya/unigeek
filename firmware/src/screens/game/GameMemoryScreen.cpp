@@ -214,6 +214,7 @@ GameMemoryScreen::StageConfig GameMemoryScreen::_getStage() const
       return {7, 450, 4};
 
     default: // EXTREME
+      if (_round <= 10) return {6, 600, 3};
       return {7, 450, 4};
   }
 }
