@@ -88,19 +88,18 @@ void WifiESPNowChatScreen::onRender()
   const int      LINE_H     = 9;
   const int      HINT_H     = 10;
 
-  Sprite sp(&Uni.Lcd);
-  sp.createSprite(bodyW(), bodyH());
-  sp.fillSprite(TFT_BLACK);
+  auto& lcd = Uni.Lcd;
+  lcd.fillRect(bodyX(), bodyY(), bodyW(), bodyH(), TFT_BLACK);
 
   // Hint bar
-  sp.drawFastHLine(0, bodyH() - HINT_H - 1, bodyW(), TFT_DARKGREY);
-  sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
-  sp.setTextDatum(BL_DATUM);
-  sp.setTextSize(1);
+  lcd.drawFastHLine(bodyX(), bodyY() + bodyH() - HINT_H - 1, bodyW(), TFT_DARKGREY);
+  lcd.setTextColor(TFT_DARKGREY, TFT_BLACK);
+  lcd.setTextDatum(BL_DATUM);
+  lcd.setTextSize(1);
 #ifdef DEVICE_HAS_KEYBOARD
-  sp.drawString("ENTER:Msg  \\b:Exit", 0, bodyH());
+  lcd.drawString("ENTER:Msg  \\b:Exit", bodyX(), bodyY() + bodyH());
 #else
-  sp.drawString("PRESS:Msg  BACK:Exit", 0, bodyH());
+  lcd.drawString("PRESS:Msg  BACK:Exit", bodyX(), bodyY() + bodyH());
 #endif
 
   // Messages: newest at bottom, oldest at top
@@ -122,15 +121,12 @@ void WifiESPNowChatScreen::onRender()
     bool sent = (e.sender[0] == 0xFF && e.sender[1] == 0xFF &&
                  e.sender[2] == 0xFF && e.sender[3] == 0xFF &&
                  e.sender[4] == 0xFF && e.sender[5] == 0xFF);
-    sp.setTextColor(sent ? themeColor : TFT_WHITE, TFT_BLACK);
-    sp.setTextDatum(TL_DATUM);
-    sp.drawString(line, 0, y);
+    lcd.setTextColor(sent ? themeColor : TFT_WHITE, TFT_BLACK);
+    lcd.setTextDatum(TL_DATUM);
+    lcd.drawString(line, bodyX(), bodyY() + y);
     y -= LINE_H;
   }
   portEXIT_CRITICAL(&_lock);
-
-  sp.pushSprite(bodyX(), bodyY());
-  sp.deleteSprite();
 }
 
 // ── ESP-NOW callbacks ──────────────────────────────────────────────────────

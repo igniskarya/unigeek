@@ -53,6 +53,7 @@ private:
   static constexpr const char* _spinner = "-\\|/";
   int     _spinIdx   = 0;
   uint8_t _allChanHop = 0;
+  bool    _chromeDrawn = false;
 
   ListItem _mainItems[3];
   String   _modeSub;

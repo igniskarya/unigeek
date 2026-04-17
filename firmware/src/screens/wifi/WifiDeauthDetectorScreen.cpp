@@ -132,14 +132,11 @@ void WifiDeauthDetectorScreen::onRender()
     return;
   }
 
-  Sprite sp(&Uni.Lcd);
-  sp.createSprite(bodyW(), bodyH());
-  sp.fillSprite(TFT_BLACK);
-  sp.setTextDatum(MC_DATUM);
-  sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
-  sp.drawString("Waiting for deauth packets...", bodyW() / 2, bodyH() / 2);
-  sp.pushSprite(bodyX(), bodyY());
-  sp.deleteSprite();
+  auto& lcd = Uni.Lcd;
+  lcd.fillRect(bodyX(), bodyY(), bodyW(), bodyH(), TFT_BLACK);
+  lcd.setTextDatum(MC_DATUM);
+  lcd.setTextColor(TFT_DARKGREY, TFT_BLACK);
+  lcd.drawString("Waiting for deauth packets...", bodyX() + bodyW() / 2, bodyY() + bodyH() / 2);
 }
 
 void WifiDeauthDetectorScreen::onBack()
