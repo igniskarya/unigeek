@@ -19,12 +19,14 @@ Multi-tool firmware for ESP32-based handheld devices. Built with PlatformIO + Ar
 | M5Stack CoreS3 (Unified) | Touch | I2S | Yes | Yes | — |
 | M5StickC S3 | 2 Buttons | I2S | Yes | — | — |
 | DIY Smoochie | 5 Buttons | — | — | Yes | — |
+| CYD 2432W328R | Touch (XPT2046) | — | — | Yes | — |
 
 ### Known issues
 
 - **M5StickC Plus 1.1 / 2** — NRF24 module untested.
 - **M5StickC S3** — CC1101, NRF24, and internal IR untested.
 - **M5Stack CoreS3 (Unified)** — SD card doesn't work properly.
+- **CYD 2432W328R** — newly released, most external modules untested.
 
 ---
 

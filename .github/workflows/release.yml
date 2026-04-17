@@ -31,6 +31,7 @@ jobs:
           - t_embed_cc1101
           - m5_cores3_unified
           - m5sticks3
+          - cyd_2432w328r
 
     steps:
       - name: Checkout

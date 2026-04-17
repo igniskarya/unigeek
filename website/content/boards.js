@@ -80,4 +80,12 @@ export const BOARDS = [
     bin: "/firmware/unigeek-m5sticks3.bin",
     knownIssues: ["CC1101, NRF24, and internal IR untested"],
   },
+  {
+    id: "cyd_2432w328r",
+    name: "CYD 2432W328R",
+    chip: "ESP32",
+    tags: ["WiFi", "BLE", "IR", "Touch"],
+    bin: "/firmware/unigeek-cyd_2432w328r.bin",
+    knownIssues: ["New addition — most modules untested"],
+  },
 ];
