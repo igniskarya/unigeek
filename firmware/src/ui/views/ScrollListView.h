@@ -98,9 +98,15 @@ private:
 
     // Scrollbar — drawn directly; only if content overflows.
     lcd.fillRect(_x + _w - SCROLL_W, _y, SCROLL_W, _h, 0x2104);
-    if (_count > visible) {
-      int sbH = max(4, _h * visible / _count);
-      int sbY = (_h - sbH) * _offset / max(1, _count - visible);
+    int fullyVisible = _h / ROW_H;
+    if (fullyVisible < 1) fullyVisible = 1;
+    if (_count > fullyVisible) {
+      int sbH = max(4, _h * fullyVisible / _count);
+      if (sbH > _h) sbH = _h;
+      int maxOffset = _count - fullyVisible;
+      int sbY = (_h - sbH) * _offset / max(1, maxOffset);
+      if (sbY < 0)              sbY = 0;
+      if (sbY > _h - sbH)       sbY = _h - sbH;
       lcd.fillRect(_x + _w - SCROLL_W, _y + sbY, SCROLL_W, sbH, TFT_LIGHTGREY);
     }
   }

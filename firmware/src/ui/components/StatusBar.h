@@ -91,7 +91,7 @@ public:
     if (status.bluetoothOn) {
       uint16_t yBt = _slotY(slot++);
       _drawBox(sprite, yBt);
-      Icons::drawBluetoothStatus(sprite, BOX_X + 2, yBt + 2, TFT_WHITE);
+      Icons::drawBluetoothStatus(sprite, BOX_X + 3, yBt + 3, TFT_WHITE);
     }
 
     // ─── Clock: hour/minute in one box (bottom-anchored) ─
