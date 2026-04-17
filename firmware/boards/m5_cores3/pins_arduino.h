@@ -23,6 +23,11 @@ static const uint8_t SCL = INTERNAL_SCL;
 #define GROVE_SDA  2
 #define GROVE_SCL  1
 
+// ─── GPS (Grove port default) ─────────────────────────────────
+#define GPS_TX    2
+#define GPS_RX    1
+#define GPS_BAUD  115200
+
 // ─── LCD (ILI9342C, shared SPI with SD) ───────────────────────
 #define LCD_CS  3
 
