@@ -112,9 +112,10 @@ void loop() {
     } else if (Uni.lcdOff && idle <= dispMs) {
       Uni.Lcd.setBrightness((uint8_t)Config.get(APP_CONFIG_BRIGHTNESS, APP_CONFIG_BRIGHTNESS_DEFAULT).toInt());
       Uni.lcdOff = false;
-      // Consume wake-up event then skip this frame entirely so Screen.update()
-      // never sees it — avoids race between isPressed() peek and wasPressed() consume.
-      Uni.Nav->wasPressed(); Uni.Nav->readDirection();
+      // The press that woke the screen only turns the display on — it must
+      // never propagate as an action. Drop any already-released wake event and
+      // suppress the future release of an in-progress press.
+      Uni.Nav->suppressCurrentPress();
 #ifdef DEVICE_HAS_KEYBOARD
       if (Uni.Keyboard && Uni.Keyboard->available()) Uni.Keyboard->getKey();
 #endif
