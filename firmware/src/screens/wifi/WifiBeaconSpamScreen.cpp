@@ -122,6 +122,7 @@ void WifiBeaconSpamScreen::_start()
   _spinIdx  = 0;
   _rounds   = 0;
   _state    = STATE_SPAMMING;
+  _chromeDrawn = false;
   if (_mode == MODE_RANDOM) _makeRandomSsid();
   render();
 }
@@ -165,17 +166,28 @@ void WifiBeaconSpamScreen::_broadcastNext()
 
 void WifiBeaconSpamScreen::_drawSpamming()
 {
+  auto& lcd = Uni.Lcd;
+
+  if (!_chromeDrawn) {
+    lcd.fillRect(bodyX(), bodyY(), bodyW(), bodyH(), TFT_BLACK);
+    lcd.setTextDatum(BC_DATUM);
+    lcd.setTextColor(TFT_DARKGREY, TFT_BLACK);
+    lcd.drawString("BACK / ENTER: Stop", bodyX() + bodyW() / 2, bodyY() + bodyH());
+    _chromeDrawn = true;
+  }
+
+  // Only the spinner label changes — compose in a small sprite for flicker-free update
+  const int labelH = lcd.fontHeight() + 4;
+  const int cy     = bodyY() + bodyH() / 2;
+
   Sprite sp(&Uni.Lcd);
-  sp.createSprite(bodyW(), bodyH());
+  sp.createSprite(bodyW(), labelH);
   sp.fillSprite(TFT_BLACK);
   sp.setTextDatum(MC_DATUM);
   sp.setTextColor(TFT_WHITE, TFT_BLACK);
   String label = String("[") + _spinner[_spinIdx] + "] Spamming..";
-  sp.drawString(label.c_str(), bodyW() / 2, bodyH() / 2);
-  sp.setTextDatum(BC_DATUM);
-  sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
-  sp.drawString("BACK / ENTER: Stop", bodyW() / 2, bodyH());
-  sp.pushSprite(bodyX(), bodyY());
+  sp.drawString(label.c_str(), bodyW() / 2, labelH / 2);
+  sp.pushSprite(bodyX(), cy - labelH / 2);
   sp.deleteSprite();
 }
 

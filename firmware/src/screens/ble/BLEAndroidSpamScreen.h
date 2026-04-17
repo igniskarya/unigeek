@@ -20,6 +20,7 @@ private:
   uint32_t _lastDrawMs  = 0;
   uint32_t _spamStartMs = 0;
   bool     _spam1minFired = false;
+  bool     _chromeDrawn   = false;
 
   NimBLEAdvertising* _pAdv = nullptr;
 

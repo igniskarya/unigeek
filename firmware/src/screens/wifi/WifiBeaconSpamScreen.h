@@ -32,6 +32,7 @@ private:
   char _randomSsid[33] = {};
 
   uint32_t _lastDrawMs = 0;
+  bool     _chromeDrawn = false;
 
   String _modeSub;
 
