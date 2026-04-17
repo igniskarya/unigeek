@@ -84,14 +84,14 @@ public:
     if (status.wifiOn) {
       uint16_t yWifi = _slotY(slot++);
       _drawBox(sprite, yWifi);
-      Icons::drawWifiStatus(sprite, BOX_X - 2, yWifi - 5, TFT_WHITE);
+      Icons::drawWifiStatus(sprite, BOX_X + 2, yWifi + 1, TFT_WHITE);
     }
 
     // ─── Bluetooth (only when active) ────────────────
     if (status.bluetoothOn) {
       uint16_t yBt = _slotY(slot++);
       _drawBox(sprite, yBt);
-      Icons::drawBluetoothStatus(sprite, BOX_X + 1, yBt + 1, TFT_WHITE);
+      Icons::drawBluetoothStatus(sprite, BOX_X + 2, yBt + 2, TFT_WHITE);
     }
 
     // ─── Clock: hour/minute in one box (bottom-anchored) ─

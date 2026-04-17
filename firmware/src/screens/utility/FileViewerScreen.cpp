@@ -112,42 +112,52 @@ void FileViewerScreen::_parseLines() {
 }
 
 void FileViewerScreen::_renderContent() {
-  Sprite sp(&Uni.Lcd);
-  sp.createSprite(bodyW(), bodyH());
-  sp.fillSprite(TFT_BLACK);
-  sp.setTextDatum(TL_DATUM);
-  sp.setTextSize(1);
+  auto& lcd = Uni.Lcd;
 
   if (!_lines || _lineCount == 0) {
-    sp.setTextColor(TFT_DARKGREY);
-    sp.setTextDatum(MC_DATUM);
-    sp.drawString("(empty)", bodyW() / 2, bodyH() / 2);
-    sp.pushSprite(bodyX(), bodyY());
-    sp.deleteSprite();
+    lcd.fillRect(bodyX(), bodyY(), bodyW(), bodyH(), TFT_BLACK);
+    lcd.setTextColor(TFT_DARKGREY, TFT_BLACK);
+    lcd.setTextDatum(MC_DATUM);
+    lcd.setTextSize(1);
+    lcd.drawString("(empty)", bodyX() + bodyW() / 2, bodyY() + bodyH() / 2);
     return;
   }
 
-  uint16_t maxScroll = (_lineCount > _visibleLines) ? _lineCount - _visibleLines : 0;
+  bool hasScrollbar = _lineCount > _visibleLines;
+  uint16_t textW = hasScrollbar ? bodyW() - 3 : bodyW();
 
-  // Draw scrollbar if content overflows
-  if (_lineCount > _visibleLines) {
-    uint16_t barX = bodyW() - 2;
+  // Render per-line sprites — each push atomically replaces the old line
+  Sprite spr(&lcd);
+  spr.createSprite(textW, LINE_HEIGHT);
+  spr.setTextColor(TFT_WHITE, TFT_BLACK);
+  spr.setTextDatum(TL_DATUM);
+  spr.setTextSize(1);
+
+  for (uint16_t i = 0; i < _visibleLines; i++) {
+    spr.fillSprite(TFT_BLACK);
+    if ((_scrollOffset + i) < _lineCount) {
+      spr.drawString(_lines[_scrollOffset + i], 1, 0);
+    }
+    spr.pushSprite(bodyX(), bodyY() + i * LINE_HEIGHT);
+  }
+  spr.deleteSprite();
+
+  // Clear fractional pixels below the last line slot
+  int usedH = _visibleLines * LINE_HEIGHT;
+  if (usedH < bodyH()) {
+    lcd.fillRect(bodyX(), bodyY() + usedH, textW, bodyH() - usedH, TFT_BLACK);
+  }
+
+  // Scrollbar last — always on top
+  if (hasScrollbar) {
+    uint16_t maxScroll = _lineCount - _visibleLines;
+    uint16_t sbX = bodyX() + bodyW() - 2;
     uint16_t barH = bodyH();
     uint16_t thumbH = max((uint16_t)4, (uint16_t)(barH * _visibleLines / _lineCount));
     uint16_t thumbY = (maxScroll > 0) ? (barH - thumbH) * _scrollOffset / maxScroll : 0;
-    sp.fillRect(barX, 0, 2, barH, TFT_DARKGREY);
-    sp.fillRect(barX, thumbY, 2, thumbH, TFT_WHITE);
+    lcd.fillRect(sbX, bodyY(), 2, barH, TFT_DARKGREY);
+    lcd.fillRect(sbX, bodyY() + thumbY, 2, thumbH, TFT_WHITE);
   }
-
-  sp.setTextColor(TFT_WHITE);
-
-  for (uint16_t i = 0; i < _visibleLines && (_scrollOffset + i) < _lineCount; i++) {
-    const char* line = _lines[_scrollOffset + i];
-    sp.drawString(line, 1, i * LINE_HEIGHT);
-  }
-
-  sp.pushSprite(bodyX(), bodyY());
-  sp.deleteSprite();
 }
 
 void FileViewerScreen::_goBack() {

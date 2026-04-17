@@ -15,6 +15,14 @@ class Icons
           lcd.fillRect(x + c * 3, y + r * 3, 3, 3, color);
   }
 
+  template<typename T>
+  static void _drawSmall(T& lcd, int16_t x, int16_t y, const uint8_t* bmp, uint16_t color) {
+    for (int r = 0; r < 8; r++)
+      for (int c = 0; c < 8; c++)
+        if (bmp[r] & (0x80 >> c))
+          lcd.fillRect(x + c * 2, y + r * 2, 2, 2, color);
+  }
+
 public:
   template<typename T>
   static void drawWifi(T& lcd, int16_t x, int16_t y, uint16_t color) {
@@ -70,22 +78,16 @@ public:
     _draw(lcd, x, y, bmp, color);
   }
 
-  // Status-bar variants — original arc/line style for 20×20 boxes
+  // Status-bar icons — 2×2 scaled bitmaps (16×16) for 20×20 boxes
   template<typename T>
   static void drawWifiStatus(T& lcd, int16_t x, int16_t y, uint16_t color) {
-    lcd.fillCircle(x + 8, y + 14, 2, color);
-    lcd.drawArc(x + 8, y + 14, 6, 5, 230, 310, color);
-    lcd.drawArc(x + 8, y + 14, 9, 8, 230, 310, color);
+    static constexpr uint8_t bmp[] = {0x00, 0x7E, 0x81, 0x00, 0x3C, 0x42, 0x00, 0x18};
+    _drawSmall(lcd, x, y, bmp, color);
   }
 
   template<typename T>
   static void drawBluetoothStatus(T& lcd, int16_t x, int16_t y, uint16_t color) {
-    lcd.drawFastVLine(x + 8, y + 1, 14, color);
-    lcd.drawLine(x + 8, y + 1,  x + 13, y + 5,  color);
-    lcd.drawLine(x + 13, y + 5, x + 8,  y + 8,  color);
-    lcd.drawLine(x + 8,  y + 8, x + 13, y + 11, color);
-    lcd.drawLine(x + 13, y + 11, x + 8, y + 15, color);
-    lcd.drawLine(x + 8, y + 8,  x + 4,  y + 5,  color);
-    lcd.drawLine(x + 8, y + 8,  x + 4,  y + 11, color);
+    static constexpr uint8_t bmp[] = {0x10, 0x18, 0x54, 0x18, 0x54, 0x18, 0x10, 0x00};
+    _drawSmall(lcd, x, y, bmp, color);
   }
 };
