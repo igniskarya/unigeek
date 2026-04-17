@@ -20,7 +20,8 @@ void SubGHzScreen::onInit() {
     return;
   }
 
-  ProgressView::show("Detecting CC1101...", 30);
+  ProgressView::init();
+  ProgressView::progress("Detecting CC1101...", 30);
   if (!_rf.begin(Uni.Spi, _csPin, _gdo0Pin)) {
     ShowStatusAction::show("CC1101 not found!");
     Screen.setScreen(new ModuleMenuScreen());
@@ -131,23 +132,25 @@ void SubGHzScreen::onUpdate() {
 void SubGHzScreen::onRender() {
   if (_state == STATE_RECEIVING) {
     if (_capturedCount == 0) {
-      Sprite sp(&Uni.Lcd);
-      sp.createSprite(bodyW(), bodyH());
-      sp.fillSprite(TFT_BLACK);
-      sp.setTextDatum(MC_DATUM);
+      auto& lcd = Uni.Lcd;
+      // Waiting view is fully static — paint once per state entry.
+      if (_chromeDrawn) return;
+      lcd.fillRect(bodyX(), bodyY(), bodyW(), bodyH(), TFT_BLACK);
+      lcd.setTextSize(1);
+      lcd.setTextDatum(MC_DATUM);
+      lcd.setTextColor(TFT_WHITE, TFT_BLACK);
       char freqStr[24];
       snprintf(freqStr, sizeof(freqStr), "%.2f MHz", _rf.getFrequency());
-      sp.drawString(freqStr, bodyW() / 2, bodyH() / 2 - 20);
-      sp.drawString("Waiting for signal...", bodyW() / 2, bodyH() / 2);
-      sp.fillRect(0, bodyH() - 16, bodyW(), 16, Config.getThemeColor());
-      sp.setTextColor(TFT_WHITE, Config.getThemeColor());
+      lcd.drawString(freqStr, bodyX() + bodyW() / 2, bodyY() + bodyH() / 2 - 20);
+      lcd.drawString("Waiting for signal...", bodyX() + bodyW() / 2, bodyY() + bodyH() / 2);
+      lcd.fillRect(bodyX(), bodyY() + bodyH() - 16, bodyW(), 16, Config.getThemeColor());
+      lcd.setTextColor(TFT_WHITE, Config.getThemeColor());
       #ifdef DEVICE_HAS_KEYBOARD
-        sp.drawString("BACK: Stop", bodyW() / 2, bodyH() - 8);
+        lcd.drawString("BACK: Stop", bodyX() + bodyW() / 2, bodyY() + bodyH() - 8);
       #else
-        sp.drawString("< Stop", bodyW() / 2, bodyH() - 8);
+        lcd.drawString("< Stop", bodyX() + bodyW() / 2, bodyY() + bodyH() - 8);
       #endif
-      sp.pushSprite(bodyX(), bodyY());
-      sp.deleteSprite();
+      _chromeDrawn = true;
     } else {
       ListScreen::onRender();
     }
@@ -155,25 +158,37 @@ void SubGHzScreen::onRender() {
   }
 
   if (_state == STATE_SCANNING) {
-    Sprite sp(&Uni.Lcd);
-    sp.createSprite(bodyW(), bodyH());
-    sp.fillSprite(TFT_BLACK);
-    sp.setTextSize(1);
+    auto& lcd = Uni.Lcd;
 
     static constexpr int kRssiFloor   = -110;
     static constexpr int kRssiCeiling = -30;
     static constexpr int kRssiRange   = kRssiCeiling - kRssiFloor; // 80
 
-    const int footerH  = 16;
-    const int infoH    = 26;  // two text lines at top
-    const int chartY   = infoH;
-    const int chartH   = bodyH() - footerH - infoH;
+    const int footerH = 16;
+    const int infoH   = 26;
+    const int contentH = bodyH() - footerH;   // info + chart area
+    const int chartY   = infoH;                // inside sprite
+    const int chartH   = contentH - infoH;
+
+    // Footer chrome painted once.
+    if (!_chromeDrawn) {
+      lcd.fillRect(bodyX(), bodyY(), bodyW(), bodyH(), TFT_BLACK);
+      lcd.setTextSize(1);
+      lcd.setTextDatum(MC_DATUM);
+      lcd.fillRect(bodyX(), bodyY() + bodyH() - footerH, bodyW(), footerH, Config.getThemeColor());
+      lcd.setTextColor(TFT_WHITE, Config.getThemeColor());
+      #ifdef DEVICE_HAS_KEYBOARD
+        lcd.drawString("BACK: Stop", bodyX() + bodyW() / 2, bodyY() + bodyH() - 8);
+      #else
+        lcd.drawString("< Stop", bodyX() + bodyW() / 2, bodyY() + bodyH() - 8);
+      #endif
+      _chromeDrawn = true;
+    }
 
     uint8_t n = _rf.getScanCount();
-    int barW  = bodyW() / n;
+    int barW  = bodyW() / (n ? n : 1);
     if (barW < 1) barW = 1;
 
-    // Find best channel
     uint8_t bestIdx  = 0;
     int     bestRssi = -120;
     for (uint8_t i = 0; i < n; i++) {
@@ -181,24 +196,29 @@ void SubGHzScreen::onRender() {
       if (r > bestRssi) { bestRssi = r; bestIdx = i; }
     }
 
-    // Draw bars
+    Sprite sp(&lcd);
+    sp.createSprite(bodyW(), contentH);
+    sp.fillSprite(TFT_BLACK);
+    sp.setTextSize(1);
+
+    // Bars
     for (uint8_t i = 0; i < n; i++) {
-      int rssi   = _rf.getScanRssiAt(i);
+      int rssi    = _rf.getScanRssiAt(i);
       int clamped = constrain(rssi, kRssiFloor, kRssiCeiling);
-      int barH   = (clamped - kRssiFloor) * chartH / kRssiRange;
-      int x      = i * barW;
-      int y      = chartY + chartH - barH;
+      int barH    = (clamped - kRssiFloor) * chartH / kRssiRange;
+      int x       = i * barW;
+      int y       = chartY + chartH - barH;
 
       uint16_t color;
-      if (i == bestIdx && rssi > CC1101Util::RSSI_THRESHOLD)    color = TFT_YELLOW;
+      if (i == bestIdx && rssi > CC1101Util::RSSI_THRESHOLD)     color = TFT_YELLOW;
       else if (rssi > CC1101Util::RSSI_THRESHOLD)                color = TFT_GREEN;
-      else if (rssi > kRssiFloor + 10)               color = 0x2945; // dim green
-      else                                            color = TFT_DARKGREY;
+      else if (rssi > kRssiFloor + 10)                           color = 0x2945;
+      else                                                       color = TFT_DARKGREY;
 
       if (barH > 0) sp.fillRect(x, y, barW - 1, barH, color);
     }
 
-    // Cursor line on current probe frequency
+    // Cursor
     for (uint8_t i = 0; i < n; i++) {
       if (fabsf(_rf.getScanFreqAt(i) - _rf.getScanFreq()) < 0.01f) {
         sp.drawFastVLine(i * barW + barW / 2, chartY, chartH, TFT_WHITE);
@@ -206,7 +226,7 @@ void SubGHzScreen::onRender() {
       }
     }
 
-    // Info text (top)
+    // Info
     sp.setTextDatum(ML_DATUM);
     sp.setTextColor(TFT_WHITE, TFT_BLACK);
     char freqBuf[20];
@@ -220,27 +240,16 @@ void SubGHzScreen::onRender() {
     sp.setTextColor(rssiColor, TFT_BLACK);
     sp.drawString(rssiBuf, bodyW() - 2, 7);
 
+    sp.setTextDatum(ML_DATUM);
     if (bestRssi > CC1101Util::RSSI_THRESHOLD) {
-      sp.setTextDatum(ML_DATUM);
       sp.setTextColor(TFT_YELLOW, TFT_BLACK);
       char bestBuf[28];
       snprintf(bestBuf, sizeof(bestBuf), "> %.3f MHz %ddBm", _rf.getScanFreqAt(bestIdx), bestRssi);
       sp.drawString(bestBuf, 2, 19);
     } else {
-      sp.setTextDatum(ML_DATUM);
       sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
       sp.drawString("No signal", 2, 19);
     }
-
-    // Footer
-    sp.setTextDatum(MC_DATUM);
-    sp.fillRect(0, bodyH() - footerH, bodyW(), footerH, Config.getThemeColor());
-    sp.setTextColor(TFT_WHITE, Config.getThemeColor());
-    #ifdef DEVICE_HAS_KEYBOARD
-      sp.drawString("BACK: Stop", bodyW() / 2, bodyH() - 8);
-    #else
-      sp.drawString("< Stop", bodyW() / 2, bodyH() - 8);
-    #endif
 
     sp.pushSprite(bodyX(), bodyY());
     sp.deleteSprite();
@@ -248,27 +257,27 @@ void SubGHzScreen::onRender() {
   }
 
   if (_state == STATE_JAMMING) {
-    Sprite sp(&Uni.Lcd);
-    sp.createSprite(bodyW(), bodyH());
-    sp.fillSprite(TFT_BLACK);
-    sp.setTextDatum(MC_DATUM);
-    sp.setTextSize(1);
+    // Fully static — paint once per state entry.
+    if (_chromeDrawn) return;
+    auto& lcd = Uni.Lcd;
+    lcd.fillRect(bodyX(), bodyY(), bodyW(), bodyH(), TFT_BLACK);
+    lcd.setTextDatum(MC_DATUM);
+    lcd.setTextSize(1);
+    lcd.setTextColor(TFT_WHITE, TFT_BLACK);
 
     char freqStr[16];
     snprintf(freqStr, sizeof(freqStr), "%.2f MHz", _rf.getFrequency());
-    sp.drawString(freqStr, bodyW() / 2, bodyH() / 2 - 20);
-    sp.drawString("Jamming...", bodyW() / 2, bodyH() / 2);
+    lcd.drawString(freqStr, bodyX() + bodyW() / 2, bodyY() + bodyH() / 2 - 20);
+    lcd.drawString("Jamming...", bodyX() + bodyW() / 2, bodyY() + bodyH() / 2);
 
     #ifdef DEVICE_HAS_KEYBOARD
-      sp.drawString("BACK: Stop", bodyW() / 2, bodyH() - 10);
+      lcd.drawString("BACK: Stop", bodyX() + bodyW() / 2, bodyY() + bodyH() - 10);
     #else
-      sp.fillRect(0, bodyH() - 16, bodyW(), 16, Config.getThemeColor());
-      sp.setTextColor(TFT_WHITE, Config.getThemeColor());
-      sp.drawString("< Stop", bodyW() / 2, bodyH() - 8);
+      lcd.fillRect(bodyX(), bodyY() + bodyH() - 16, bodyW(), 16, Config.getThemeColor());
+      lcd.setTextColor(TFT_WHITE, Config.getThemeColor());
+      lcd.drawString("< Stop", bodyX() + bodyW() / 2, bodyY() + bodyH() - 8);
     #endif
-
-    sp.pushSprite(bodyX(), bodyY());
-    sp.deleteSprite();
+    _chromeDrawn = true;
     return;
   }
 
@@ -326,6 +335,7 @@ void SubGHzScreen::onItemSelected(uint8_t index) {
         _capturedCount = 0;
         _lastRender = 0;
         _state = STATE_RECEIVING;
+        _chromeDrawn = false;
         snprintf(_titleBuf, sizeof(_titleBuf), "Sub-GHz RX (0/%d)", kMaxCapture);
         _rf.beginReceive();
         setItems(_capturedItems, 0);  // prime pointer once; _showReceiveList uses setCount after this
@@ -353,6 +363,7 @@ void SubGHzScreen::onItemSelected(uint8_t index) {
         }
         _rf.startTx();
         _state = STATE_JAMMING;
+        _chromeDrawn = false;
         _jamStart = millis();
         strcpy(_titleBuf, "Sub-GHz Jam");
         {
@@ -408,7 +419,8 @@ void SubGHzScreen::_sendBrowseFile(uint8_t index) {
     render();
     return;
   }
-  ProgressView::show(("Sending " + _browseNames[index]).c_str(), 50);
+  ProgressView::init();
+  ProgressView::progress(("Sending " + _browseNames[index]).c_str(), 50);
   _rf.sendSignal(sig);
   _rf.end();
   {
@@ -462,6 +474,7 @@ void SubGHzScreen::_showBrowseOptions(uint8_t index) {
 
 void SubGHzScreen::_showMenu() {
   _state = STATE_MENU;
+  _chromeDrawn = false;
   strcpy(_titleBuf, "Sub-GHz");
   _updateSublabels();
   setItems(_menuItems, kMenuCount);
@@ -488,6 +501,7 @@ void SubGHzScreen::_startScan() {
   _rfDetectFired = false;
   _rf.beginScan();
   _state = STATE_SCANNING;
+  _chromeDrawn = false;
   strcpy(_titleBuf, "Detect Freq");
   render();
 }
@@ -603,14 +617,15 @@ void SubGHzScreen::_sendCapturedSignal(uint8_t index) {
     render();
     return;
   }
-  if (!_rf.begin(Uni.Spi, _csPin, _gdo0Pin)) {
-    ShowStatusAction::show("CC1101 not found");
-    render();
-    return;
-  }
-  ProgressView::show(("Replaying " + _capturedTimes[index]).c_str(), 50);
+  // Replay flow: stop receive → init/send/end transfer → start receive.
+  // Chip is already initialised by STATE_RECEIVING. We must detach the RX
+  // ISR before TX or every pulse on GDO0 we drive for transmission would
+  // re-fire the receive interrupt (corrupts RX buffer + adds pulse jitter).
+  // The caller (onItemSelected STATE_RECEIVING) re-arms RX via beginReceive().
+  _rf.endReceive();
+  ProgressView::init();
+  ProgressView::progress(("Replaying " + _capturedTimes[index]).c_str(), 50);
   _rf.sendSignal(_capturedSignals[index]);
-  _rf.end();
   {
     int n = Achievement.inc("rf_send_first");
     if (n == 1) Achievement.unlock("rf_send_first");

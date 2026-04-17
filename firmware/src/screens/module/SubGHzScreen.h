@@ -32,6 +32,7 @@ private:
   int8_t _csPin   = -1;
   int8_t _gdo0Pin = -1;
   char _titleBuf[32] = "Sub-GHz";
+  bool _chromeDrawn = false;  // partial-redraw: static body painted once per state
 
   // Menu (5 items)
   static constexpr uint8_t kMenuCount = 5;
