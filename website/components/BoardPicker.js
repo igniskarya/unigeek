@@ -1,6 +1,8 @@
 "use client";
 
 const BoardPicker = ({ boards, selected, onSelect }) => {
+  const withIssues = boards.filter((b) => b.knownIssues?.length > 0);
+
   return (
     <div>
       <div className="install-step">
@@ -25,6 +27,23 @@ const BoardPicker = ({ boards, selected, onSelect }) => {
           ))}
         </div>
       </div>
+
+      {withIssues.length > 0 && (
+        <div className="install-step known-issues-section">
+          <div className="step-label">⚠ Known issues</div>
+          <ul className="known-issues-list">
+            {withIssues.map((board) => (
+              <li key={board.id}>
+                <span className="known-issues-board">{board.name}</span>
+                <span className="known-issues-sep">—</span>
+                <span className="known-issues-text">
+                  {board.knownIssues.join("; ")}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 };

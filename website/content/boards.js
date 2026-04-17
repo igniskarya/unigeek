@@ -5,6 +5,7 @@ export const BOARDS = [
     chip: "ESP32",
     tags: ["WiFi", "BLE", "NFC", "IR"],
     bin: "/firmware/unigeek-m5stickcplus_11.bin",
+    knownIssues: ["NRF24 module untested"],
   },
   {
     id: "m5stickcplus_2",
@@ -12,6 +13,7 @@ export const BOARDS = [
     chip: "ESP32",
     tags: ["WiFi", "BLE", "NFC", "IR", "Encoder"],
     bin: "/firmware/unigeek-m5stickcplus_2.bin",
+    knownIssues: ["NRF24 module untested"],
   },
   {
     id: "t_lora_pager",
@@ -68,6 +70,7 @@ export const BOARDS = [
     chip: "ESP32-S3",
     tags: ["WiFi", "BLE", "Speaker", "Touch", "USB HID"],
     bin: "/firmware/unigeek-m5_cores3_unified.bin",
+    knownIssues: ["SD card doesn't work properly"],
   },
   {
     id: "m5sticks3",
@@ -75,5 +78,6 @@ export const BOARDS = [
     chip: "ESP32-S3",
     tags: ["WiFi", "BLE", "IR", "Speaker", "USB HID"],
     bin: "/firmware/unigeek-m5sticks3.bin",
+    knownIssues: ["CC1101, NRF24, and internal IR untested"],
   },
 ];

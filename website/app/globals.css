@@ -144,6 +144,35 @@
   color: #999;
   text-transform: uppercase;
 }
+.known-issues-section {
+  margin-top: 28px;
+  padding: 14px 16px;
+  border: 1px dashed #b8860b;
+  background: rgba(184, 134, 11, 0.06);
+}
+.known-issues-section .step-label {
+  color: #d4a017;
+  margin-bottom: 8px;
+}
+.known-issues-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 0.85em;
+  color: #c9c9c9;
+}
+.known-issues-list li {
+  padding: 4px 0;
+}
+.known-issues-board {
+  color: #e8b84a;
+  font-weight: 600;
+  margin-right: 6px;
+}
+.known-issues-sep {
+  color: #666;
+  margin-right: 6px;
+}
 .flash-log {
   background: #0d0d0d;
   border: 1px solid #727272;
