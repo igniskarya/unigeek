@@ -280,6 +280,7 @@ void WifiCiwZeroclickScreen::_startBroadcast()
   _alertCount = 0;
   _alertHead = 0;
   _state = STATE_BROADCASTING;
+  _chromeDrawn = false;
 
   int nc = Achievement.inc("wifi_ciw_started");
   if (nc == 1) Achievement.unlock("wifi_ciw_started");
@@ -368,20 +369,48 @@ void WifiCiwZeroclickScreen::_tickBroadcast()
 
 void WifiCiwZeroclickScreen::_drawBroadcasting()
 {
-  Sprite sp(&Uni.Lcd);
-  sp.createSprite(bodyW(), bodyH());
-  sp.fillSprite(TFT_BLACK);
+  auto& lcd = Uni.Lcd;
 
-  int y = 4;
+#ifdef DEVICE_HAS_KEYBOARD
+  static constexpr int footerH = 14;
+#else
+  static constexpr int footerH = 16;
+#endif
+  static constexpr int rowH = 14;
+  const int contentY = bodyY() + 4;
+  const int contentH = bodyH() - footerH - 4;
+
+  if (!_chromeDrawn) {
+    lcd.fillRect(bodyX(), bodyY(), bodyW(), bodyH(), TFT_BLACK);
+#ifdef DEVICE_HAS_KEYBOARD
+    lcd.setTextDatum(BC_DATUM);
+    lcd.setTextColor(TFT_DARKGREY, TFT_BLACK);
+    lcd.drawString("BACK: Stop", bodyX() + bodyW() / 2, bodyY() + bodyH());
+#else
+    lcd.fillRect(bodyX(), bodyY() + bodyH() - footerH, bodyW(), footerH, Config.getThemeColor());
+    lcd.setTextDatum(BC_DATUM);
+    lcd.setTextColor(TFT_WHITE, Config.getThemeColor());
+    lcd.drawString("< Back", bodyX() + bodyW() / 2, bodyY() + bodyH() - 3);
+#endif
+    _chromeDrawn = true;
+  }
+
+  // Compose all dynamic text in one sprite covering the content area.
+  Sprite sp(&Uni.Lcd);
+  sp.createSprite(bodyW(), contentH);
+  sp.fillSprite(TFT_BLACK);
   sp.setTextDatum(TL_DATUM);
+  sp.setTextSize(1);
+
+  int y = 0;
   sp.setTextColor(TFT_GREEN, TFT_BLACK);
   sp.drawString("Broadcasting", 4, y);
-  y += 14;
+  y += rowH;
 
-  sp.setTextColor(TFT_WHITE, TFT_BLACK);
   if (!_active.empty()) {
     String ssid = String(_active[_currentIdx].ssid);
     if (ssid.length() > 28) ssid = ssid.substring(0, 25) + "...";
+    sp.setTextColor(TFT_WHITE, TFT_BLACK);
     sp.drawString(ssid.c_str(), 4, y);
     y += 12;
 
@@ -389,17 +418,16 @@ void WifiCiwZeroclickScreen::_drawBroadcasting()
     info += " [" + String(_catNames[_active[_currentIdx].cat]) + "]";
     sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
     sp.drawString(info.c_str(), 4, y);
-    y += 14;
+    y += rowH;
   }
 
   sp.setTextColor(TFT_YELLOW, TFT_BLACK);
   sp.drawString(("Dev:" + String(_deviceCount)).c_str(), 4, y);
-
   if (_alertCount > 0) {
     sp.setTextColor(TFT_RED, TFT_BLACK);
     sp.drawString(("Alert:" + String(_alertCount)).c_str(), bodyW() / 2, y);
   }
-  y += 14;
+  y += rowH;
 
   unsigned long elapsed = millis() - _lastRotation;
   if (elapsed < _rotationMs) {
@@ -408,17 +436,7 @@ void WifiCiwZeroclickScreen::_drawBroadcasting()
     sp.drawString(("Next: " + String(remaining) + "s").c_str(), 4, y);
   }
 
-  sp.setTextDatum(BC_DATUM);
-  sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
-  #ifdef DEVICE_HAS_KEYBOARD
-    sp.drawString("BACK: Stop", bodyW() / 2, bodyH());
-  #else
-    sp.fillRect(0, bodyH() - 16, bodyW(), 16, Config.getThemeColor());
-    sp.setTextColor(TFT_WHITE, Config.getThemeColor());
-    sp.drawString("< Back", bodyW() / 2, bodyH() - 8);
-  #endif
-
-  sp.pushSprite(bodyX(), bodyY());
+  sp.pushSprite(bodyX(), contentY);
   sp.deleteSprite();
 }
 

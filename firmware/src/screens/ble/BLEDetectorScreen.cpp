@@ -82,6 +82,7 @@ void BLEDetectorScreen::onUpdate()
     }
     if (dir == INavigation::DIR_UP && _scrollOffset > 0) {
       _scrollOffset--;
+      _chromeDrawn = false;
       render();
     }
     if (dir == INavigation::DIR_DOWN) {
@@ -89,6 +90,7 @@ void BLEDetectorScreen::onUpdate()
       int visible = bodyH() / 14;
       if (_scrollOffset + visible < total + 2) {
         _scrollOffset++;
+        _chromeDrawn = false;
         render();
       }
     }
@@ -300,19 +302,71 @@ void BLEDetectorScreen::_pushAlert(const char* type)
 
 void BLEDetectorScreen::_draw()
 {
-  Sprite sp(&Uni.Lcd);
-  sp.createSprite(bodyW(), bodyH());
-  sp.fillSprite(TFT_BLACK);
-  sp.setTextDatum(TL_DATUM);
+  auto& lcd = Uni.Lcd;
 
-  int y = 2;
+  static constexpr int rowH = 14;
+#ifdef DEVICE_HAS_KEYBOARD
+  static constexpr int footerH = 14;
+#else
+  static constexpr int footerH = 16;
+#endif
+  const int contentY = bodyY() + 2;
+  const int contentH = bodyH() - footerH - 2;
+  const int visibleRows = contentH / rowH;
+
+  if (!_chromeDrawn) {
+    lcd.fillRect(bodyX(), bodyY(), bodyW(), bodyH(), TFT_BLACK);
+#ifdef DEVICE_HAS_KEYBOARD
+    lcd.setTextDatum(BC_DATUM);
+    lcd.setTextColor(TFT_DARKGREY, TFT_BLACK);
+    lcd.drawString("BACK: Exit", bodyX() + bodyW() / 2, bodyY() + bodyH() - 2);
+#else
+    lcd.fillRect(bodyX(), bodyY() + bodyH() - footerH, bodyW(), footerH, Config.getThemeColor());
+    lcd.setTextDatum(BC_DATUM);
+    lcd.setTextColor(TFT_WHITE, Config.getThemeColor());
+    lcd.drawString("< Back", bodyX() + bodyW() / 2, bodyY() + bodyH() - 3);
+#endif
+    _chromeDrawn = true;
+  }
+
+  // Empty state — single centered sprite, clear surrounding rows.
+  if (_deviceCount == 0 && _alertCount == 0) {
+    const int spH = rowH;
+    const int spY = contentY + (contentH - spH) / 2;
+    Sprite sp(&Uni.Lcd);
+    sp.createSprite(bodyW(), spH);
+    sp.fillSprite(TFT_BLACK);
+    sp.setTextDatum(MC_DATUM);
+    sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
+    sp.drawString("Scanning...", bodyW() / 2, spH / 2);
+    sp.pushSprite(bodyX(), spY);
+    sp.deleteSprite();
+    if (spY > contentY)
+      lcd.fillRect(bodyX(), contentY, bodyW(), spY - contentY, TFT_BLACK);
+    int below = (contentY + contentH) - (spY + spH);
+    if (below > 0)
+      lcd.fillRect(bodyX(), spY + spH, bodyW(), below, TFT_BLACK);
+    return;
+  }
+
+  // Build list of rows in scroll order, then draw the visible window into a
+  // single content sprite. Per-row sprites would be cleaner but require a
+  // helper, and a single content sprite at bodyW × contentH stays well within
+  // RAM budget for this screen's content area (~ a few KB).
+  Sprite sp(&Uni.Lcd);
+  sp.createSprite(bodyW(), contentH);
+  sp.fillSprite(TFT_BLACK);
+  sp.setTextSize(1);
+
   int row = 0;
-  int visibleRows = bodyH() / 14;
+  int rowY = 0;
+  auto rowVisible = [&]() {
+    return row >= _scrollOffset && row < _scrollOffset + visibleRows;
+  };
+  auto advance = [&]() { rowY += rowH; };
 
   // Header: counts by type
-  if (row >= _scrollOffset && row < _scrollOffset + visibleRows) {
-    sp.setTextColor(TFT_CYAN, TFT_BLACK);
-    char hdr[64];
+  if (rowVisible()) {
     int flp = 0, skim = 0, atag = 0, bchat = 0;
     for (int i = 0; i < _deviceCount; i++) {
       if (strncmp(_devices[i].type, "Flipper", 7) == 0) flp++;
@@ -320,36 +374,30 @@ void BLEDetectorScreen::_draw()
       else if (strcmp(_devices[i].type, "AirTag") == 0) atag++;
       else if (strncmp(_devices[i].type, "BitChat", 7) == 0) bchat++;
     }
+    char hdr[64];
     snprintf(hdr, sizeof(hdr), "F:%d S:%d A:%d B:%d", flp, skim, atag, bchat);
-    sp.drawString(hdr, 2, y);
-    y += 14;
+    sp.setTextDatum(TL_DATUM);
+    sp.setTextColor(TFT_CYAN, TFT_BLACK);
+    sp.drawString(hdr, 2, rowY);
+    advance();
   }
   row++;
 
   // Device list
   for (int i = 0; i < _deviceCount; i++, row++) {
-    if (row < _scrollOffset) continue;
-    if (row >= _scrollOffset + visibleRows) break;
-
+    if (!rowVisible()) continue;
     auto& d = _devices[i];
 
-    // Color dot by type
     uint16_t dotColor = TFT_WHITE;
     if (strncmp(d.type, "Flipper", 7) == 0)
       dotColor = d.spoofed ? TFT_RED : TFT_GREEN;
-    else if (strcmp(d.type, "Skimmer") == 0)
-      dotColor = TFT_RED;
-    else if (strcmp(d.type, "AirTag") == 0)
-      dotColor = TFT_BLUE;
-    else if (strncmp(d.type, "BitChat", 7) == 0)
-      dotColor = TFT_MAGENTA;
-    sp.fillCircle(4, y + 3, 3, dotColor);
+    else if (strcmp(d.type, "Skimmer") == 0) dotColor = TFT_RED;
+    else if (strcmp(d.type, "AirTag")  == 0) dotColor = TFT_BLUE;
+    else if (strncmp(d.type, "BitChat", 7) == 0) dotColor = TFT_MAGENTA;
+    sp.fillCircle(4, rowY + 3, 3, dotColor);
 
-    // Name or type (truncated)
-    sp.setTextColor(TFT_WHITE, TFT_BLACK);
     char label[24];
     if (strcmp(d.type, "AirTag") == 0) {
-      // Show distance for AirTags
       char trend = '=';
       int delta = d.rssi - d.prevRssi;
       if (delta > 3) trend = '+';
@@ -358,67 +406,48 @@ void BLEDetectorScreen::_draw()
     } else {
       snprintf(label, sizeof(label), "%.12s", d.name);
     }
-    sp.drawString(label, 12, y);
+    sp.setTextDatum(TL_DATUM);
+    sp.setTextColor(TFT_WHITE, TFT_BLACK);
+    sp.drawString(label, 12, rowY);
 
-    // RSSI on right
-    sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
     char rssiStr[8];
     snprintf(rssiStr, sizeof(rssiStr), "%ddBm", d.rssi);
     sp.setTextDatum(TR_DATUM);
-    sp.drawString(rssiStr, bodyW() - 2, y);
-    sp.setTextDatum(TL_DATUM);
+    sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
+    sp.drawString(rssiStr, bodyW() - 2, rowY);
 
-    y += 14;
+    advance();
   }
 
   // Spam alerts section
   if (_alertCount > 0) {
-    if (row >= _scrollOffset && row < _scrollOffset + visibleRows) {
+    if (rowVisible()) {
+      sp.setTextDatum(TL_DATUM);
       sp.setTextColor(TFT_RED, TFT_BLACK);
-      sp.drawString("-- Spam Alerts --", 2, y);
-      y += 14;
+      sp.drawString("-- Spam Alerts --", 2, rowY);
+      advance();
     }
     row++;
 
     int shown = min(_alertCount, 5);
     for (int i = 0; i < shown; i++, row++) {
-      if (row < _scrollOffset) continue;
-      if (row >= _scrollOffset + visibleRows) break;
-
+      if (!rowVisible()) continue;
       int idx = (_alertHead - _alertCount + i + kMaxAlerts) % kMaxAlerts;
+      sp.setTextDatum(TL_DATUM);
       sp.setTextColor(TFT_YELLOW, TFT_BLACK);
-      sp.drawString(_alerts[idx].type, 4, y);
+      sp.drawString(_alerts[idx].type, 4, rowY);
 
       unsigned long ago = (millis() - _alerts[idx].timestamp) / 1000;
       char ageStr[8];
       snprintf(ageStr, sizeof(ageStr), "%lus", ago);
-      sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
       sp.setTextDatum(TR_DATUM);
-      sp.drawString(ageStr, bodyW() - 2, y);
-      sp.setTextDatum(TL_DATUM);
+      sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
+      sp.drawString(ageStr, bodyW() - 2, rowY);
 
-      y += 14;
+      advance();
     }
   }
 
-  // Empty state
-  if (_deviceCount == 0 && _alertCount == 0) {
-    sp.setTextDatum(MC_DATUM);
-    sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
-    sp.drawString("Scanning...", bodyW() / 2, bodyH() / 2);
-  }
-
-  // Footer
-  sp.setTextDatum(BC_DATUM);
-  sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
-  #ifdef DEVICE_HAS_KEYBOARD
-    sp.drawString("BACK: Exit", bodyW() / 2, bodyH() - 2);
-  #else
-    sp.fillRect(0, bodyH() - 16, bodyW(), 16, Config.getThemeColor());
-    sp.setTextColor(TFT_WHITE, Config.getThemeColor());
-    sp.drawString("< Back", bodyW() / 2, bodyH() - 3);
-  #endif
-
-  sp.pushSprite(bodyX(), bodyY());
+  sp.pushSprite(bodyX(), contentY);
   sp.deleteSprite();
 }

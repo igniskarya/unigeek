@@ -50,6 +50,7 @@ private:
 
   int _scrollOffset = 0;
   uint32_t _lastDrawMs = 0;
+  bool _chromeDrawn = false;
 
   void _startScan();
   void _stopScan();

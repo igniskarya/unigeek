@@ -38,6 +38,7 @@ private:
   int _currentIdx = 0;
   unsigned long _lastRotation = 0;
   uint32_t _lastDrawMs = 0;
+  bool _chromeDrawn = false;
 
   std::vector<Payload> _active;
   TrackedDevice _devices[30];
