@@ -25,6 +25,7 @@ private:
   unsigned long _apDeployTime    = 0;
   unsigned long _helloTimer      = 0;
   unsigned long _lastDraw        = 0;
+  bool          _chromeDrawn     = false;
 
   // Pending command (set in recv callback, executed in onUpdate — no WiFi ops in callback)
   enum PendingCmd : uint8_t { CMD_NONE = 0, CMD_DEPLOY, CMD_TEARDOWN, CMD_DONE };

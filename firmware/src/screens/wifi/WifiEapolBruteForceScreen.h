@@ -90,6 +90,8 @@ private:
   String   _pcapSub;
   String   _wordlistSub;
 
+  bool     _chromeDrawn = false;
+
   // ── Helpers ───────────────────────────────────────────────────────────────
   void _showMenu();
   bool _listFiles(const char* ext);

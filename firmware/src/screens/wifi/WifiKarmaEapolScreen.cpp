@@ -718,6 +718,7 @@ void WifiKarmaEapolScreen::_startPairScan()
   _pairDeviceCount = 0;
   _pairScanStart   = millis();
   _lastDraw        = 0;
+  _pairChromeDrawn = false;
 
   WiFi.mode(WIFI_STA);
   WiFi.disconnect();
@@ -741,11 +742,24 @@ void WifiKarmaEapolScreen::_startPairScan()
 
 void WifiKarmaEapolScreen::_drawPairScan()
 {
+  auto& lcd = Uni.Lcd;
+
+  if (!_pairChromeDrawn) {
+    lcd.fillRect(bodyX(), bodyY(), bodyW(), bodyH(), TFT_BLACK);
+    _pairChromeDrawn = true;
+  }
+
+  const int spH = (lcd.fontHeight() + 2) * 4 + 8;
+  const int cy  = bodyY() + bodyH() / 2;
+
   Sprite sp(&Uni.Lcd);
-  sp.createSprite(bodyW(), bodyH());
+  sp.createSprite(bodyW(), spH);
   sp.fillSprite(TFT_BLACK);
   sp.setTextSize(1);
   sp.setTextDatum(MC_DATUM);
+
+  const int cx = bodyW() / 2;
+  const int by = spH / 2;
 
   unsigned long elapsed   = millis() - _pairScanStart;
   int           remaining = (elapsed < PAIR_SCAN_MS)
@@ -755,33 +769,33 @@ void WifiKarmaEapolScreen::_drawPairScan()
   sp.setTextColor(TFT_WHITE, TFT_BLACK);
   char buf[32];
   snprintf(buf, sizeof(buf), "Scanning... %ds", remaining);
-  sp.drawString(buf, bodyW() / 2, bodyH() / 2 - 16);
+  sp.drawString(buf, cx, by - 16);
 
   if (_pairDeviceCount > 0) {
-    sp.setTextColor(TFT_GREEN);
+    sp.setTextColor(TFT_GREEN, TFT_BLACK);
     char devBuf[24];
     snprintf(devBuf, sizeof(devBuf), "%d device(s) found", _pairDeviceCount);
-    sp.drawString(devBuf, bodyW() / 2, bodyH() / 2);
+    sp.drawString(devBuf, cx, by);
 
-    sp.setTextColor(TFT_YELLOW);
+    sp.setTextColor(TFT_YELLOW, TFT_BLACK);
     char mac[18];
     snprintf(mac, sizeof(mac), "%02X:%02X:%02X:%02X:%02X:%02X",
              _pairDevices[0][0], _pairDevices[0][1], _pairDevices[0][2],
              _pairDevices[0][3], _pairDevices[0][4], _pairDevices[0][5]);
-    sp.drawString(mac, bodyW() / 2, bodyH() / 2 + 14);
+    sp.drawString(mac, cx, by + 14);
 
     if (_pairDeviceCount > 1) {
-      sp.setTextColor(TFT_CYAN);
+      sp.setTextColor(TFT_CYAN, TFT_BLACK);
       char moreBuf[16];
       snprintf(moreBuf, sizeof(moreBuf), "+%d more", _pairDeviceCount - 1);
-      sp.drawString(moreBuf, bodyW() / 2, bodyH() / 2 + 28);
+      sp.drawString(moreBuf, cx, by + 28);
     }
   } else {
-    sp.setTextColor(TFT_DARKGREY);
-    sp.drawString("Waiting for support devices...", bodyW() / 2, bodyH() / 2 + 14);
+    sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
+    sp.drawString("Waiting for support devices...", cx, by + 14);
   }
 
-  sp.pushSprite(bodyX(), bodyY());
+  sp.pushSprite(bodyX(), cy - spH / 2);
   sp.deleteSprite();
 }
 

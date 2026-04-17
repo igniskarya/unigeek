@@ -37,15 +37,19 @@ public:
     int maxVisible = logAreaH / lineH;
     int startIdx   = _count > maxVisible ? _count - maxVisible : 0;
 
-    // Draw each visible log line: clear the row first, then draw text.
+    // Draw each visible log line in a per-row sprite to avoid fill→text flicker.
     int rendered = 0;
-    lcd.setTextSize(1);
-    lcd.setTextDatum(TL_DATUM);
     for (int i = startIdx; i < _count; i++) {
       int rowY = y + (i - startIdx) * lineH;
-      lcd.fillRect(x, rowY, w, lineH, TFT_BLACK);
-      lcd.setTextColor(_colors[i], TFT_BLACK);
-      lcd.drawString(_lines[i], x + 2, rowY);
+      Sprite sp(&lcd);
+      sp.createSprite(w, lineH);
+      sp.fillSprite(TFT_BLACK);
+      sp.setTextSize(1);
+      sp.setTextDatum(TL_DATUM);
+      sp.setTextColor(_colors[i], TFT_BLACK);
+      sp.drawString(_lines[i], 2, 0);
+      sp.pushSprite(x, rowY);
+      sp.deleteSprite();
       rendered++;
     }
 

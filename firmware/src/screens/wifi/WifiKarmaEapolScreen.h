@@ -91,6 +91,7 @@ private:
   bool          _pairFound       = false;
   uint8_t       _pairDevices[MAX_PAIR_DEVICES][6] = {};
   int           _pairDeviceCount = 0;
+  bool          _pairChromeDrawn = false;
 
   // ACK wait
   bool          _waitingForAck = false;

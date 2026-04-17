@@ -98,59 +98,69 @@ void WifiKarmaSupportScreen::onUpdate()
 
 void WifiKarmaSupportScreen::onRender()
 {
+  auto& lcd = Uni.Lcd;
+
+  if (!_chromeDrawn) {
+    lcd.fillRect(bodyX(), bodyY(), bodyW(), bodyH(), TFT_BLACK);
+
+    uint8_t myMac[6];
+    esp_wifi_get_mac(WIFI_IF_STA, myMac);
+    char mac[12];
+    snprintf(mac, sizeof(mac), "%02X:%02X:%02X", myMac[3], myMac[4], myMac[5]);
+    lcd.setTextDatum(BR_DATUM);
+    lcd.setTextColor(TFT_DARKGREY, TFT_BLACK);
+    lcd.drawString(mac, bodyX() + bodyW() - 2, bodyY() + bodyH() - 2);
+
+#ifdef DEVICE_HAS_KEYBOARD
+    lcd.setTextDatum(BL_DATUM);
+    lcd.drawString("\\b exit", bodyX() + 2, bodyY() + bodyH() - 2);
+#endif
+
+    _chromeDrawn = true;
+  }
+
+  const int spH = (lcd.fontHeight() + 2) * 4 + 8;
+  const int cy  = bodyY() + bodyH() / 2;
+
   Sprite sp(&Uni.Lcd);
-  sp.createSprite(bodyW(), bodyH());
+  sp.createSprite(bodyW(), spH);
   sp.fillSprite(TFT_BLACK);
   sp.setTextDatum(MC_DATUM);
 
   const int cx = bodyW() / 2;
-  const int cy = bodyH() / 2;
+  const int by = spH / 2;
 
   switch (_supportState) {
 
     case STATE_WAITING_CONNECTION:
       sp.setTextColor(TFT_CYAN, TFT_BLACK);
-      sp.drawString("Waiting for", cx, cy - 8);
-      sp.drawString("connection...", cx, cy + 6);
+      sp.drawString("Waiting for", cx, by - 8);
+      sp.drawString("connection...", cx, by + 6);
       break;
 
     case STATE_WAITING_DEPLOY:
       sp.setTextColor(TFT_YELLOW, TFT_BLACK);
-      sp.drawString("Waiting for", cx, cy - 8);
-      sp.drawString("deploy...", cx, cy + 6);
+      sp.drawString("Waiting for", cx, by - 8);
+      sp.drawString("deploy...", cx, by + 6);
       break;
 
     case STATE_AP_ACTIVE: {
       sp.setTextColor(TFT_GREEN, TFT_BLACK);
-      sp.drawString("AP Active", cx, cy - 20);
+      sp.drawString("AP Active", cx, by - 20);
 
       sp.setTextColor(TFT_WHITE, TFT_BLACK);
-      sp.drawString(String(_currentSsid).substring(0, 22), cx, cy - 4);
+      sp.drawString(String(_currentSsid).substring(0, 22), cx, by - 4);
 
       unsigned long elapsed = (millis() - _apDeployTime) / 1000;
       char buf[12];
       snprintf(buf, sizeof(buf), "+%lus", elapsed);
       sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
-      sp.drawString(buf, cx, cy + 12);
+      sp.drawString(buf, cx, by + 12);
       break;
     }
   }
 
-  // Footer: own MAC (bottom-right)
-  uint8_t myMac[6];
-  esp_wifi_get_mac(WIFI_IF_STA, myMac);
-  char mac[12];
-  snprintf(mac, sizeof(mac), "%02X:%02X:%02X", myMac[3], myMac[4], myMac[5]);
-  sp.setTextDatum(BR_DATUM);
-  sp.setTextColor(TFT_DARKGREY, TFT_BLACK);
-  sp.drawString(mac, bodyW() - 2, bodyH() - 2);
-
-#ifdef DEVICE_HAS_KEYBOARD
-  sp.setTextDatum(BL_DATUM);
-  sp.drawString("\\b exit", 2, bodyH() - 2);
-#endif
-
-  sp.pushSprite(bodyX(), bodyY());
+  sp.pushSprite(bodyX(), cy - spH / 2);
   sp.deleteSprite();
 }
 
