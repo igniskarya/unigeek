@@ -52,6 +52,8 @@ public:
   void setSuppressKeys(bool s) { _suppressKeys = s; }
   bool suppressKeys() const    { return _suppressKeys; }
 
+  void setRightHand(bool v)  { _rightHand = v; }
+
   // Used by main.cpp when a press wakes the display from power save: clear any
   // pending release event and, if a press is currently in progress, drop its
   // future release so it never propagates as an action. The wake-up press only
@@ -63,6 +65,14 @@ public:
   }
 
 protected:
+  Direction orientDir(Direction d) const {
+    if (_rightHand) {
+      if (d == DIR_UP)   return DIR_DOWN;
+      if (d == DIR_DOWN) return DIR_UP;
+    }
+    return d;
+  }
+
   void updateState(Direction currentlyHeld) {
     uint32_t now = millis();
 
@@ -97,6 +107,7 @@ private:
   bool     _wasPressed      = false;
   bool     _suppressKeys    = false;
   bool     _suppressRelease = false;
+  bool     _rightHand       = false;
 
   uint32_t _pressStart   = 0;
   uint32_t _pressDuration = 0;

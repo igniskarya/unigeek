@@ -38,6 +38,8 @@
 #define APP_CONFIG_AGENT_TITLE_DEFAULT          ""
 #define APP_CONFIG_SHOW_OVERLAY                 "show_overlay"
 #define APP_CONFIG_SHOW_OVERLAY_DEFAULT         "1"
+#define APP_CONFIG_HAND_ORIENT                  "hand_orient"
+#define APP_CONFIG_HAND_ORIENT_DEFAULT          "left"
 
 class ConfigManager
 {

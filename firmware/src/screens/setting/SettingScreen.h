@@ -37,6 +37,9 @@ private:
 #ifdef DEVICE_HAS_NAV_MODE_SWITCH
     SETT_NAV_MODE,
 #endif
+#ifdef DEVICE_HAS_HAND_ORIENT
+    SETT_HAND_ORIENT,
+#endif
 #ifdef DEVICE_HAS_TOUCH_NAV
     SETT_TOUCH_GUIDE,
     SETT_OVERLAY,
@@ -66,6 +69,9 @@ private:
 #ifdef DEVICE_HAS_NAV_MODE_SWITCH
   String _navModeSub;
 #endif
+#ifdef DEVICE_HAS_HAND_ORIENT
+  String _handOrientSub;
+#endif
 #ifdef DEVICE_HAS_TOUCH_NAV
   String _overlaySub;
 #endif
@@ -89,6 +95,9 @@ private:
     {"Primary Color",    ""},
 #ifdef DEVICE_HAS_NAV_MODE_SWITCH
     {"Navigation Mode",  ""},
+#endif
+#ifdef DEVICE_HAS_HAND_ORIENT
+    {"Hand Orientation", ""},
 #endif
 #ifdef DEVICE_HAS_TOUCH_NAV
     {"Touch Guide"},

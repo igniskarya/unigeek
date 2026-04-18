@@ -5,6 +5,7 @@
 //
 
 #include "core/Device.h"
+#include "core/ConfigManager.h"
 #include "core/StorageLFS.h"
 #include "core/StorageSD.h"
 #include <SPI.h>
@@ -24,6 +25,14 @@ static StorageSD  _sd;
 // every SD operation. The pin is passed via Device::StorageDcPin, set by the
 // board's createInstance() before initStorage() is called.
 //
+void Device::applyOrientation() {
+#ifdef DEVICE_HAS_HAND_ORIENT
+  bool right = Config.get(APP_CONFIG_HAND_ORIENT, APP_CONFIG_HAND_ORIENT_DEFAULT) == "right";
+  Lcd.setRotation(right ? (TFT_DEFAULT_ORIENTATION + 2) % 4 : TFT_DEFAULT_ORIENTATION);
+  Nav->setRightHand(right);
+#endif
+}
+
 void Device::initStorage() {
   // ── SD card (primary) ────────────────────────────────────────────────────
 #ifdef SD_CS

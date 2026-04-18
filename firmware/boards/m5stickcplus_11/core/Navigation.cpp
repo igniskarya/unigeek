@@ -40,7 +40,7 @@ void NavigationImpl::update() {
   } else {
     if (btnBPressMs != 0 && !btnBLong) {
       btnBPressMs = 0;
-      updateState(INavigation::DIR_DOWN);
+      updateState(orientDir(INavigation::DIR_DOWN));
       return;
     }
     btnBPressMs = 0;
@@ -49,7 +49,7 @@ void NavigationImpl::update() {
 
   // AXP power button → UP
   if (_axp->GetBtnPress()) {
-    updateState(INavigation::DIR_UP);
+    updateState(orientDir(INavigation::DIR_UP));
     return;
   }
 

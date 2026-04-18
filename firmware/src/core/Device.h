@@ -64,6 +64,7 @@ public:
   }
 
   virtual void applyNavMode();    // board override: switch nav based on APP_CONFIG_NAV_MODE
+  void applyOrientation();        // apply hand orientation: rotate screen + flip UP/DOWN
 
   IDisplay& Lcd;
   IPower& Power;

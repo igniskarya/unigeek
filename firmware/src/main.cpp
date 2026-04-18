@@ -19,6 +19,8 @@ void _bootSplash() {
   // ── Pre-draw init (config needed for theme colour) ────────────────────────
   Config.load(Uni.Storage);
   PinConfig.load(Uni.Storage);
+  Uni.applyOrientation();   // rotate screen + flip nav before any drawing
+  Uni.Lcd.setBrightness((uint8_t)Config.get(APP_CONFIG_BRIGHTNESS, APP_CONFIG_BRIGHTNESS_DEFAULT).toInt());
 
   // ── Static UI ─────────────────────────────────────────────────────────────
   auto& lcd = Uni.Lcd;
@@ -69,7 +71,6 @@ void _bootSplash() {
   progress(90, "System ready");
   delay(300);
 
-  Uni.Lcd.setBrightness((uint8_t)Config.get(APP_CONFIG_BRIGHTNESS, APP_CONFIG_BRIGHTNESS_DEFAULT).toInt());
   if (Uni.Speaker) Uni.Speaker->setVolume((uint8_t)Config.get(APP_CONFIG_VOLUME, APP_CONFIG_VOLUME_DEFAULT).toInt());
   if (Uni.Speaker) Uni.Speaker->playWin();
   progress(100, "Starting...");

@@ -41,7 +41,7 @@ void NavigationImpl::update() {
   } else {
     if (btnBPressMs != 0 && !btnBLong) {
       btnBPressMs = 0;
-      updateState(INavigation::DIR_DOWN);
+      updateState(orientDir(INavigation::DIR_DOWN));
       return;
     }
     btnBPressMs = 0;
@@ -50,7 +50,7 @@ void NavigationImpl::update() {
 
   // BTN_UP → UP
   if (digitalRead(BTN_UP) == LOW) {
-    updateState(INavigation::DIR_UP);
+    updateState(orientDir(INavigation::DIR_UP));
     return;
   }
 
