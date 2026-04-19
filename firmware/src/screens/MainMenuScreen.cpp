@@ -130,56 +130,73 @@ void MainMenuScreen::onUpdate() {
 
 void MainMenuScreen::onRender() {
   constexpr uint8_t eff = ITEM_COUNT;
-
   auto& lcd = Uni.Lcd;
 
-  uint8_t renderedRows = 0;
-  for (uint8_t r = 0; r < _visibleRows; r++) {
-    uint8_t rowIdx = r + _scrollOffset;
-    if (rowIdx >= _rows) break;
+  int16_t leftover = (int16_t)bodyH() - _visibleRows * (int16_t)_itemH;
+  bool hasPartial  = leftover >= 5;
 
+  auto renderRow = [&](uint8_t rowIdx, int16_t screenY, int16_t rowH, int16_t dy) {
     uint8_t renderedCols = 0;
     for (uint8_t c = 0; c < _cols; c++) {
       uint8_t idx = rowIdx * _cols + c;
       if (idx >= eff) break;
 
       const GridItem* item = &_items[idx];
-
-      bool selected = (idx == _selectedIndex);
-
-      uint16_t bg = selected ? Config.getThemeColor() : TFT_BLACK;
-      uint16_t fg = selected ? TFT_WHITE : TFT_LIGHTGREY;
+      bool     sel = (idx == _selectedIndex);
+      uint16_t bg  = sel ? Config.getThemeColor() : TFT_BLACK;
+      uint16_t fg  = sel ? TFT_WHITE : TFT_LIGHTGREY;
 
       Sprite sprite(&lcd);
-      sprite.createSprite(_itemW, _itemH);
+      sprite.createSprite(_itemW, rowH);
       sprite.fillSprite(TFT_BLACK);
       sprite.setTextDatum(TC_DATUM);
 
-      if (selected) {
-        sprite.fillRoundRect(1, 1, _itemW - 2, _itemH - 2, 3, bg);
-      }
-
-      item->drawIcon(sprite, (_itemW - 24) / 2, 5, fg);
-
+      if (sel) sprite.fillRoundRect(1, 1 + dy, _itemW - 2, _itemH - 2, 3, bg);
+      item->drawIcon(sprite, (_itemW - 24) / 2, 5 + dy, fg);
       sprite.setTextColor(fg, bg);
-      sprite.drawString(item->label, _itemW / 2, 32);
+      sprite.drawString(item->label, _itemW / 2, 32 + dy);
 
-      sprite.pushSprite(bodyX() + c * _itemW, bodyY() + r * _itemH);
+      sprite.pushSprite(bodyX() + c * _itemW, bodyY() + screenY);
       sprite.deleteSprite();
       renderedCols++;
     }
+    if (renderedCols < _cols)
+      lcd.fillRect(bodyX() + renderedCols * _itemW, bodyY() + screenY,
+                   bodyW() - renderedCols * _itemW, rowH, TFT_BLACK);
+  };
 
-    // Clear any unused cells at the end of this row (partial last row).
-    if (renderedCols < _cols) {
-      int16_t clearX = bodyX() + renderedCols * _itemW;
-      lcd.fillRect(clearX, bodyY() + r * _itemH, bodyW() - renderedCols * _itemW, _itemH, TFT_BLACK);
-    }
-    renderedRows++;
+  int16_t curY  = 0;
+  int16_t usedH = 0;
+
+  bool showPartialTop = hasPartial && _scrollOffset > 0;
+
+  // Scrolled down: show bottom `leftover` px of row above, top clipped.
+  if (showPartialTop) {
+    int16_t dy = -(int16_t)(_itemH - leftover);
+    renderRow(_scrollOffset - 1, 0, leftover, dy);
+    curY = leftover;
   }
 
-  // Clear unused rows below the last rendered row.
-  int16_t usedH = renderedRows * _itemH;
-  if (usedH < bodyH())
+  // Full rows.
+  uint8_t renderedRows = 0;
+  for (uint8_t r = 0; r < _visibleRows; r++) {
+    uint8_t rowIdx = r + _scrollOffset;
+    if (rowIdx >= _rows) break;
+    renderRow(rowIdx, curY + r * _itemH, _itemH, 0);
+    renderedRows++;
+  }
+  usedH = curY + renderedRows * _itemH;
+
+  // Peek of next row at bottom (when no partial top is shown).
+  if (hasPartial && !showPartialTop) {
+    uint8_t rowIdx = _scrollOffset + renderedRows;
+    if (rowIdx < _rows) {
+      renderRow(rowIdx, usedH, leftover, 0);
+      usedH += leftover;
+    }
+  }
+
+  if (usedH < (int16_t)bodyH())
     lcd.fillRect(bodyX(), bodyY() + usedH, bodyW(), bodyH() - usedH, TFT_BLACK);
 }
 
