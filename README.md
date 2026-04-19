@@ -23,9 +23,7 @@ Multi-tool firmware for ESP32-based handheld devices. Built with PlatformIO + Ar
 
 ### Known issues
 
-- **M5StickC Plus 1.1 / 2** — NRF24 module untested.
 - **M5StickC S3** — CC1101, NRF24, and internal IR untested.
-- **M5Stack CoreS3 (Unified)** — SD card doesn't work properly.
 - **CYD 2432W328R** — newly released, most external modules untested.
 
 ---
@@ -322,9 +320,8 @@ This project was built with inspiration and reference from:
 ## TODO
 
 - LoRa
+- ST25 nfc implementation for lora https://github.com/m5stack/M5Unit-NFC
 - easier input action for touch screen
-- cores3 sdcard isn't perfect, need to have workaround when screen render upon file save.
-- add option left or right handed on all m5stick boards.
 - sticks3 ir doesn't work, need to investigate
 - implement thermal camera
 - change keyboard to HID instead, mode will be USB and BLE, while BLE and USB only have Keyboard, Mouse and Jiggle Mouse, USB has 1 more option is Mass Storage.

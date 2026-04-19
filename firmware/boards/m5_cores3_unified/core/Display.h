@@ -3,8 +3,9 @@
 // Inherits lgfx::LGFX_Device via IDisplay; no M5GFX auto-detection.
 // LCD reset is handled by M5Unified (via AW9523B) before display.init().
 // Backlight is set via M5.Display.setBrightness() (routes through AXP2101 DLDO1).
-// SPI bus shared with SD card (bus_shared=true); Arduino SPI.begin() inits SPI2
-// first (Device::createInstance), then M5.begin() and our Bus_SPI both attach.
+// SPI bus shared with SD card (bus_shared=true); M5.begin() inits SPI2 first,
+// then our Bus_SPI attaches. SPI.begin() runs in initStorage() (after this init)
+// so spiAttachMISO(GPIO35) restores the input buffer after our gpio_set_direction(OUTPUT).
 //
 
 #pragma once

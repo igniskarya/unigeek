@@ -68,7 +68,6 @@ export const BOARDS = [
     chip: "ESP32-S3",
     tags: ["WiFi", "BLE", "Touch", "USB HID"],
     bin: "/firmware/unigeek-m5_cores3_unified.bin",
-    knownIssues: ["SD card doesn't work properly"],
   },
   {
     id: "m5sticks3",

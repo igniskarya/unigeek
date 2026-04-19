@@ -1,12 +1,13 @@
 //
 // M5Stack CoreS3 (M5Unified) — Device factory.
 // Init order:
-//   1. SPI.begin()     — Arduino SPI claims SPI2 with MISO=35 BEFORE M5.begin().
-//                        M5.Display Bus_SPI attaches to the existing bus (ESP_ERR_INVALID_STATE ok).
-//   2. M5.begin()      — inits AXP2101, AW9523B, FT6336U, AW88298.
-//   3. Lcd.begin()     — DisplayImpl Bus_SPI likewise attaches to SPI2 (bus_shared=true).
-//   4. initStorage()   — SD.begin() uses the SPI2 handle; StorageDcPin=35 handles
-//                        the GPIO35 DC/MISO dual role around every SD operation.
+//   1. M5.begin()      — inits AXP2101, AW9523B, FT6336U, AW88298, Bus_SPI (DC=GPIO35 OUTPUT).
+//   2. Lcd.begin()     — DisplayImpl Bus_SPI attaches to existing SPI2 (bus_shared=true, DC=GPIO35).
+//   3. initStorage()   — SPI.begin() runs here for the FIRST time (SPIClass._spi==null),
+//                        so spiAttachMISO(GPIO35) runs AFTER Lcd.begin()'s gpio_set_direction(OUTPUT).
+//                        This re-enables the input buffer on GPIO35.
+//                        StorageDcPin=TFT_DC — GuardedSdFs calls spiAttachMISO
+//                        before every SD op (see createInstance comment below).
 //
 
 #include "core/Device.h"
@@ -32,19 +33,18 @@ void Device::boardHook() {
 Device* Device::createInstance() {
   if (psramFound()) heap_caps_malloc_extmem_enable(0);
 
-  // Claim SPI2 with MISO=35 BEFORE M5.begin() so M5.Display Bus_SPI finds the
-  // bus already initialised (ESP_ERR_INVALID_STATE handled gracefully by LGFX).
-  // Without this, M5.begin() claims SPI2 without MISO and GPIO35 cannot be
-  // re-routed as MISO afterwards — SD reads then fail.
-  SPI.begin(SPI_SCK_PIN, SPI_MISO_PIN, SPI_MOSI_PIN, -1);
   M5.begin(M5.config());
-
-  // Storage init deferred to Device::initStorage() — called after Lcd.begin()
-  // so the Bus_SPI handle exists before any SPI sharing with SD.
-  // StorageDcPin = SPI_MISO_PIN (GPIO35) because DC and MISO share the same pin.
+  // SPI.begin() intentionally NOT called here.
+  // initStorage() calls it after Lcd.begin(), ensuring spiAttachMISO(GPIO35)
+  // runs last and leaves the input buffer enabled for FatFS MISO reads.
 
   auto* dev = new Device(display, power, &navigation, nullptr, nullptr, &speaker);
-  dev->StorageDcPin = SPI_MISO_PIN;
+  // StorageDcPin = TFT_DC (GPIO35): GuardedSdFs calls spiAttachMISO before
+  // every SD op, restoring the GPIO matrix MISO routing that
+  // Bus_SPI::beginTransaction() clears (via gpio_pad_select_gpio) whenever it
+  // detects an APB clock change (e.g. WiFi power management). Without this,
+  // a single LGFX draw after a WiFi-induced APB change permanently breaks MISO.
+  dev->StorageDcPin = TFT_DC;
   // M5Unified owns the internal I2C bus (AXP2101 + FT6336U + AW9523B on
   // I2C_NUM_1, pins 12/11) via its ESP-IDF driver — exposing &Wire1 here would
   // collide with that driver. Only expose Grove (Ex_I2C, pins 2/1) as &Wire;
