@@ -157,7 +157,7 @@ void SettingScreen::onItemSelected(uint8_t index) {
     case SETT_VOLUME: {
       int cur    = Config.get(APP_CONFIG_VOLUME, APP_CONFIG_VOLUME_DEFAULT).toInt();
       int result = InputNumberAction::popup("Volume %", 0, 100, cur);
-      if (result != 0 || cur != 0) {
+      if (!InputNumberAction::wasCancelled()) {
         Config.set(APP_CONFIG_VOLUME, String(result));
         Config.save(Uni.Storage);
         if (Uni.Speaker) Uni.Speaker->setVolume((uint8_t)result);

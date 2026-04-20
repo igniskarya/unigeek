@@ -89,21 +89,25 @@ void PinSettingScreen::onItemSelected(uint8_t index) {
     case PIN_GPS_TX: {
       int cur = PinConfig.getInt(PIN_CONFIG_GPS_TX, PIN_CONFIG_GPS_TX_DEFAULT);
       int val = InputNumberAction::popup("GPS TX Pin", 0, 48, cur);
-      PinConfig.set(PIN_CONFIG_GPS_TX, String(val));
-      PinConfig.save(Uni.Storage);
+      if (!InputNumberAction::wasCancelled()) {
+        PinConfig.set(PIN_CONFIG_GPS_TX, String(val));
+        PinConfig.save(Uni.Storage);
+      }
       break;
     }
     case PIN_GPS_RX: {
       int cur = PinConfig.getInt(PIN_CONFIG_GPS_RX, PIN_CONFIG_GPS_RX_DEFAULT);
       int val = InputNumberAction::popup("GPS RX Pin", 0, 48, cur);
-      PinConfig.set(PIN_CONFIG_GPS_RX, String(val));
-      PinConfig.save(Uni.Storage);
+      if (!InputNumberAction::wasCancelled()) {
+        PinConfig.set(PIN_CONFIG_GPS_RX, String(val));
+        PinConfig.save(Uni.Storage);
+      }
       break;
     }
     case PIN_GPS_BAUD: {
       int cur = PinConfig.getInt(PIN_CONFIG_GPS_BAUD, PIN_CONFIG_GPS_BAUD_DEFAULT);
       int val = InputNumberAction::popup("GPS Baud Rate", 300, 115200, cur);
-      if (val > 0) {
+      if (!InputNumberAction::wasCancelled()) {
         PinConfig.set(PIN_CONFIG_GPS_BAUD, String(val));
         PinConfig.save(Uni.Storage);
       }
@@ -112,21 +116,25 @@ void PinSettingScreen::onItemSelected(uint8_t index) {
     case PIN_EXT_SDA: {
       int cur = PinConfig.getInt(PIN_CONFIG_EXT_SDA, PIN_CONFIG_EXT_SDA_DEFAULT);
       int val = InputNumberAction::popup("External SDA Pin", 0, 48, cur);
-      PinConfig.set(PIN_CONFIG_EXT_SDA, String(val));
-      PinConfig.save(Uni.Storage);
+      if (!InputNumberAction::wasCancelled()) {
+        PinConfig.set(PIN_CONFIG_EXT_SDA, String(val));
+        PinConfig.save(Uni.Storage);
+      }
       break;
     }
     case PIN_EXT_SCL: {
       int cur = PinConfig.getInt(PIN_CONFIG_EXT_SCL, PIN_CONFIG_EXT_SCL_DEFAULT);
       int val = InputNumberAction::popup("External SCL Pin", 0, 48, cur);
-      PinConfig.set(PIN_CONFIG_EXT_SCL, String(val));
-      PinConfig.save(Uni.Storage);
+      if (!InputNumberAction::wasCancelled()) {
+        PinConfig.set(PIN_CONFIG_EXT_SCL, String(val));
+        PinConfig.save(Uni.Storage);
+      }
       break;
     }
     case PIN_CC1101_CS: {
       int cur = PinConfig.getInt(PIN_CONFIG_CC1101_CS, PIN_CONFIG_CC1101_CS_DEFAULT);
       int val = InputNumberAction::popup("CC1101 CS Pin", 0, 48, cur);
-      if (val >= 0) {
+      if (!InputNumberAction::wasCancelled()) {
         PinConfig.set(PIN_CONFIG_CC1101_CS, String(val));
         PinConfig.save(Uni.Storage);
       }
@@ -135,7 +143,7 @@ void PinSettingScreen::onItemSelected(uint8_t index) {
     case PIN_CC1101_GDO0: {
       int cur = PinConfig.getInt(PIN_CONFIG_CC1101_GDO0, PIN_CONFIG_CC1101_GDO0_DEFAULT);
       int val = InputNumberAction::popup("CC1101 GDO0 Pin", 0, 48, cur);
-      if (val >= 0) {
+      if (!InputNumberAction::wasCancelled()) {
         PinConfig.set(PIN_CONFIG_CC1101_GDO0, String(val));
         PinConfig.save(Uni.Storage);
       }
@@ -144,7 +152,7 @@ void PinSettingScreen::onItemSelected(uint8_t index) {
     case PIN_NRF24_CE: {
       int cur = PinConfig.getInt(PIN_CONFIG_NRF24_CE, PIN_CONFIG_NRF24_CE_DEFAULT);
       int val = InputNumberAction::popup("NRF24 CE Pin", 0, 48, cur);
-      if (val >= 0) {
+      if (!InputNumberAction::wasCancelled()) {
         PinConfig.set(PIN_CONFIG_NRF24_CE, String(val));
         PinConfig.save(Uni.Storage);
       }
@@ -153,7 +161,7 @@ void PinSettingScreen::onItemSelected(uint8_t index) {
     case PIN_NRF24_CSN: {
       int cur = PinConfig.getInt(PIN_CONFIG_NRF24_CSN, PIN_CONFIG_NRF24_CSN_DEFAULT);
       int val = InputNumberAction::popup("NRF24 CSN Pin", 0, 48, cur);
-      if (val >= 0) {
+      if (!InputNumberAction::wasCancelled()) {
         PinConfig.set(PIN_CONFIG_NRF24_CSN, String(val));
         PinConfig.save(Uni.Storage);
       }

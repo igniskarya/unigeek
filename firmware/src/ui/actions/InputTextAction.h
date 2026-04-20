@@ -13,9 +13,12 @@ public:
   static String popup(const char* title, const String& defaultValue = "", bool numberMode = false) {
     InputTextAction action(title, defaultValue, numberMode);
     String result = action._run();
+    _lastCancelled = action._cancelled;
     Uni.lastActiveMs = millis();
     return result;
   }
+
+  static bool wasCancelled() { return _lastCancelled; }
 
 private:
   enum Special {
@@ -71,6 +74,8 @@ private:
 
   bool        _cursorVisible  = true;
   uint32_t    _lastBlinkTime  = 0;
+
+  inline static bool _lastCancelled = false;
 
   explicit InputTextAction(const char* title, const String& defaultValue, bool numberMode)
   : _title(title), _input(defaultValue), _numberMode(numberMode)
@@ -177,6 +182,8 @@ private:
             cursorOn  = true;
             lastBlink = millis();
             _drawInputKeyboard(true);
+          } else {
+            _cancelled = true;
           }
         } else if (c != '\0') {
           if (!_numberMode || isdigit(c) || c == '.') {
@@ -295,6 +302,11 @@ private:
           }
           break;
         }
+
+        case INavigation::DIR_BACK:
+          _commitTap();
+          _cancelled = true;
+          break;
 
         default: break;
         }

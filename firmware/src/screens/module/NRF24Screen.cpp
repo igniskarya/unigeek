@@ -238,11 +238,11 @@ void NRF24Screen::onItemSelected(uint8_t index) {
       // CH Hopper — collect config via popups then start
       _radioEnd();
       int start = InputNumberAction::popup("Start CH (0-124)", 0, 124, 0);
-      if (start < 0) start = 0;
+      if (InputNumberAction::wasCancelled()) { _radioBegin(); render(); return; }
       int stop  = InputNumberAction::popup("Stop CH (0-124)",  0, 124, 80);
-      if (stop  < 0) stop  = 80;
+      if (InputNumberAction::wasCancelled()) { _radioBegin(); render(); return; }
       int step  = InputNumberAction::popup("Step (1-10)",      1, 10,  2);
-      if (step  < 1) step  = 2;
+      if (InputNumberAction::wasCancelled()) { _radioBegin(); render(); return; }
       _radioBegin();
       _hopStart    = start;
       _hopStop     = stop;

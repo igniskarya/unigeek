@@ -95,7 +95,7 @@ void CctvSnifferScreen::onItemSelected(uint8_t index)
         }
         case 1: { // Password
           String p = InputTextAction::popup("Password", _password);
-          _password = p;
+          if (!InputTextAction::wasCancelled()) _password = p;
           _showCameraMenu(_selectedCamera);
           break;
         }

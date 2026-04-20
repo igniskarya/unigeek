@@ -132,6 +132,7 @@ void WifiAPScreen::onItemSelected(uint8_t index)
     case 1: { // Password
       String pwd = InputTextAction::popup("Password", Config.get(APP_CONFIG_WIFI_AP_PASSWORD, APP_CONFIG_WIFI_AP_PASSWORD_DEFAULT));
       render();
+      if (InputTextAction::wasCancelled()) { render(); return; }
       if (pwd.length() > 0 && pwd.length() < 8) {
         ShowStatusAction::show("Min 8 chars or empty for open", 1500);
         render();

@@ -528,7 +528,7 @@ void SubGHzScreen::_selectFrequency() {
   float mhz;
   if (strcmp(choice, "custom") == 0) {
     int val = InputNumberAction::popup("MHz (280-928)", 280, 928, (int)_rf.getFrequency());
-    if (val < 0) { render(); return; }
+    if (InputNumberAction::wasCancelled()) { render(); return; }
     mhz = (float)val;
   } else {
     mhz = atof(choice);
