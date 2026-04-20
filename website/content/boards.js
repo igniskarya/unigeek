@@ -51,7 +51,7 @@ export const BOARDS = [
     chip: "ESP32-S3",
     tags: ["WiFi", "BLE", "IR", "USB HID"],
     bin: "/firmware/unigeek-m5sticks3.bin",
-    knownIssues: ["CC1101, NRF24, and internal IR untested"],
+    knownIssues: ["CC1101 and NRF24 untested", "IR receive not functional — RMT conflict with ES8311 speaker; IR transmit works normally"],
     nav: [
       ["Buttons", [
         { input: "BTN_A — front button", action: "Select" },

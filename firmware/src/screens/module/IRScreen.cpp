@@ -4,6 +4,20 @@
 
 #include "IRScreen.h"
 
+#if defined(DEVICE_M5STICK_S3)
+#include <M5PM1.h>
+#include <Wire.h>
+extern M5PM1 pm1;
+static void _irAmpEnable(bool on) {
+  // Class-D amp enable via M5PM1 GPIO3
+  pm1.gpioSet(M5PM1_GPIO_NUM_3, M5PM1_GPIO_MODE_OUTPUT, on ? 1 : 0,
+              M5PM1_GPIO_PULL_NONE, M5PM1_GPIO_DRIVE_PUSHPULL);
+}
+static void _irBoostSet(bool on) {
+  pm1.setBoostEnable(on);
+}
+#endif
+
 #include "core/AchievementManager.h"
 #include "core/Device.h"
 #include "core/IStorage.h"
@@ -34,6 +48,10 @@ void IRScreen::_updatePinSublabels() {
 void IRScreen::_showMenu() {
   _state = STATE_MENU;
   _ir.end();
+  #if defined(DEVICE_M5STICK_S3)
+  _irBoostSet(false);
+  _irAmpEnable(true);
+  #endif
   strncpy(_titleBuf, "IR Remote", sizeof(_titleBuf));
   _updatePinSublabels();
   setItems(_menuItems);
@@ -123,18 +141,22 @@ void IRScreen::onItemSelected(uint8_t index) {
     switch (index) {
       case 0: { // TX Pin
         int pin = InputNumberAction::popup("TX Pin", -1, 48, _txPin);
-        _txPin = (int8_t)pin;
-        PinConfig.set(PIN_CONFIG_IR_TX, String(_txPin));
-        PinConfig.save(Uni.Storage);
+        if (!InputNumberAction::wasCancelled()) {
+          _txPin = (int8_t)pin;
+          PinConfig.set(PIN_CONFIG_IR_TX, String(_txPin));
+          PinConfig.save(Uni.Storage);
+        }
         _updatePinSublabels();
         render();
         break;
       }
       case 1: { // RX Pin
         int pin = InputNumberAction::popup("RX Pin", -1, 48, _rxPin);
-        _rxPin = (int8_t)pin;
-        PinConfig.set(PIN_CONFIG_IR_RX, String(_rxPin));
-        PinConfig.save(Uni.Storage);
+        if (!InputNumberAction::wasCancelled()) {
+          _rxPin = (int8_t)pin;
+          PinConfig.set(PIN_CONFIG_IR_RX, String(_rxPin));
+          PinConfig.save(Uni.Storage);
+        }
         _updatePinSublabels();
         render();
         break;
@@ -145,6 +167,16 @@ void IRScreen::onItemSelected(uint8_t index) {
           render();
           return;
         }
+        #if defined(DEVICE_M5STICK_S3)
+        if (_rxPin == IR_RX_PIN || _txPin == IR_TX_PIN) {
+          _irBoostSet(true);
+          if (_rxPin == IR_RX_PIN)
+          {
+            _irAmpEnable(false);
+            ShowStatusAction::show("Starting...", 2000);
+          }
+        }
+        #endif
         _ir.beginRx(_rxPin);
         if (_txPin >= 0) _ir.beginTx(_txPin);
         _capturedCount = 0;
@@ -158,6 +190,9 @@ void IRScreen::onItemSelected(uint8_t index) {
           render();
           return;
         }
+        #if defined(DEVICE_M5STICK_S3)
+        if (_txPin == IR_TX_PIN) _irBoostSet(true);
+        #endif
         _ir.beginTx(_txPin);
         Uni.Storage->makeDir(kRootPath);
         _loadBrowseDir(kRootPath);
@@ -178,6 +213,9 @@ void IRScreen::onItemSelected(uint8_t index) {
         if (!sel) { render(); return; }
         render();
 
+        #if defined(DEVICE_M5STICK_S3)
+        if (_txPin == IR_TX_PIN) _irBoostSet(true);
+        #endif
         _ir.beginTx(_txPin);
         _tvbCancelled = false;
         _activeInstance = this;
@@ -341,6 +379,9 @@ void IRScreen::_onRecvItemAction(uint8_t index) {
     if (_txPin < 0) {
       ShowStatusAction::show("Set TX pin first");
     } else {
+      #if defined(DEVICE_M5STICK_S3)
+      if (_txPin == IR_TX_PIN) _irBoostSet(true);
+      #endif
       _ir.beginTx(_txPin);
       ShowStatusAction::show("Sending...", 0);
       _ir.sendSignal(_captured[index]);
