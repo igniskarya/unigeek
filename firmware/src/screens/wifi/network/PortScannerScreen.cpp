@@ -23,11 +23,12 @@ void PortScannerScreen::onBack() {
 void PortScannerScreen::onItemSelected(uint8_t index) {
   if (_state == STATE_INPUT) {
     switch (index) {
-      case 0:
+      case 0: {
         String ip = InputTextAction::popup("Target IP", _targetIp.c_str(), true);
         if (!InputTextAction::wasCancelled()) _targetIp = ip;
         _showInput();
         break;
+      }
       case 1:
         _scan();
         break;

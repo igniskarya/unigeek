@@ -181,6 +181,8 @@ Full-screen profile accessible from the main menu. Displays:
 - Web file manager password
 - Pin configuration (GPS TX/RX/baud, external I2C SDA/SCL, CC1101 CS/GDO0, NRF24 CE/CSN) — also accessible from Modules menu
 - Navigation mode — Default or Encoder (M5StickC Plus only)
+- Hand orientation — Left/Right toggle that rotates the display and swaps UP/DOWN (M5StickC Plus 1.1, Plus 2, StickC S3)
+- Speaker test — play Win, Lose, Notification, and Beep sounds to verify speaker output (boards with speaker)
 
 ---
 
@@ -322,8 +324,8 @@ This project was built with inspiration and reference from:
 - LoRa
 - ST25 nfc implementation for lora https://github.com/m5stack/M5Unit-NFC
 - easier input action for touch screen
-- sticks3 ir doesn't work, need to investigate
+- sticks3 ir receive not functional (RMT/ES8311 conflict); transmit works
 - implement thermal camera
 - change keyboard to HID instead, mode will be USB and BLE, while BLE and USB only have Keyboard, Mouse and Jiggle Mouse, USB has 1 more option is Mass Storage.
 
-<!-- README last synced at commit: 989b5cd (chameleon ultra client, binary achievement store, character rank retune) -->
+<!-- README last synced at commit: 0745632 (sticks3 IR improvement, hand orientation, speaker test) -->

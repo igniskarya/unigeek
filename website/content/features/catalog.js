@@ -69,5 +69,7 @@ export const CATALOG = [
   { slug: "setting-general",      title: "General Settings",    category: "setting",  summary: "Device name, display timeout, brightness, volume, navigation sound, theme color, and web file manager password", hasDetail: false },
   { slug: "setting-pin",          title: "Pin Settings",        category: "setting",  summary: "Configure GPIO pins for external modules: GPS TX/RX/baud, external I2C SDA/SCL, CC1101 CS/GDO0. Also accessible from Modules menu", hasDetail: false },
   { slug: "setting-nav-mode",     title: "Navigation Mode",     category: "setting",  summary: "Switch between Default and Encoder/Joystick navigation — M5StickC Plus 1.1 and 2 only", hasDetail: false },
+  { slug: "setting-hand-orient",  title: "Hand Orientation",    category: "setting",  summary: "Toggle Left/Right hand orientation — rotates display and swaps UP/DOWN navigation; M5StickC Plus 1.1, Plus 2, and StickC S3 only", hasDetail: false },
+  { slug: "setting-speaker-test", title: "Speaker Test",        category: "setting",  summary: "Play Win, Lose, Notification, and Beep sounds to verify speaker output — boards with speaker only", hasDetail: false },
   { slug: "device-status",        title: "Device Status",        category: "setting",  summary: "View hardware status — CPU frequency, free RAM, free PSRAM, and available storage for LittleFS and SD", hasDetail: false },
 ];

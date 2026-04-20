@@ -13,12 +13,12 @@ public:
   static int popup(const char* title, int min = INT_MIN, int max = INT_MAX, int defaultValue = 0) {
     InputNumberAction action(title, min, max, defaultValue);
     int result = action._run();
-    _lastCancelled = action._cancelled;
+    _cancelledFlag() = action._cancelled;
     Uni.lastActiveMs = millis();
     return result;
   }
 
-  static bool wasCancelled() { return _lastCancelled; }
+  static bool wasCancelled() { return _cancelledFlag(); }
 
 private:
   static constexpr uint32_t BLINK_MS = 500;
@@ -43,7 +43,7 @@ private:
   bool        _cursorVisible  = true;
   uint32_t    _lastBlinkTime  = 0;
 
-  inline static bool _lastCancelled = false;
+  static bool& _cancelledFlag() { static bool v = false; return v; }
 
   static constexpr int DIGIT_COUNT = 12;
   int         _scrollPos   = 0;
