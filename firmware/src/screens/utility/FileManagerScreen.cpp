@@ -4,6 +4,7 @@
 #include "core/AchievementManager.h"
 #include "screens/utility/UtilityMenuScreen.h"
 #include "screens/utility/FileViewerScreen.h"
+#include "screens/utility/FileHexViewerScreen.h"
 #include "ui/actions/InputTextAction.h"
 #include "ui/actions/ShowStatusAction.h"
 
@@ -133,6 +134,7 @@ void FileManagerScreen::_openMenu(uint8_t fileIdx)
 
   if (isFile) {
     addMenu(ACT_VIEW, "View");
+    addMenu(ACT_VIEW_HEX, "View HEX");
   }
 
   addMenu(ACT_NEW_FOLDER, "New Folder");
@@ -188,6 +190,10 @@ void FileManagerScreen::_handleMenuAction(uint8_t index)
 
     case ACT_VIEW:
       Screen.setScreen(new FileViewerScreen(targetPath));
+      return;
+
+    case ACT_VIEW_HEX:
+      Screen.setScreen(new FileHexViewerScreen(targetPath));
       return;
 
     case ACT_NEW_FOLDER: {

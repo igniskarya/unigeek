@@ -19,12 +19,12 @@ private:
   enum State { STATE_FILE, STATE_MENU } _state = STATE_FILE;
 
   enum MenuAction {
-    ACT_VIEW, ACT_NEW_FOLDER, ACT_RENAME, ACT_DELETE,
+    ACT_VIEW, ACT_VIEW_HEX, ACT_NEW_FOLDER, ACT_RENAME, ACT_DELETE,
     ACT_COPY, ACT_CUT, ACT_PASTE, ACT_CANCEL_CLIP, ACT_CLOSE_MENU, ACT_EXIT,
   };
 
   static constexpr uint8_t kMaxFiles = 40;
-  static constexpr uint8_t kMaxMenu  = 9;
+  static constexpr uint8_t kMaxMenu  = 11;
 
   // File browser
   String   _curPath = "/";
