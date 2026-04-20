@@ -1,6 +1,7 @@
 #include "FileHexViewerScreen.h"
 #include "core/Device.h"
 #include "core/ScreenManager.h"
+#include "core/AchievementManager.h"
 #include "screens/utility/FileManagerScreen.h"
 #include "ui/actions/ShowStatusAction.h"
 
@@ -31,6 +32,9 @@ void FileHexViewerScreen::onInit()
     _goBack();
     return;
   }
+
+  int na = Achievement.inc("hexview_first");
+  if (na == 1) Achievement.unlock("hexview_first");
 
   // Layout: each row = [XX ×n] [gap≥2chars] [c×n]
   // total chars = 3n + gap + n = 4n + gap, gap ≥ 2
