@@ -12,19 +12,21 @@ The CC1101 module connects to the device via SPI. Pins are configured in **Modul
 | GDO0 | data/interrupt line (required for receive and jammer) |
 | SCK / MOSI / MISO | shared SPI bus |
 
-### M5StickC Plus 1.1 and Plus 2
+### Per-Board Default Pins
 
-The Grove port (GPIO 32/33) is the external SPI bus on these devices. GPIO 32 and 33 are **shared** between:
-- CC1101 SPI (MOSI=32, MISO=33, SCK=0)
-- GPS UART2 (TX=32, RX=33)
+| Board | SCK | MOSI | MISO | CS | GDO0 | Notes |
+|-------|-----|------|------|----|------|-------|
+| M5StickC Plus 1.1 | 0 | 32 | 33 | 26 | 25 | Grove port; shared with GPS UART2 |
+| M5StickC Plus 2 | 0 | 32 | 33 | 26 | 25 | Grove port; shared with GPS UART2 |
+| T-Lora Pager | 35 | 34 | 33 | 44 | 43 | HSPI bus |
+| T-Embed CC1101 | 11 | 9 | 10 | 12 | 3 | dedicated RF SPI bus |
+| M5 Cardputer | 40 | 14 | 39 | 1 | 2 | shared SD SPI; CS/GDO0 on Grove SCL/SDA |
+| M5 Cardputer ADV | 40 | 14 | 39 | 1 | 2 | shared SD SPI; CS/GDO0 on Grove SCL/SDA |
+| DIY Smoochie | 13 | 12 | 11 | 46 | 9 | dedicated RF SPI bus |
 
-The firmware manages this automatically — SPI is only claimed when CC1101 is active, and released when GPS is in use. The two cannot be used simultaneously.
+On M5StickC Plus 1.1 and Plus 2, GPIO 32 and 33 are **shared** between CC1101 SPI and GPS UART2 (TX=32, RX=33). The firmware manages this automatically — the two cannot be used simultaneously.
 
-Default CC1101 pins on M5StickC: **CS=26, GDO0=25**
-
-### Other Devices (Cardputer, T-Lora Pager)
-
-These devices have independent SPI pins for the CC1101 with no conflict. Default pins are defined per board in `pins_arduino.h`.
+All other boards have independent SPI pins with no conflicts. Default pins are pre-loaded from `pins_arduino.h` and can be overridden in **Modules > Pin Setting**.
 
 ## Detection on Entry
 

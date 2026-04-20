@@ -62,6 +62,17 @@ Targets are listed with MAC address, channel, and device type. Select a target a
 
 Pins are saved to `/unigeek/pin_config` and persist across reboots.
 
+### Per-Board Default Pins
+
+| Board | SCK | MOSI | MISO | CE | CSN | Notes |
+|-------|-----|------|------|----|-----|-------|
+| M5StickC Plus 1.1 | 0 | 32 | 33 | 25 | 26 | Grove port |
+| M5StickC Plus 2 | 0 | 32 | 33 | 25 | 26 | Grove port |
+| T-Lora Pager | 35 | 34 | 33 | 43 | 44 | HSPI bus |
+| T-Embed CC1101 | 11 | 9 | 10 | 43 | 44 | shared SPI bus with CC1101 |
+| M5 Cardputer | 40 | 14 | 39 | 2 | 1 | shared SD SPI; CE/CSN on Grove SDA/SCL |
+| M5 Cardputer ADV | 40 | 14 | 39 | 2 | 1 | shared SD SPI; CE/CSN on Grove SDA/SCL |
+
 ---
 
 ## Reference
