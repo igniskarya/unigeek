@@ -1582,6 +1582,7 @@ button { font: inherit; color: inherit; background: transparent; border: 0; }
   line-height: 1.7;
   color: var(--ink-dim);
   overflow: auto;
+  min-height: 280px;
   max-height: 380px;
   white-space: pre-wrap;
   word-break: break-word;
@@ -2075,8 +2076,53 @@ button { font: inherit; color: inherit; background: transparent; border: 0; }
 
   .feat { padding: 16px 16px; }
   .feat-desc { font-size: 12.5px; }
+
+  /* Install — known issues stack vertically */
+  .known-issues {
+    grid-template-columns: 1fr;
+    gap: 14px;
+    padding: 16px 18px;
+    margin-bottom: 32px;
+  }
+  .known-issues .marker { justify-self: start; }
+  .known-issues li { font-size: 12.5px; }
+
+  /* Install — step headers stack on mobile */
+  .step-head {
+    flex-wrap: wrap;
+    gap: 10px 14px;
+    padding: 10px 0;
+    margin-bottom: 20px;
+  }
+  .step-title {
+    font-size: 22px;
+    flex: 1 1 100%;
+    order: 2;
+  }
+  .step-num { order: 1; }
+  .step-sub {
+    margin-left: 0;
+    order: 3;
+    flex: 1 1 100%;
+  }
+
+  /* Install — console taller floor, shorter ceiling on mobile */
+  .console {
+    min-height: 220px;
+    max-height: 300px;
+    padding: 14px 16px;
+    font-size: 11.5px;
+  }
+  .console-chrome { padding: 0 14px; }
+  .progress {
+    padding: 10px 14px;
+    font-size: 10px;
+    gap: 8px;
+  }
+  .progress-bar { margin: 0 8px; }
 }
 
 @media (max-width: 520px) {
   .page-title { font-size: 32px; }
+  .step-title { font-size: 20px; }
 }
