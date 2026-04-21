@@ -78,7 +78,8 @@ The fake AP uses a **random WPA2 password**. The connecting device does not know
 4. **Advance** — Once M1+M2 are captured, the attack immediately moves to the next queued SSID without waiting for the timeout
 5. **Timeout** — If no M2 arrives within the waiting time, the SSID is blacklisted and the next probe is tried
 
-> **Note:** The ESP32 does not loopback its own AP-transmitted frames to the promiscuous receiver, so the attack device captures EAPOL by running alongside the support device's AP. M1 may not always appear in the PCAP. A PCAP with both M1 and M2 is required for cracking.
+> [!note]
+> The ESP32 does not loopback its own AP-transmitted frames to the promiscuous receiver, so the attack device captures EAPOL by running alongside the support device's AP. M1 may not always appear in the PCAP. A PCAP with both M1 and M2 is required for cracking.
 
 ### Status Bar
 

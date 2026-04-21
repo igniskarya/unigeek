@@ -32,6 +32,9 @@ Transmits continuous-wave noise on the configured channel set to disrupt nearby 
 - **Single Channel** — enter a specific channel (0–125) and jam only that frequency; press SELECT to pause/resume.
 - **Channel Hopper** — configure start, stop, and step; device hops continuously within the defined range.
 
+> [!danger]
+> 2.4 GHz jamming disrupts WiFi, Bluetooth, Zigbee, and most RC systems in range. Use only on hardware you own or have explicit permission to test — intentional RF interference is illegal in most jurisdictions.
+
 ---
 
 ## MouseJack

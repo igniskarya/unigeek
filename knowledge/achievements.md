@@ -21,7 +21,7 @@ Unlocking an achievement shows a toast notification at the bottom of the screen 
 
 ## Ranks
 
-Total possible EXP across all achievements: **84 800** (199 entries: 62 × Bronze, 60 × Silver, 41 × Gold, 36 × Platinum).
+Total possible EXP across all achievements: **84 900** (200 entries: 63 × Bronze, 60 × Silver, 41 × Gold, 36 × Platinum).
 
 | Rank | EXP Required | % of Total |
 |------|-------------|-----------|
@@ -81,149 +81,217 @@ If no title has been set, it shows `[RANK] No Title` by default.
 | 6 | Sub-GHz | 7 |
 | 7 | NRF24 2.4 GHz | 4 |
 | 8 | GPS | 11 |
-| 9 | Utility | 10 |
+| 9 | Utility | 11 |
 | 10 | Games | 31 |
 | 11 | Settings | 4 |
 | 12 | Chameleon | 32 |
-| | **Total** | **199** |
+| | **Total** | **200** |
 
 ---
 
 ## Achievement Catalog
 
-Each domain lists a sample. The full catalog is visible in-app under **Utility > Achievements**.
+| Name | Category | Tier | XP |
+|------|----------|------|---:|
+| First Contact | WiFi Network | Bronze | 100 |
+| Jacked In | WiFi Network | Bronze | 100 |
+| Network Hopper | WiFi Network | Silver | 300 |
+| Roam Lord | WiFi Network | Gold | 600 |
+| Know Your Network | WiFi Network | Bronze | 100 |
+| QR Credentials | WiFi Network | Bronze | 100 |
+| Signal Hunter | WiFi Network | Bronze | 100 |
+| Deep Inspection | WiFi Network | Bronze | 100 |
+| Freq Cartographer | WiFi Network | Silver | 300 |
+| Network Probe | WiFi Network | Bronze | 100 |
+| You Found Me | WiFi Network | Silver | 300 |
+| Port Knocker | WiFi Network | Bronze | 100 |
+| Open Door | WiFi Network | Silver | 300 |
+| Web Vault | WiFi Network | Bronze | 100 |
+| Downloader | WiFi Network | Bronze | 100 |
+| Data Hoarder | WiFi Network | Silver | 300 |
+| Remote Arsenal | WiFi Network | Silver | 300 |
+| Payload Collector | WiFi Network | Silver | 300 |
+| Time Lord | WiFi Network | Bronze | 100 |
+| WiGLE Curious | WiFi Network | Bronze | 100 |
+| Fake Hotspot | WiFi Attacks | Bronze | 100 |
+| First Guest | WiFi Attacks | Silver | 300 |
+| Disconnector | WiFi Attacks | Bronze | 100 |
+| Scorched Air | WiFi Attacks | Silver | 300 |
+| Persistent Jammer | WiFi Attacks | Gold | 600 |
+| SSID Flood | WiFi Attacks | Bronze | 100 |
+| SSID Storm | WiFi Attacks | Silver | 300 |
+| Dark Mirror | WiFi Attacks | Silver | 300 |
+| Credential Thief | WiFi Attacks | Gold | 600 |
+| Master Deceiver | WiFi Attacks | Platinum | 1000 |
+| Twin Overlord | WiFi Attacks | Platinum | 1000 |
+| Identity Harvester | WiFi Attacks | Platinum | 1000 |
+| Open Arms | WiFi Attacks | Silver | 300 |
+| Bait & Hook | WiFi Attacks | Gold | 600 |
+| Mass Trap | WiFi Attacks | Platinum | 1000 |
+| Portal Warden | WiFi Attacks | Platinum | 1000 |
+| Net Caster | WiFi Attacks | Platinum | 1000 |
+| Handshake Hustler | WiFi Attacks | Silver | 300 |
+| EAPOL Farmer | WiFi Attacks | Gold | 600 |
+| Handshake Poacher | WiFi Attacks | Platinum | 1000 |
+| Karma Reaper | WiFi Attacks | Platinum | 1000 |
+| Karma God | WiFi Attacks | Platinum | 1000 |
+| Passive Listener | WiFi Attacks | Silver | 300 |
+| WPA Trophy | WiFi Attacks | Gold | 600 |
+| Handshake Collector | WiFi Attacks | Platinum | 1000 |
+| Handshake Hoarder | WiFi Attacks | Platinum | 1000 |
+| Handshake Legend | WiFi Attacks | Platinum | 1000 |
+| Cracker | WiFi Attacks | Silver | 300 |
+| Key Master | WiFi Attacks | Platinum | 1000 |
+| Serial Cracker | WiFi Attacks | Platinum | 1000 |
+| Password Reaper | WiFi Attacks | Platinum | 1000 |
+| Crypto Nemesis | WiFi Attacks | Platinum | 1000 |
+| Man in the Middle | WiFi Attacks | Silver | 300 |
+| Zero-Day Tourist | WiFi Attacks | Silver | 300 |
+| Got One | WiFi Attacks | Gold | 600 |
+| Watcher | WiFi Attacks | Silver | 300 |
+| Protocol Spy | WiFi Attacks | Bronze | 100 |
+| Air Courier | WiFi Attacks | Bronze | 100 |
+| Air Interceptor | WiFi Attacks | Silver | 300 |
+| Support Bot | WiFi Attacks | Silver | 300 |
+| Camera Sweep | WiFi Attacks | Silver | 300 |
+| Found You | WiFi Attacks | Gold | 600 |
+| Live Feed | WiFi Attacks | Gold | 600 |
+| Bluetooth Scout | Bluetooth | Bronze | 100 |
+| BLE Inspector | Bluetooth | Bronze | 100 |
+| BLE Census | Bluetooth | Silver | 300 |
+| Blue Noise | Bluetooth | Bronze | 100 |
+| Blue Storm | Bluetooth | Silver | 300 |
+| Fake Friend | Bluetooth | Bronze | 100 |
+| Fast Pair Flood | Bluetooth | Silver | 300 |
+| Galaxy Brain | Bluetooth | Bronze | 100 |
+| Watch Chaos | Bluetooth | Silver | 300 |
+| Apple Picker | Bluetooth | Bronze | 100 |
+| Continuity Crash | Bluetooth | Silver | 300 |
+| Spam Radar | Bluetooth | Bronze | 100 |
+| Caught Red-Handed | Bluetooth | Silver | 300 |
+| Whisper Scout | Bluetooth | Bronze | 100 |
+| Broken Pairing | Bluetooth | Gold | 600 |
+| Vulnerability Hunter | Bluetooth | Gold | 600 |
+| Bluetooth Typist | Keyboard | Bronze | 100 |
+| USB Typist | Keyboard | Bronze | 100 |
+| Pass-Through | Keyboard | Bronze | 100 |
+| Script Kiddie | Keyboard | Silver | 300 |
+| Macro Maestro | Keyboard | Gold | 600 |
+| Automation God | Keyboard | Platinum | 1000 |
+| Card Detected | NFC | Bronze | 100 |
+| Card Collector | NFC | Silver | 300 |
+| Dictionary Diver | NFC | Silver | 300 |
+| Key Found | NFC | Gold | 600 |
+| Full Dump | NFC | Gold | 600 |
+| Nested Attacker | NFC | Gold | 600 |
+| Dark Art | NFC | Platinum | 1000 |
+| Signal Catcher | IR | Bronze | 100 |
+| Remote Saved | IR | Silver | 300 |
+| Remote Keeper | IR | Gold | 600 |
+| IR Librarian | IR | Platinum | 1000 |
+| Zapper | IR | Bronze | 100 |
+| TV-B-Gone | IR | Silver | 300 |
+| Screen Killer | IR | Gold | 600 |
+| Universal Remote | IR | Gold | 600 |
+| RF Listener | Sub-GHz | Bronze | 100 |
+| RF Archive | Sub-GHz | Silver | 300 |
+| RF Collector | Sub-GHz | Gold | 600 |
+| RF Library | Sub-GHz | Platinum | 1000 |
+| RF Transmitter | Sub-GHz | Bronze | 100 |
+| Frequency Disruptor | Sub-GHz | Silver | 300 |
+| Frequency Finder | Sub-GHz | Silver | 300 |
+| 2.4G Watcher | NRF24 2.4 GHz | Bronze | 100 |
+| 2.4G Disruptor | NRF24 2.4 GHz | Silver | 300 |
+| MouseJacker | NRF24 2.4 GHz | Gold | 600 |
+| First Mouse | NRF24 2.4 GHz | Silver | 300 |
+| Locked On | GPS | Silver | 300 |
+| Street Racer | GPS | Silver | 300 |
+| Network Scout | GPS | Gold | 600 |
+| City Cartographer | GPS | Platinum | 1000 |
+| Urban Mapper | GPS | Platinum | 1000 |
+| Mass Surveyor | GPS | Platinum | 1000 |
+| Cloud Reporter | GPS | Silver | 300 |
+| Street Mapper | GPS | Gold | 600 |
+| Signal Archivist | GPS | Platinum | 1000 |
+| WiGLE Legend | GPS | Platinum | 1000 |
+| WiGLE Titan | GPS | Platinum | 1000 |
+| Bus Detective | Utility | Bronze | 100 |
+| I2C Discovery | Utility | Silver | 300 |
+| QR Scribe | Utility | Bronze | 100 |
+| QR Librarian | Utility | Bronze | 100 |
+| Barcode Printer | Utility | Bronze | 100 |
+| Barcode Archivist | Utility | Bronze | 100 |
+| File Explorer | Utility | Bronze | 100 |
+| Clean Sweep | Utility | Bronze | 100 |
+| Duplicator | Utility | Bronze | 100 |
+| Page Turner | Utility | Bronze | 100 |
+| Hex Peeper | Utility | Bronze | 100 |
+| First Flight | Games | Bronze | 100 |
+| Skilled Flapper | Games | Silver | 300 |
+| Air Master | Games | Gold | 600 |
+| Pipe Legend | Games | Platinum | 1000 |
+| Pipe God | Games | Platinum | 1000 |
+| Word Player | Games | Bronze | 100 |
+| Wordsmith | Games | Silver | 300 |
+| Word Master | Games | Gold | 600 |
+| Pemain Kata | Games | Bronze | 100 |
+| Kata Jagoan | Games | Silver | 300 |
+| Ahli Kata | Games | Gold | 600 |
+| Genius | Games | Platinum | 1000 |
+| Hex Curious | Games | Bronze | 100 |
+| Hex Solver | Games | Silver | 300 |
+| Hex Legend | Games | Gold | 600 |
+| Memory Check | Games | Bronze | 100 |
+| Sharp Memory | Games | Silver | 300 |
+| Memory Ace | Games | Gold | 600 |
+| New Record | Games | Silver | 300 |
+| Eidetic | Games | Platinum | 1000 |
+| Memory God | Games | Platinum | 1000 |
+| First Guess | Games | Bronze | 100 |
+| Easy Guesser | Games | Bronze | 100 |
+| Mid Guesser | Games | Silver | 300 |
+| Hard Guesser | Games | Gold | 600 |
+| Extreme Guesser | Games | Platinum | 1000 |
+| Lucky Shot | Games | Silver | 300 |
+| Calculated | Games | Gold | 600 |
+| Survivor | Games | Platinum | 1000 |
+| Seer | Games | Platinum | 1000 |
+| Luck God | Games | Platinum | 1000 |
+| Identity | Settings | Bronze | 100 |
+| My Colors | Settings | Bronze | 100 |
+| Lock Down | Settings | Bronze | 100 |
+| Self Check | Settings | Bronze | 100 |
+| Chameleon Link | Chameleon | Silver | 300 |
+| Chameleon Tamer | Chameleon | Silver | 300 |
+| Field Intel | Chameleon | Bronze | 100 |
+| Slot Warden | Chameleon | Bronze | 100 |
+| Slot Shifter | Chameleon | Bronze | 100 |
+| Slot Juggler | Chameleon | Silver | 300 |
+| HF Tag Reader | Chameleon | Silver | 300 |
+| HF Collector | Chameleon | Silver | 300 |
+| ISO Archaeologist | Chameleon | Gold | 600 |
+| LF Tag Reader | Chameleon | Silver | 300 |
+| LF Stalker | Chameleon | Silver | 300 |
+| Frequency Hunter | Chameleon | Gold | 600 |
+| Card Clone | Chameleon | Gold | 600 |
+| Copy Maker | Chameleon | Gold | 600 |
+| Identity Library | Chameleon | Platinum | 1000 |
+| Tuner | Chameleon | Bronze | 100 |
+| Persisted | Chameleon | Silver | 300 |
+| Fresh Start | Chameleon | Bronze | 100 |
+| Slot Tinkerer | Chameleon | Bronze | 100 |
+| Name Tag | Chameleon | Silver | 300 |
+| Transplant | Chameleon | Gold | 600 |
+| Slot Inspector | Chameleon | Bronze | 100 |
+| Dictionary Diver II | Chameleon | Gold | 600 |
+| Keyring | Chameleon | Gold | 600 |
+| Full Impression | Chameleon | Gold | 600 |
+| Magic Detector | Chameleon | Gold | 600 |
+| Honey Pot | Chameleon | Bronze | 100 |
+| Honey Harvest | Chameleon | Gold | 600 |
+| Badge Reader | Chameleon | Silver | 300 |
+| Viking Scout | Chameleon | Silver | 300 |
+| Blank Re-writer | Chameleon | Gold | 600 |
+| Lockpick LF | Chameleon | Gold | 600 |
 
-### WiFi Network (domain 0)
-
-| Title | Tier | How to unlock |
-|-------|------|--------------|
-| First Contact | Bronze | Scan for nearby WiFi networks |
-| Network Hopper | Silver | Connect to 5 different networks |
-| Roam Lord | Gold | Connect to 20 different networks |
-| ... | | *20 achievements total* |
-
-### WiFi Attacks (domain 1)
-
-| Title | Tier | How to unlock |
-|-------|------|--------------|
-| Fake Hotspot | Bronze | Start a rogue access point |
-| Dark Mirror | Silver | Start an evil twin AP attack |
-| Credential Thief | Gold | Capture credentials via evil twin |
-| Crypto Nemesis | Platinum | Successfully crack 50 WiFi passwords |
-| ... | | *43 achievements total* |
-
-### Bluetooth (domain 2)
-
-| Title | Tier | How to unlock |
-|-------|------|--------------|
-| Bluetooth Scout | Bronze | Scan for nearby BLE devices |
-| Blue Storm | Silver | Run BLE spam continuously for 1 min |
-| Broken Pairing | Gold | Find a vulnerable WhisperPair device (CVE-2025-36911) |
-| ... | | *16 achievements total* |
-
-### Keyboard / HID (domain 3)
-
-| Title | Tier | How to unlock |
-|-------|------|--------------|
-| Bluetooth Typist | Bronze | Connect as a Bluetooth HID keyboard |
-| Script Kiddie | Silver | Run a DuckyScript payload |
-| Automation God | Platinum | Execute 10 DuckyScript payloads |
-| ... | | *6 achievements total* |
-
-### NFC (domain 4)
-
-| Title | Tier | How to unlock |
-|-------|------|--------------|
-| Card Detected | Bronze | Read an NFC card UID |
-| Key Found | Gold | Crack a valid MIFARE sector key |
-| Full Dump | Gold | Dump a full NFC card memory |
-| Dark Art | Platinum | Execute a MIFARE Darkside attack |
-| ... | | *7 achievements total* |
-
-### IR (domain 5)
-
-| Title | Tier | How to unlock |
-|-------|------|--------------|
-| Signal Catcher | Bronze | Capture an IR signal with the receiver |
-| TV-B-Gone | Silver | Start TV-B-Gone power-off sweep |
-| Screen Killer | Gold | Complete a full TV-B-Gone sweep |
-| IR Librarian | Platinum | Save 20 remote files to storage |
-| ... | | *8 achievements total* |
-
-### Sub-GHz (domain 6)
-
-| Title | Tier | How to unlock |
-|-------|------|--------------|
-| RF Listener | Bronze | Receive a Sub-GHz RF signal |
-| Frequency Disruptor | Silver | Start RF jamming on a frequency |
-| RF Library | Platinum | Save 20 RF signals to storage |
-| ... | | *7 achievements total* |
-
-### NRF24 2.4 GHz (domain 7)
-
-| Title | Tier | How to unlock |
-|-------|------|--------------|
-| 2.4G Watcher | Bronze | View the 2.4 GHz spectrum analyzer |
-| 2.4G Disruptor | Silver | Start an NRF24 jamming session |
-| MouseJacker | Gold | Scan for MouseJack-vulnerable devices |
-| ... | | *4 achievements total* |
-
-### GPS (domain 8)
-
-| Title | Tier | How to unlock |
-|-------|------|--------------|
-| Locked On | Silver | Get your first GPS position fix |
-| Mass Surveyor | Platinum | Log 3 000 networks during wardriving |
-| WiGLE Titan | Platinum | Upload 100 wardrive sessions to WiGLE |
-| ... | | *11 achievements total* |
-
-> WiGLE uploads from both GPS > Wardriving and WiFi > Network > WiGLE count toward the same milestones.
-
-### Utility (domain 9)
-
-| Title | Tier | How to unlock |
-|-------|------|--------------|
-| Bus Detective | Bronze | Run an I2C bus scan |
-| I2C Discovery | Silver | Find a device on the I2C bus |
-| QR Scribe | Bronze | Generate a QR code from typed text |
-| ... | | *10 achievements total* |
-
-### Games (domain 10)
-
-| Title | Tier | How to unlock |
-|-------|------|--------------|
-| First Flight | Bronze | Play Flappy Bird for the first time |
-| Air Master | Gold | Score 25 points in Flappy Bird |
-| Pipe God | Platinum | Score 100 points in Flappy Bird |
-| Genius | Platinum | Solve Wordle correctly on the 1st guess |
-| Memory God | Platinum | Win Memory extreme 5 times with a new high score |
-| ... | | *31 achievements total* |
-
-### Settings (domain 11)
-
-| Title | Tier | How to unlock |
-|-------|------|--------------|
-| Identity | Bronze | Change your device name in Settings |
-| My Colors | Bronze | Change the UI theme color in Settings |
-| Lock Down | Bronze | Set up a PIN lock for the device |
-| Self Check | Bronze | View device status and hardware info |
-| | | *4 achievements total* |
-
-### Chameleon (domain 12)
-
-| Title | Tier | How to unlock |
-|-------|------|--------------|
-| Chameleon Link | Silver | Connect to a ChameleonUltra via Bluetooth |
-| Field Intel | Bronze | View ChameleonUltra device info |
-| Slot Tinkerer | Bronze | Open the per-slot editor |
-| Transplant | Gold | Write HF or LF content into a Chameleon slot |
-| Slot Inspector | Bronze | View current emulator content of a Chameleon slot |
-| Dictionary Diver II | Gold | Run a Chameleon MF Classic dictionary attack |
-| Keyring | Gold | Recover 10+ MF Classic keys via Chameleon |
-| Full Impression | Gold | Dump a full MF Classic card via Chameleon |
-| Magic Detector | Gold | Detect a magic/gen card via Chameleon |
-| Honey Harvest | Gold | Export MFKey32 detection records to SD |
-| Blank Re-writer | Gold | Write an LF ID to a T5577 tag |
-| Lockpick LF | Gold | Clear a locked T5577 tag password |
-| Identity Library | Platinum | Clone 10 cards to ChameleonUltra slots |
-| ... | | *32 achievements total* |
+> WiGLE uploads from both GPS > Wardriving and WiFi > Network > WiGLE count toward the same milestones. Locked Platinum entries display `???` in the in-app list until earned.

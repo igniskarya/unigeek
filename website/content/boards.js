@@ -5,6 +5,11 @@ export const BOARDS = [
     chip: "ESP32",
     tags: ["WiFi", "BLE", "NFC", "IR", "Encoder"],
     bin: "/firmware/unigeek-m5stickcplus_11.bin",
+    port: "USB-C",
+    baud: 115200,
+    bootloader: "Auto (no buttons)",
+    storage: "LittleFS only",
+    bootNotes: "Auto-enters download mode. If flashing fails, hold Button A while plugging USB-C.",
     nav: [
       ["Default (Buttons)", [
         { input: "AXP power button", action: "Up" },
@@ -28,6 +33,11 @@ export const BOARDS = [
     chip: "ESP32",
     tags: ["WiFi", "BLE", "NFC", "IR", "Encoder"],
     bin: "/firmware/unigeek-m5stickcplus_2.bin",
+    port: "USB-C",
+    baud: 115200,
+    bootloader: "Auto (no buttons)",
+    storage: "LittleFS only",
+    bootNotes: "Same procedure as v1.1. 200mAh battery — keep plugged while flashing.",
     nav: [
       ["Default (Buttons)", [
         { input: "BTN_UP — top button", action: "Up" },
@@ -47,10 +57,15 @@ export const BOARDS = [
   },
   {
     id: "m5sticks3",
-    name: "M5StickC S3",
+    name: "M5Stick S3",
     chip: "ESP32-S3",
     tags: ["WiFi", "BLE", "IR", "USB HID"],
     bin: "/firmware/unigeek-m5sticks3.bin",
+    port: "USB-C (native)",
+    baud: 921600,
+    bootloader: "Auto via native USB",
+    storage: "LittleFS only",
+    bootNotes: "Native USB — no UART chip. If bricked, hold BOOT while plugging USB to force download mode.",
     knownIssues: ["CC1101 and NRF24 untested", "IR receive not functional — RMT conflict with ES8311 speaker; IR transmit works normally"],
     nav: [
       ["Buttons", [
@@ -67,6 +82,11 @@ export const BOARDS = [
     chip: "ESP32-S3",
     tags: ["WiFi", "BLE", "IR", "Keyboard", "USB HID"],
     bin: "/firmware/unigeek-m5_cardputer.bin",
+    port: "USB-C (native)",
+    baud: 921600,
+    bootloader: "Hold G0 + tap RESET",
+    storage: "SD + LittleFS",
+    bootNotes: "Full QWERTY. Enter bootloader: hold G0, tap RESET, release G0.",
     nav: [
       ["Keyboard", [
         { input: "Key ;", action: "Up" },
@@ -84,6 +104,11 @@ export const BOARDS = [
     chip: "ESP32-S3",
     tags: ["WiFi", "BLE", "Keyboard", "USB HID"],
     bin: "/firmware/unigeek-m5_cardputer_adv.bin",
+    port: "USB-C (native)",
+    baud: 921600,
+    bootloader: "Hold G0 + tap RESET",
+    storage: "SD + LittleFS",
+    bootNotes: "Same keyboard as standard Cardputer; advanced pinout adds internal GPIO header.",
     nav: [
       ["Keyboard", [
         { input: "Key ;", action: "Up" },
@@ -101,6 +126,11 @@ export const BOARDS = [
     chip: "ESP32-S3",
     tags: ["WiFi", "BLE", "Touch", "USB HID"],
     bin: "/firmware/unigeek-m5_cores3.bin",
+    port: "USB-C (native)",
+    baud: 921600,
+    bootloader: "Hold BTN A while connecting USB-C",
+    storage: "SD + LittleFS",
+    bootNotes: "Touch-first UI; physical buttons are hidden. Use on-screen controls for navigation.",
     nav: [
       ["Touch", [
         { input: "Touch — left edge (x < 80)", action: "Back" },
@@ -116,6 +146,11 @@ export const BOARDS = [
     chip: "ESP32",
     tags: ["WiFi", "BLE", "USB HID"],
     bin: "/firmware/unigeek-t_display.bin",
+    port: "Micro-USB (CH9102)",
+    baud: 921600,
+    bootloader: "Hold BOOT + tap EN",
+    storage: "LittleFS only",
+    bootNotes: "Older CH9102 USB-UART — Windows may need driver. Manual bootloader entry required.",
     nav: [
       ["Buttons", [
         { input: "BTN_UP — top button", action: "Up" },
@@ -131,6 +166,11 @@ export const BOARDS = [
     chip: "ESP32-S3",
     tags: ["WiFi", "BLE", "USB HID"],
     bin: "/firmware/unigeek-t_display_s3.bin",
+    port: "USB-C (native)",
+    baud: 921600,
+    bootloader: "Hold BOOT + tap RST",
+    storage: "LittleFS only",
+    bootNotes: "Two side buttons. Hold BOOT, tap RST, release BOOT to enter download mode.",
     nav: [
       ["Buttons", [
         { input: "BTN_UP — top button", action: "Up" },
@@ -146,6 +186,11 @@ export const BOARDS = [
     chip: "ESP32-S3",
     tags: ["WiFi", "BLE", "NFC", "IR", "Sub-GHz", "LoRa", "Keyboard", "USB HID"],
     bin: "/firmware/unigeek-t_lora_pager.bin",
+    port: "USB-C (native)",
+    baud: 921600,
+    bootloader: "Hold BOOT + tap RST",
+    storage: "SD + LittleFS",
+    bootNotes: "Full-stack pager: SX127x LoRa + CC1101 sub-GHz. Antenna MUST be attached before TX or you will damage the radios.",
     nav: [
       ["Encoder + Keyboard", [
         { input: "Encoder — turn CCW (left)", action: "Up" },
@@ -162,6 +207,11 @@ export const BOARDS = [
     chip: "ESP32-S3",
     tags: ["WiFi", "BLE", "Sub-GHz", "NRF24L01", "USB HID"],
     bin: "/firmware/unigeek-t_embed_cc1101.bin",
+    port: "USB-C (native)",
+    baud: 921600,
+    bootloader: "Hold BOOT + tap RST",
+    storage: "SD + LittleFS",
+    bootNotes: "Primary input is the rotary encoder. Push-wheel to confirm. Antenna required for Sub-GHz TX.",
     nav: [
       ["Encoder", [
         { input: "Encoder — turn CW (right)", action: "Up" },
@@ -177,6 +227,11 @@ export const BOARDS = [
     chip: "ESP32-S3",
     tags: ["WiFi", "BLE", "IR", "NFC", "NRF24L01", "Sub-GHz", "USB HID"],
     bin: "/firmware/unigeek-diy_smoochie.bin",
+    port: "USB-C (native)",
+    baud: 921600,
+    bootloader: "Hold BOOT + tap RST",
+    storage: "SD + LittleFS",
+    bootNotes: "Community DIY build — pinout varies by batch. Check your schematic before flashing.",
     nav: [
       ["Buttons", [
         { input: "BTN_UP", action: "Up" },
@@ -194,6 +249,11 @@ export const BOARDS = [
     chip: "ESP32",
     tags: ["WiFi", "BLE", "Touch"],
     bin: "/firmware/unigeek-cyd_2432w328r.bin",
+    port: "Micro-USB (CH340)",
+    baud: 921600,
+    bootloader: "Auto (no buttons)",
+    storage: "SD + LittleFS",
+    bootNotes: "\"Cheap Yellow Display\" — touch-only. Some clones lack auto-reset; hold BOOT + tap EN if flashing fails.",
     knownIssues: ["New addition — most modules untested"],
     nav: [
       ["Touch", [
@@ -205,3 +265,7 @@ export const BOARDS = [
     ],
   },
 ];
+
+export function getBoardById(id) {
+  return BOARDS.find((b) => b.id === id) || null;
+}

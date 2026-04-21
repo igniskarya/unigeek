@@ -2,6 +2,9 @@
 
 Evil Twin creates a fake WiFi access point with the same name as a real network, serving a captive portal page to trick users into entering their credentials.
 
+> [!warn]
+> Credential harvesting against third-party users is illegal without explicit authorization. Use only on networks and accounts you own, or within a sanctioned penetration test.
+
 ## Setup
 
 1. Go to **WiFi > Evil Twin**

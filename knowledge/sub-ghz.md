@@ -114,7 +114,8 @@ Transmit continuous noise on the configured frequency to disrupt nearby Sub-GHz 
 3. The CC1101 transmits random pulses at high power (PA=12 dBm)
 4. Press **BACK** or **PRESS** to stop
 
-> **Use only in environments you own or have explicit permission to test. Jamming RF signals is illegal in most jurisdictions.**
+> [!danger]
+> Use only in environments you own or have explicit permission to test. Jamming RF signals is illegal in most jurisdictions.
 
 ## File Format
 

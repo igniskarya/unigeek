@@ -1,27 +1,29 @@
-import FeatureArticle from "@/components/FeatureArticle";
-import GlitcheLayout from "@/layouts/GlitcheLayout";
-import { getAllFeatures, getFeatureBySlug } from "@/content/features/index";
-import { notFound } from "next/navigation";
+import { notFound } from 'next/navigation';
+import DocSidebar from '@/components/docs/DocSidebar';
+import DocArticle from '@/components/docs/DocArticle';
+import { getDocSlugs, getFeatureBySlug } from '@/content/features';
 
-export async function generateStaticParams() {
-  const features = getAllFeatures();
-  return features.filter((f) => f.hasDetail).map((f) => ({ slug: f.slug }));
+export function generateStaticParams() {
+  return getDocSlugs().map((slug) => ({ slug }));
 }
 
-const FeaturePage = ({ params }) => {
+export function generateMetadata({ params }) {
+  const feature = getFeatureBySlug(params.slug);
+  if (!feature) return { title: 'Not found — UniGeek' };
+  return {
+    title: `${feature.title} — UniGeek Docs`,
+    description: feature.summary,
+  };
+}
+
+export default function FeatureDocPage({ params }) {
   const feature = getFeatureBySlug(params.slug);
   if (!feature) notFound();
 
   return (
-    <GlitcheLayout>
-      <FeatureArticle
-        title={feature.title}
-        slug={params.slug}
-        category={feature.category}
-        html={feature.html}
-      />
-    </GlitcheLayout>
+    <div className="docs-layout">
+      <DocSidebar currentSlug={feature.slug} />
+      <DocArticle feature={feature} />
+    </div>
   );
-};
-
-export default FeaturePage;
+}

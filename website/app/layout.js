@@ -1,38 +1,37 @@
-import Preloader from "@/layouts/Preloader";
-import "@css/animate.css";
-import "@css/glitche-basic.css";
-import "@css/glitche-layout.css";
-import "@css/ionicons.css";
-import "@css/magnific-popup.css";
-import "@css/template-colors/blue.css";
-import "@css/template-dark/dark.css";
-import { Roboto_Mono } from "next/font/google";
-import "./globals.css";
-import State from "/context/context";
-
-const robotoMono = Roboto_Mono({
-  subsets: ["latin"],
-  weight: ["100", "300", "400", "500", "700"],
-  variable: "--font-roboto",
-  display: "swap",
-});
+import Nav from '@/components/layout/Nav';
+import Footer from '@/components/layout/Footer';
+import PcbGrid from '@/components/layout/PcbGrid';
+import './globals.css';
 
 export const metadata = {
-  title: "UniGeek — ESP32 Multi-Tool Firmware",
+  title: 'UniGeek — Multi-tool firmware for ESP32',
   description:
-    "Open-source ESP32 firmware for WiFi, BLE, NFC, IR, Sub-GHz attacks and utilities. Supports 7 boards.",
-  icons: {
-    icon: "/images/icon.png",
-    apple: "/images/icon.png",
-  },
+    'Open-source multi-tool firmware for ESP32-family boards. WiFi, BLE, NFC, IR, Sub-GHz, USB HID — one reflashable image across twelve boards.',
+  icons: { icon: '/favicon.svg' },
+};
+
+export const viewport = {
+  themeColor: '#0b0d0e',
+  width: 'device-width',
+  initialScale: 1,
 };
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body className={robotoMono.variable}>
-        <Preloader />
-        <State>{children}</State>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@400;500&display=swap"
+        />
+      </head>
+      <body>
+        <PcbGrid />
+        <Nav />
+        <main className="container">{children}</main>
+        <Footer />
       </body>
     </html>
   );

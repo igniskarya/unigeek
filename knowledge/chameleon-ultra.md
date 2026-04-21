@@ -146,6 +146,6 @@ All Chameleon screens follow the house rules in `CLAUDE.md`: scan-result views u
 
 ## Reference
 
-- Protocol and command catalogue: [`docs/chameleon-ultra.md`](../docs/chameleon-ultra.md) — full porting map from `ChameleonUltraGUI` to this client, including every command opcode, payload layout, and feature tier.
+- Protocol source: [ChameleonUltraGUI](https://github.com/GameTec-live/ChameleonUltraGUI) — full command opcode catalogue and payload layouts used to build this client.
 - Client implementation: `firmware/src/utils/chameleon/ChameleonClient.{h,cpp}`
 - Screens: `firmware/src/screens/ble/chameleon/*`

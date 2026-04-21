@@ -2,6 +2,9 @@
 
 Man-in-the-Middle attack that intercepts traffic between devices on a network and the router. Accessed from **WiFi > Network > MITM Attack**. Must be connected to a WiFi network first.
 
+> [!warn]
+> Running a rogue DHCP server, deauth bursts, or DNS spoofing on a network you do not own is illegal in most jurisdictions. Only test on networks and clients you control.
+
 ## Setup
 
 1. Connect to the target network via **WiFi > Network**

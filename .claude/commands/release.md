@@ -16,7 +16,7 @@ Create a new firmware release. Usage: `/release <version>` (e.g. `/release 1.3.0
 
 3. **Build all environments**: Run `./build_all.sh` (macOS/Linux) or `build_all.bat` (Windows) to verify all board environments compile successfully. If any build fails, **stop and report the error** — do not proceed with the release.
 
-4. **Build website**: Run `cd website && npm run build` to verify the website builds without errors. If the build fails, **stop and report the error** — do not proceed with the release.
+4. **Build website**: Run `cd website && npm run build` to verify the website builds without errors. If the build fails, **stop and report the error** — do not proceed with the release. Also spot-check that any knowledge/*.md changes in this cycle render on the features pages (see **Knowledge file conventions** at the end of this file).
 
 5. **Analyze commits**: Run `git log <prev_tag>..HEAD --oneline` to see all commits since the last release. Also check what already existed at the previous tag to avoid listing mid-development upgrades as new features.
 
@@ -58,3 +58,14 @@ Create a new firmware release. Usage: `/release <version>` (e.g. `/release 1.3.0
     - Use the same temp file approach to avoid shell escaping issues
 
 12. **Do NOT** push until the user explicitly confirms.
+
+## Knowledge file conventions
+
+If the release cycle touches `knowledge/*.md`, verify each file follows the renderer conventions in `website/content/features/index.js`:
+
+- **First heading must be `# Title`** — the renderer strips the first H1; the catalog entry's `title` is used instead. Do not start a doc with H2.
+- **Callouts** — use `> [!note]`, `> [!tip]`, `> [!warn]`, `> [!danger]` on their own line, content on the next line. Plain `>` blockquotes render with the default NOTE badge.
+- **Tier pills** — table cells containing exactly `Bronze` / `Silver` / `Gold` / `Platinum` auto-render as coloured pills. Use these literals in achievement tables.
+- **No repo-relative links** — `../docs/...` paths don't resolve on the website. Use absolute URLs or inline `code` refs.
+- **Catalog sync** — any new or removed knowledge file must match a `hasDetail: true/false` change in `website/content/features/catalog.js`; slug = filename without `.md`.
+- **Boards** — if boards were added/removed this cycle, `website/content/boards.js` must mirror the workflow matrix in `.github/workflows/release.yml` (see release matrix invariant).
