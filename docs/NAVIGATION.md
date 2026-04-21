@@ -168,7 +168,7 @@ Identical touch zones and logic to m5_cores3_unified. Uses custom TouchFT6336U d
 
 ---
 
-## m5sticks3 (M5StickC S3)
+## m5sticks3 (M5Stick S3)
 Inputs: GPIO 11 (BTN_A, INPUT_PULLUP) · GPIO 12 (BTN_B, ISR-driven, INPUT_PULLUP)
 
 | Input                           | Direction |

@@ -42,7 +42,7 @@ All hardware differences are isolated in board-specific folders.
     m5_cardputer_adv   M5Stack Cardputer ADV, TCA8418 keyboard via Wire1, ADC battery, SD + LittleFS
     t_embed_cc1101     LilyGO T-Embed CC1101, rotary encoder nav, BQ25896 power, CC1101, I2S speaker, 16MB flash, SD + LittleFS
     m5_cores3_unified  M5Stack CoreS3 (M5Unified-backed), ESP32-S3, FT6336U touch nav, AW88298 I2S speaker, AXP2101 power, USB HID, SD + LittleFS
-    m5sticks3          M5StickC S3, ESP32-S3, 2 buttons, ES8311 I2S speaker, M5PM1 power, IR, USB HID, LittleFS only
+    m5sticks3          M5Stick S3, ESP32-S3, 2 buttons, ES8311 I2S speaker, M5PM1 power, IR, USB HID, LittleFS only
 
     Out-of-tree boards (present in firmware/boards/ but NOT released):
       m5_cores3       — bare CoreS3 (no M5Unified); kept as a reference to the unified variant
